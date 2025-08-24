@@ -1,5 +1,5 @@
 # 4123-ScoutingPage
-A json configurable webpage for all things FRC Scouting
+&emsp;A json configurable webpage for all things FRC Scouting
 
 ## Features
 * Dynamic Forms through config.json
@@ -27,11 +27,11 @@ _________________
 ```
 
 ### Form Field Types
-Each section contains fields. The field type determines which form input is rendered.
+&emsp;Each section contains fields. The field type determines which form input is rendered.
 _________________
 
 #### Boolean
-Checkbox that stores true/false.
+&emsp;Checkbox that stores true/false.
 ```
 "mobility": {
   "Type": "Boolean"
@@ -39,7 +39,7 @@ Checkbox that stores true/false.
 ```
 ---
 #### Boolean With Value
-Checkbox that adds points when checked.
+&emsp;Checkbox that adds points when checked.
 ```
 "left_starting_zone": {
   "Type": "Boolean with Value",
@@ -48,7 +48,7 @@ Checkbox that adds points when checked.
 ```
 ---
 #### String
-Text input field.
+&emsp;Text input field.
 ```
 "comments": {
   "Type": "String"
@@ -56,7 +56,7 @@ Text input field.
 ```
 ---
 #### Integer
-Number input with +/– buttons.
+&emsp;Number input with +/– buttons.
 ```
 "cubes_scored": {
   "Type": "Integer"
@@ -64,7 +64,7 @@ Number input with +/– buttons.
 ```
 ---
 #### Scoring Object
-Made/Missed counters with point value.
+&emsp;Made/Missed counters with point value.
 ```
 "L1": {
   "Made": 0,
@@ -77,7 +77,7 @@ Total Points = Made × Value.
 
 ---
 #### Single Choice
-Dropdown selection.
+&emsp;Dropdown selection.
 ```
 "starting_position": {
   "Type": "Single Choice",
@@ -86,7 +86,7 @@ Dropdown selection.
 ```
 ---
 #### Single Choice with Values
-Dropdown with scoring values.
+&emsp;Dropdown with scoring values.
 ```
 "final_status": {
   "Type": "Single Choice",
@@ -96,7 +96,7 @@ Dropdown with scoring values.
 ```
 ---
 #### Multiple Choice
-Checkbox list
+&emsp;Checkbox list
 ```
 "game_pieces": {
   "Type": "Multiple Choice",
@@ -105,7 +105,7 @@ Checkbox list
 ```
 ---
 #### Multiple Choice with Values
-Checkbox list where each option has a point value.
+&emsp;Checkbox list where each option has a point value.
 ```
 "coopertition_bonus": {
   "Type": "Multiple Choice",
@@ -115,7 +115,7 @@ Checkbox list where each option has a point value.
 ```
 ---
 #### Timer
-Start/Stop/Reset timer field.
+&emsp;Start/Stop/Reset timer field.
 ```
 "hang_time": {
   "Type": "Timer"
@@ -123,7 +123,7 @@ Start/Stop/Reset timer field.
 ```
 ---
 #### Image
-File upload
+&emsp;File upload
 ```
 "robot_picture": {
   "Type": "Image File"
@@ -151,6 +151,54 @@ _________________
 #### JSON Access
 * *json_extract(auto_json, '$.L1.Made')* -- > Gets value from match JSON
 * Supports access to *pre_match_json*, *auto_json*, *teleop_json*, *endgame_json*, *misc_json*
+---
+###Team Summary Config
+&emsp;In config.json, you can configure what appears in Team Summary:
+```
+"team_summary": {
+  "team_info": {
+    "get_team_name": true,
+    "get_team_epa": true,
+    "get_team_rank_in_state": true,
+    "get_team_rank_in_country": false,
+    "get_team_rank_in_world": true,
+    "year": 2025
+  },
+  "charts": {
+    "Auto Coral Performance": {
+      "x_label":"Match #",
+      "y_label":"Auto Coral",
+      "backgroundColor":"rgba(153, 102, 255, 0.2)",
+      "borderColor":"rgba(153, 102, 255, 1)",
+      "x":"match_number",
+      "y":[
+        "auto_coral_used",
+        "auto_L1_made",
+        "auto_L2_made",
+        "auto_L3_made",
+        "auto_L4_made"
+      ],
+      "graph": "line graph"
+  },
+  "tables": {
+    "title":["Match Point Breakdown"],
+    "table":{
+      "match_point_breakdown_table":{
+        "columns": [
+          "match_number", 
+          "match_type", 
+          "auto_points", 
+          "teleop_points", 
+          "endgame_points", 
+          "total_points"
+        ]
+      }
+  }
+}
+```
+* team_info → Controls what metadata is fetched via /api/team/{team}/info.
+* charts → Define chart name, x-axis field, y-axis field(s), and labelss
+* tables → Define table name and list of columns to display.
 
 ## Access
 (https://four123-scoutingpage.onrender.com/)
