@@ -129,12 +129,28 @@ File upload
   "Type": "Image File"
 }
 ```
-
+---
 ### Computed Fields
 config.json supports *computed_fields*, which lets you define fomrula for calculated values (like total points, accuracy, EPA-style stats).
 Formulas in this section use SQL-like syntax but are executed in JavaScript on the frontend (team_summary.html).
-**Example**
+_________________
 
+**Example**
+```
+"computed_fields": {
+  "auto_total": "json_extract(auto_json,'$.L1.Made') * json_extract(auto_json,'$.L1.Value') + json_extract(auto_json,'$.L2.Made') * json_extract(auto_json,'$.L2.Value')",
+  "teleop_total": "json_extract(teleop_json,'$.L1.Made') * json_extract(teleop_json,'$.L1.Value') + json_extract(teleop_json,'$.L2.Made') * json_extract(teleop_json,'$.L2.Value')",
+  "endgame_total": "CASE json_extract(endgame_json,'$.final_status') WHEN 'Climbed' THEN 6 ELSE 2 END",
+  "total_points": "auto_total + teleop_total + endgame_total"
+}
+```
+#### Supported Functions
+* Round(value, precision) --> Round to given decimal places
+* Coalesce(a, b, ...) --> First non-null value
+* Case When ... Then ... Else ... End --> Conditional Logic
+#### JSON Access
+* *json_extract(auto_json, '$.L1.Made')* -- > Gets value from match JSON
+* Supports access to *pre_match_json*, *auto_json*, *teleop_json*, *endgame_json*, *misc_json*
 
 ## Access
 (https://four123-scoutingpage.onrender.com/)
