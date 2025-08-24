@@ -46,7 +46,7 @@ Checkbox that adds points when checked.
   "Value": 3
 }
 ```
-
+***
 #### String
 Text input field.
 ```
