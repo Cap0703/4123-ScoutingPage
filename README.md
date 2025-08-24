@@ -26,7 +26,7 @@ _________________
 }
 ```
 
-### Field Types
+### Form Field Types
 Each section contains fields. The field type determines which form input is rendered.
 _________________
 
@@ -74,6 +74,7 @@ Made/Missed counters with point value.
 ```
 Form auto-renders Made and Missed inputs.
 Total Points = Made × Value.
+
 ---
 #### Single Choice
 Dropdown selection.
@@ -129,6 +130,10 @@ File upload
 }
 ```
 
+### Computed Fields
+config.json supports *computed_fields*, which lets you define fomrula for calculated values (like total points, accuracy, EPA-style stats).
+Formulas in this section use SQL-like syntax but are executed in JavaScript on the frontend (team_summary.html).
+**Example**
 
 
 ## Access
