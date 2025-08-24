@@ -1,0 +1,657 @@
+{
+  "theme": {
+    "primary": "#0b233f",
+    "accent": "#d4af37",
+    "bg": "#111111",
+    "muted": "#6b6b6b"
+  },
+  "limits": {
+    "raw_table_cap": 50,
+    "max_upload_mb": 8
+  },
+  "match_form": {
+    "pre-match_info": {
+      "scouter_initials": {
+        "type": "String"
+      },
+      "event_code": {
+        "type": "String"
+      },
+      "match_number": {
+        "type": "Typed Integer"
+      },
+      "team_number": {
+        "type": "Typed Integer"
+      },
+      "match_type": {
+        "type": "Single Choice List",
+        "options": [
+          "Practice",
+          "Qualification",
+          "Semifinal",
+          "Final"
+        ]
+      },
+      "team_color": {
+        "type": "Single Choice List",
+        "options": [
+          "Blue1",
+          "Blue2",
+          "Blue3",
+          "Red1",
+          "Red2",
+          "Red3"
+        ]
+      }
+    },
+    "auto_period":{
+      "left_starting_zone": {
+        "type":"Boolean with Value",
+        "Value":3
+      },
+      "L1":{
+        "Made":true,
+        "Missed":true,
+        "Value":3
+      },
+      "L2":{
+        "Made":true,
+        "Missed":true,
+        "Value":4
+      },
+      "L3":{
+        "Made":true,
+        "Missed":true,
+        "Value":6
+      },
+      "L4":{
+        "Made":true,
+        "Missed":true,
+        "Value":7
+      },
+      "Net":{
+        "Made":true,
+        "Missed":true,
+        "Value":4
+      },
+      "Processor":{
+        "Made":true,
+        "Missed":true,
+        "Value":6
+      }
+    },
+    "teleop_period":{
+      "L1":{
+        "Made":true,
+        "Missed":true,
+        "Value":2
+      },
+      "L2":{
+        "Made":true,
+        "Missed":true,
+        "Value":3
+      },
+      "L3":{
+        "Made":true,
+        "Missed":true,
+        "Value":4
+      },
+      "L4":{
+        "Made":true,
+        "Missed":true,
+        "Value":5
+      },
+      "Net":{
+        "Made":true,
+        "Missed":true,
+        "Value":4
+      },
+      "Processor":{
+        "Made":true,
+        "Missed":true,
+        "Value":6
+      },
+      "pickup_location": {
+        "type":"Single Choice List",
+        "options":[
+        "None",
+        "Both",
+        "Ground",
+        "Coral Station"
+        ]
+      }
+    },
+    "endgame": {
+      "final_status": {
+        "type": "Single Choice List With Value",
+        "options":[
+          "Not Attempted",
+          "Park",
+          "Failed Climb",
+          "Shallow Climb",
+          "Deep Climb"
+        ],
+        "values":[
+          0,
+          2,
+          2,
+          6,
+          12
+        ]
+      }
+    },
+    "misc": {
+      "died": {
+        "type":"Boolean"
+      },
+      "tippy": {
+        "type":"Boolean"
+      },
+      "driver_skill": {
+        "type": "Single Choice List",
+        "options":[
+          "Not Observed",
+          "Not Effective",
+          "Average",
+          "Effective"
+      ]
+    },
+      "defense_rating": {
+        "type": "Single Choice List",
+        "options": [
+          "Did Not Play Defense",
+          "Horrible",
+          "Below Average",
+          "Average",
+          "Good",
+          "Excellent"
+      ]
+    },
+    "speed_rating": {
+      "type":"Single Choice List",
+      "options": [
+        "Really Slow",
+        "Slow",
+        "Average",
+        "Fast",
+        "Really Fast"
+      ]
+    },
+    "comments": {
+      "type": "String"
+    }
+   }
+},
+  "pit_form": {
+    "fields": {
+      "scouter": {
+        "type": "String"
+      },
+      "team_number": {
+        "type": "Integer"
+      },
+      "programming_language": {
+        "type": "String"
+      },
+      "robot_dimensions": {
+        "type": "String"
+      },
+      "robot_weight": {
+        "type": "Float"
+      },
+      "drivetrain": {
+        "type": "Single Choice List",
+        "options": [
+          "Swerve",
+          "West/Coast Tank",
+          "Butterfly/Grasshopper",
+          "Mechanum"
+        ]
+      },
+      "swerve_ratio": {
+        "type": "Single Choice List",
+        "options": [
+          "MK4 L1 (8.14:1)",
+          "MK4 L2 (6.75:1)",
+          "MK4 L3 (6.12:1)",
+          "MK4 L4 (5.14:1)",
+          "WCP X1 (7.67:1)",
+          "WCP X1 (6.98:1)",
+          "WCP X1 (6.39:1)",
+          "WCP X2 (6.82:1)",
+          "WCP X2 (6.20:1)",
+          "WCP X2 (5.68:1)",
+          "WCP X3 (6.48:1)",
+          "WCP X3 (5.89:1)",
+          "WCP X3 (5.40:1)",
+          "WCP X4 (5.67:1)",
+          "WCP X4 (5.15:1)",
+          "WCP X4 (4.73:1)",
+          "Not Swerve"
+        ]
+      },
+      "scoring_focus": {
+        "type": "Single Choice List",
+        "options": [
+          "Coral",
+          "Algae",
+          "Both"
+        ]
+      },
+      "auto_align": {
+        "type": "Boolean"
+      },
+      "score_locations": {
+        "type": "Multiple Choice List",
+        "options": [
+          "L1",
+          "L2",
+          "L3",
+          "L4",
+          "Net",
+          "Processor"
+        ]
+      },
+      "climb": {
+        "type": "Single Choice List",
+        "options": [
+          "Park",
+          "Shallow",
+          "Deep",
+          "Shallow & Deep"
+        ]
+      },
+      "num_batteries": {
+        "type": "Integer"
+      },
+      "kind_of_auto": {
+        "type": "String"
+      },
+      "avg_score": {
+        "type": "Integer"
+      },
+      "cycle": {
+        "type": "String"
+      },
+      "cycle_time": {
+        "type": "Float"
+      },
+      "image_upload": {
+        "type": "image file"
+      }
+    }
+  },
+  "rankings_options": {
+    "Average Points": {
+      "description": "Average total points per match",
+      "sql": "SELECT team_number, COUNT(*) as matches_count, (SUM(auto_score + teleop_score + endgame_score) * 1.0 / COUNT(*)) as metric_value FROM (SELECT json_extract(pre_match_json, '$.team_number') as team_number, ((json_extract(auto_json, '$.L1.Made') * json_extract(auto_json, '$.L1.Value')) + (json_extract(auto_json, '$.L2.Made') * json_extract(auto_json, '$.L2.Value')) + (json_extract(auto_json, '$.L3.Made') * json_extract(auto_json, '$.L3.Value')) + (json_extract(auto_json, '$.L4.Made') * json_extract(auto_json, '$.L4.Value')) + (json_extract(auto_json, '$.Net.Made') * json_extract(auto_json, '$.Net.Value')) + (json_extract(auto_json, '$.Processor.Made') * json_extract(auto_json, '$.Processor.Value')) + COALESCE(json_extract(auto_json, '$.left_starting_zone.Value'), 0)) as auto_score, ((json_extract(teleop_json, '$.L1.Made') * json_extract(teleop_json, '$.L1.Value')) + (json_extract(teleop_json, '$.L2.Made') * json_extract(teleop_json, '$.L2.Value')) + (json_extract(teleop_json, '$.L3.Made') * json_extract(teleop_json, '$.L3.Value')) + (json_extract(teleop_json, '$.L4.Made') * json_extract(teleop_json, '$.L4.Value')) + (json_extract(teleop_json, '$.Net.Made') * json_extract(teleop_json, '$.Net.Value')) + (json_extract(teleop_json, '$.Processor.Made') * json_extract(teleop_json, '$.Processor.Value'))) as teleop_score, (CASE json_extract(endgame_json, '$.final_status') WHEN 'Park' THEN 2 WHEN 'Failed Climb' THEN 2 WHEN 'Shallow Climb' THEN 6 WHEN 'Deep Climb' THEN 12 ELSE 0 END) as endgame_score FROM matches) GROUP BY team_number HAVING matches_count > 0 ORDER BY metric_value DESC LIMIT 100"
+    },
+    "Average L4 Auto": {
+      "description": "Average L4 notes scored in autonomous",
+      "sql": "SELECT team_number, COUNT(*) as matches_count, SUM(json_extract(auto_json, '$.L4.Made')) * 1.0 / COUNT(*) as metric_value FROM matches GROUP BY team_number HAVING matches_count > 0 ORDER BY metric_value DESC LIMIT 100"
+    },
+    "Max Auto L4": {
+      "description": "Maximum L4 notes scored in a single autonomous",
+      "sql": "SELECT team_number, COUNT(*) as matches_count, MAX(json_extract(auto_json, '$.L4.Made')) as metric_value FROM matches GROUP BY team_number HAVING matches_count > 0 ORDER BY metric_value DESC LIMIT 100"
+    },
+    "Average Teleop L4": {
+      "description": "Average L4 notes scored in teleop",
+      "sql": "SELECT team_number, COUNT(*) as matches_count, SUM(json_extract(teleop_json, '$.L4.Made')) * 1.0 / COUNT(*) as metric_value FROM matches GROUP BY team_number HAVING matches_count > 0 ORDER BY metric_value DESC LIMIT 100"
+    },
+    "Died %": {
+      "description": "Percentage of matches where robot died/broke down",
+      "sql": "SELECT team_number, COUNT(*) as matches_count, (SUM(CASE WHEN json_extract(misc_json, '$.died') = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as metric_value FROM matches GROUP BY team_number HAVING matches_count > 0 ORDER BY metric_value DESC LIMIT 100"
+    },
+    "Tippy %": {
+      "description": "Percentage of matches where robot was unstable",
+      "sql": "SELECT team_number, COUNT(*) as matches_count, (SUM(CASE WHEN json_extract(misc_json, '$.tippy') = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as metric_value FROM matches GROUP BY team_number HAVING matches_count > 0 ORDER BY metric_value DESC LIMIT 100"
+    },
+    "Auto Coral %": {
+      "description": "Percentage of successful coral shots in autonomous",
+      "sql": "SELECT team_number, COUNT(*) as matches_count, CASE WHEN SUM(json_extract(auto_json, '$.Processor.Made') + json_extract(auto_json, '$.Processor.Missed')) > 0 THEN (SUM(json_extract(auto_json, '$.Processor.Made')) * 100.0 / SUM(json_extract(auto_json, '$.Processor.Made') + json_extract(auto_json, '$.Processor.Missed'))) ELSE 0 END as metric_value FROM matches GROUP BY team_number HAVING matches_count > 0 ORDER BY metric_value DESC LIMIT 100"
+    },
+    "Teleop Coral %": {
+      "description": "Percentage of successful coral shots in teleop",
+      "sql": "SELECT team_number, COUNT(*) as matches_count, CASE WHEN SUM(json_extract(teleop_json, '$.Processor.Made') + json_extract(teleop_json, '$.Processor.Missed')) > 0 THEN (SUM(json_extract(teleop_json, '$.Processor.Made')) * 100.0 / SUM(json_extract(teleop_json, '$.Processor.Made') + json_extract(teleop_json, '$.Processor.Missed'))) ELSE 0 END as metric_value FROM matches GROUP BY team_number HAVING matches_count > 0 ORDER BY metric_value DESC LIMIT 100"
+    }
+  },
+  "match_scouting_data": {
+    "computed_fields": {
+      "scouter_initials": "json_extract(pre-match_info, '$.scouter_initials')",
+      "event_code": "json_extract(pre-match_info, '$.event_code')",
+      "match_number": "json_extract(pre-match_info, '$.match_number')",
+      "team_number": "json_extract(pre-match_info, '$.team_number')",
+      "match_type": "json_extract(pre-match_info, '$.match_type')",
+      "team_color": "json_extract(pre-match_info, '$.team_color')",
+      "left_starting_zone": "CASE WHEN json_extract(auto_json, '$.left_starting_zone') = true THEN 'Yes' ELSE 'No' END",
+      "L1_Made": "json_extract(auto_json, '$.L1.Made')",
+      "L1_Missed": "json_extract(auto_json, '$.L1.Missed')",
+      "L2_Made": "json_extract(auto_json, '$.L2.Made')",
+      "L2_Missed": "json_extract(auto_json, '$.L2.Missed')",
+      "L3_Made": "json_extract(auto_json, '$.L3.Made')",
+      "L3_Missed": "json_extract(auto_json, '$.L3.Missed')",
+      "L4_Made": "json_extract(auto_json, '$.L4.Made')",
+      "L4_Missed": "json_extract(auto_json, '$.L4.Missed')",
+      "Net_Made": "json_extract(auto_json, '$.Net.Made')",
+      "Net_Missed": "json_extract(auto_json, '$.Net.Missed')",
+      "Processor_Made": "json_extract(auto_json, '$.Processor.Made')",
+      "Processor_Missed": "json_extract(auto_json, '$.Processor.Missed')",
+      "teleop_L1_Made": "json_extract(teleop_json, '$.L1.Made')",
+      "teleop_L1_Missed": "json_extract(teleop_json, '$.L1.Missed')",
+      "teleop_L2_Made": "json_extract(teleop_json, '$.L2.Made')",
+      "teleop_L2_Missed": "json_extract(teleop_json, '$.L2.Missed')",
+      "teleop_L3_Made": "json_extract(teleop_json, '$.L3.Made')",
+      "teleop_L3_Missed": "json_extract(teleop_json, '$.L3.Missed')",
+      "teleop_L4_Made": "json_extract(teleop_json, '$.L4.Made')",
+      "teleop_L4_Missed": "json_extract(teleop_json, '$.L4.Missed')",
+      "teleop_Net_Made": "json_extract(teleop_json, '$.Net.Made')",
+      "teleop_Net_Missed": "json_extract(teleop_json, '$.Net.Missed')",
+      "teleop_Processor_Made": "json_extract(teleop_json, '$.Processor.Made')",
+      "teleop_Processor_Missed": "json_extract(teleop_json, '$.Processor.Missed')",
+      "pickup_location": "json_extract(teleop_json, '$.pickup_location')",
+      "final_status": "json_extract(endgame_json, '$.final_status')",
+      "died": "CASE WHEN json_extract(misc_json, '$.died') = true THEN 'Yes' ELSE 'No' END",
+      "tippy": "CASE WHEN json_extract(misc_json, '$.tippy') = true THEN 'Yes' ELSE 'No' END",
+      "driver_skill": "json_extract(misc_json, '$.driver_skill')",
+      "defense_rating": "json_extract(misc_json, '$.defense_rating')",
+      "speed_rating": "json_extract(misc_json, '$.speed_rating')"
+    },
+    "body": {
+      "table": {
+        "title": "Match Scouting Data",
+        "sections": [
+          {
+            "name": "Pre-Match Info",
+            "fields": [
+              "scouter_initials",
+              "event_code",
+              "match_number",
+              "team_number",
+              "match_type",
+              "team_color"
+            ]
+          },
+          {
+            "name": "Auto Period",
+            "fields": [
+              "left_starting_zone",
+              "L1_Made",
+              "L1_Missed",
+              "L2_Made",
+              "L2_Missed",
+              "L3_Made",
+              "L3_Missed",
+              "L4_Made",
+              "L4_Missed",
+              "Net_Made",
+              "Net_Missed",
+              "Processor_Made",
+              "Processor_Missed"
+            ]
+          },
+          {
+            "name": "Teleop Period",
+            "fields": [
+              "teleop_L1_Made",
+              "teleop_L1_Missed",
+              "teleop_L2_Made",
+              "teleop_L2_Missed",
+              "teleop_L3_Made",
+              "teleop_L3_Missed",
+              "teleop_L4_Made",
+              "teleop_L4_Missed",
+              "teleop_Net_Made",
+              "teleop_Net_Missed",
+              "teleop_Processor_Made",
+              "teleop_Processor_Missed",
+              "pickup_location"
+            ]
+          },
+          {
+            "name": "Endgame",
+            "fields": [
+              "final_status"
+            ]
+          },
+          {
+            "name": "Miscellaneous",
+            "fields": [
+              "died",
+              "tippy",
+              "driver_skill",
+              "defense_rating",
+              "speed_rating"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "pit_scouting_data": {
+    "computed_fields": {
+      "scouter": "json_extract(pit_data, '$.scouter')",
+      "team_number": "json_extract(pit_data, '$.team_number')",
+      "programming_language": "json_extract(pit_data, '$.programming_language')",
+      "robot_dimensions": "json_extract(pit_data, '$.robot_dimensions')",
+      "robot_weight": "json_extract(pit_data, '$.robot_weight')",
+      "drivetrain": "json_extract(pit_data, '$.drivetrain')",
+      "swerve_ratio": "json_extract(pit_data, '$.swerve_ratio')",
+      "scoring_focus": "json_extract(pit_data, '$.scoring_focus')",
+      "auto_align": "CASE WHEN json_extract(pit_data, '$.auto_align') = true THEN 'Yes' ELSE 'No' END",
+      "score_locations": "json_extract(pit_data, '$.score_locations')",
+      "climb": "json_extract(pit_data, '$.climb')",
+      "num_batteries": "json_extract(pit_data, '$.num_batteries')",
+      "kind_of_auto": "json_extract(pit_data, '$.kind_of_auto')",
+      "avg_score": "json_extract(pit_data, '$.avg_score')",
+      "cycle": "json_extract(pit_data, '$.cycle')",
+      "cycle_time": "json_extract(pit_data, '$.cycle_time')"
+    },
+    "body": {
+      "table": {
+        "title": "Pit Scouting Data",
+        "sections": [
+          {
+            "name": "Basic Information",
+            "fields": [
+              "scouter",
+              "team_number",
+              "programming_language",
+              "robot_dimensions",
+              "robot_weight"
+            ]
+          },
+          {
+            "name": "Drivetrain",
+            "fields": [
+              "drivetrain",
+              "swerve_ratio"
+            ]
+          },
+          {
+            "name": "Scoring Capabilities",
+            "fields": [
+              "scoring_focus",
+              "auto_align",
+              "score_locations",
+              "avg_score",
+              "cycle",
+              "cycle_time"
+            ]
+          },
+          {
+            "name": "Climbing",
+            "fields": [
+              "climb"
+            ]
+          },
+          {
+            "name": "Power & Automation",
+            "fields": [
+              "num_batteries",
+              "kind_of_auto"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "team_summary": {
+    "team_info": {
+      "get_team_name": true,
+      "get_team_epa": true,
+      "get_team_rank_in_state": true,
+      "get_team_rank_in_country": true,
+      "get_team_rank_in_world": true,
+      "get_team_rank_in_district": false,
+      "get_team_rank_in_stateTotal": false,
+      "get_team_rank_in_countryTotal": false,
+      "get_team_rank_in_worldTotal": false,
+      "get_team_rank_in_districtTotal": false,
+      "year": 2025
+    },
+    "computed_fields": {
+      "match_number": "json_extract(pre_match_json, '$.match_number')",
+      "match_type": "json_extract(pre_match_json, '$.match_type')",
+      "team_color": "json_extract(pre_match_json, '$.team_color')",
+      "left_starting_zone": "json_extract(auto_json, '$.left_starting_zone')",
+      "auto_L1_made": "json_extract(auto_json, '$.L1.Made')",
+      "auto_L1_missed": "json_extract(auto_json, '$.L1.Missed')",
+      "auto_L2_made": "json_extract(auto_json, '$.L2.Made')",
+      "auto_L2_missed": "json_extract(auto_json, '$.L2.Missed')",
+      "auto_L3_made": "json_extract(auto_json, '$.L3.Made')",
+      "auto_L3_missed": "json_extract(auto_json, '$.L3.Missed')",
+      "auto_L4_made": "json_extract(auto_json, '$.L4.Made')",
+      "auto_L4_missed": "json_extract(auto_json, '$.L4.Missed')",
+      "auto_processor_made": "json_extract(auto_json, '$.Processor.Made')",
+      "auto_processor_missed": "json_extract(auto_json, '$.Processor.Missed')",
+      "auto_net_made": "json_extract(auto_json, '$.Net.Made')",
+      "auto_net_missed": "json_extract(auto_json, '$.Net.Missed')",
+      "teleop_L1_made": "json_extract(teleop_json, '$.L1.Made')",
+      "teleop_L1_missed": "json_extract(teleop_json, '$.L1.Missed')",
+      "teleop_L2_made": "json_extract(teleop_json, '$.L2.Made')",
+      "teleop_L2_missed": "json_extract(teleop_json, '$.L2.Missed')",
+      "teleop_L3_made": "json_extract(teleop_json, '$.L3.Made')",
+      "teleop_L3_missed": "json_extract(teleop_json, '$.L3.Missed')",
+      "teleop_L4_made": "json_extract(teleop_json, '$.L4.Made')",
+      "teleop_L4_missed": "json_extract(teleop_json, '$.L4.Missed')",
+      "teleop_processor_made": "json_extract(teleop_json, '$.Processor.Made')",
+      "teleop_processor_missed": "json_extract(teleop_json, '$.Processor.Missed')",
+      "teleop_net_made": "json_extract(teleop_json, '$.Net.Made')",
+      "teleop_net_missed": "json_extract(teleop_json, '$.Net.Missed')",
+      "final_status": "CASE json_extract(endgame_json, '$.final_status') WHEN 'Park' THEN 2 WHEN 'Failed Climb' THEN 2 WHEN 'Shallow Climb' THEN 6 WHEN 'Deep Climb' THEN 12 ELSE 0 END",
+      "auto_points": "left_starting_zone + (json_extract(auto_json, '$.L1.Made') * config('match_form.auto_period.L1.Value')) + (json_extract(auto_json, '$.L2.Made') * config('match_form.auto_period.L2.Value')) + (json_extract(auto_json, '$.L3.Made') * config('match_form.auto_period.L3.Value')) + (json_extract(auto_json, '$.L4.Made') * config('match_form.auto_period.L4.Value')) + (json_extract(auto_json, '$.Net.Made') * config('match_form.auto_period.Net.Value')) + (json_extract(auto_json, '$.Processor.Made') * config('match_form.auto_period.Processor.Value'))",
+      "teleop_points": "(json_extract(teleop_json, '$.L1.Made') * config('match_form.teleop_period.L1.Value')) + (json_extract(teleop_json, '$.L2.Made') * config('match_form.teleop_period.L2.Value')) + (json_extract(teleop_json, '$.L3.Made') * config('match_form.teleop_period.L3.Value')) + (json_extract(teleop_json, '$.L4.Made') * config('match_form.teleop_period.L4.Value')) + (json_extract(teleop_json, '$.Net.Made') * config('match_form.teleop_period.Net.Value')) + (json_extract(teleop_json, '$.Processor.Made') * config('match_form.auto_period.Processor.Value'))",
+      "endgame_points": "CASE json_extract(endgame_json, '$.final_status') WHEN 'Park' THEN 2 WHEN 'Failed Climb' THEN 2 WHEN 'Shallow Climb' THEN 6 WHEN 'Deep Climb' THEN 12 ELSE 0 END",
+      "total_points": "auto_points + teleop_points + endgame_points",
+      "auto_coral_used": "json_extract(auto_json, '$.L1.Made') + json_extract(auto_json, '$.L1.Missed') + json_extract(auto_json, '$.L2.Made') + json_extract(auto_json, '$.L2.Missed') + json_extract(auto_json, '$.L3.Made') + json_extract(auto_json, '$.L3.Missed') + json_extract(auto_json, '$.L4.Made') + json_extract(auto_json, '$.L4.Missed')",
+      "teleop_coral_used": "json_extract(teleop_json, '$.L1.Made') + json_extract(teleop_json, '$.L1.Missed') + json_extract(teleop_json, '$.L2.Made') + json_extract(teleop_json, '$.L2.Missed') + json_extract(teleop_json, '$.L3.Made') + json_extract(teleop_json, '$.L3.Missed') + json_extract(teleop_json, '$.L4.Made') + json_extract(teleop_json, '$.L4.Missed')",
+      "auto_coral_accuracy": "CASE WHEN auto_coral_used > 0 THEN ROUND((auto_L1_made + auto_L2_made + auto_L3_made + auto_L4_made) * 100.0 / auto_coral_used, 1) ELSE 0 END",
+      "teleop_coral_accuracy": "CASE WHEN teleop_coral_used > 0 THEN ROUND((teleop_L1_made + teleop_L2_made + teleop_L3_made + teleop_L4_made) * 100.0 / teleop_coral_used, 1) ELSE 0 END"
+    },
+    "body":{
+      "charts":{
+        "Auto Coral Performance":{
+          "x_label":"Match #",
+          "y_label":"Auto Coral",
+          "backgroundColor":"rgba(153, 102, 255, 0.2)",
+          "borderColor":"rgba(153, 102, 255, 1)",
+          "x":"match_number",
+          "y":[
+            "auto_coral_used",
+            "auto_L1_made",
+            "auto_L2_made",
+            "auto_L3_made",
+            "auto_L4_made"
+          ],
+          "graph": "line graph"
+        },
+        "Teleop Coral Performance":{
+          "x_label":"Match #",
+          "y_label":"Teleop Coral",
+          "backgroundColor":"rgba(153, 102, 255, 0.2)",
+          "borderColor":"rgba(153, 102, 255, 1)",
+          "x":"match_number",
+          "y":[
+            "teleop_coral_used",
+            "teleop_L1_made",
+            "teleop_L2_made",
+            "teleop_L3_made",
+            "teleop_L4_made"
+          ],
+          "graph": "line graph"
+        },
+        "Total Points":{
+          "x_label":"Match #",
+          "y_label":"Total Points",
+          "backgroundColor":"rgba(153, 102, 255, 0.2)",
+          "borderColor":"rgba(153, 102, 255, 1)",
+          "x":"match_number",
+          "y":"total_points",
+          "graph": "line graph"
+        },
+        "Auto Coral Accuracy": {
+          "x_label": "Match #",
+          "y_label": "Auto Coral Accuracy (%)",
+          "backgroundColor": "rgba(255, 159, 64, 0.2)",
+          "borderColor": "rgba(255, 159, 64, 1)",
+          "x": "match_number",
+          "y": "auto_coral_accuracy",
+          "graph": "line graph"
+        },
+        "Teleop Coral Accuracy": {
+          "x_label": "Match #",
+          "y_label": "Teleop Coral Accuracy (%)",
+          "backgroundColor": "rgba(54, 162, 235, 0.2)",
+          "borderColor": "rgba(54, 162, 235, 1)",
+          "x": "match_number",
+          "y": "teleop_coral_accuracy",
+          "graph": "line graph"
+        }
+      },
+      "tables":{
+        "title":["Match Point Breakdown", "All Match Data"],
+        "table":{
+          "match_point_breakdown_table":{
+            "columns": [
+              "match_number", 
+              "match_type", 
+              "auto_points", 
+              "teleop_points", 
+              "endgame_points", 
+              "total_points"
+            ]
+          },
+          "all_match_data_table": {
+            "columns": [
+              "match_number",
+              "match_type",
+              "team_color",
+              "left_starting_zone",
+              "auto_L1_made", "auto_L1_missed",
+              "auto_L2_made", "auto_L2_missed",
+              "auto_L3_made", "auto_L3_missed",
+              "auto_L4_made", "auto_L4_missed",
+              "auto_processor_made", "auto_processor_missed",
+              "auto_net_made", "auto_net_missed",
+              "teleop_L1_made", "teleop_L1_missed",
+              "teleop_L2_made", "teleop_L2_missed",
+              "teleop_L3_made", "teleop_L3_missed",
+              "teleop_L4_made", "teleop_L4_missed",
+              "teleop_processor_made", "teleop_processor_missed",
+              "teleop_net_made", "teleop_net_missed",
+              "final_status",
+              "auto_points",
+              "teleop_points",
+              "endgame_points",
+              "total_points",
+              "auto_coral_used",
+              "teleop_coral_used",
+              "auto_coral_accuracy",
+              "teleop_coral_accuracy"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
