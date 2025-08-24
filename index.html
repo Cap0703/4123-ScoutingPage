@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting to Scouting App...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Redirecting to Scouting App...</h1>
+    <div class="loader"></div>
+    <p>If you are not redirected automatically, <a id="manualLink" href="#">click here</a>.</p>
+    <p id="status">Fetching latest tunnel URL...</p>
+
+    <script>
+        // GitHub raw content URL for your tunnel.txt
+        const tunnelFileUrl = 'https://raw.githubusercontent.com/Cap0703/4123-ScoutingPage/main/tunnel.txt';
+        
+        // Function to fetch and redirect to the tunnel URL
+        async function fetchAndRedirect() {
+            try {
+                document.getElementById('status').textContent = 'Fetching latest tunnel URL from GitHub...';
+                
+                // Fetch the tunnel.txt file from GitHub
+                const response = await fetch(tunnelFileUrl, {
+                    cache: 'no-store' // Prevent caching to get fresh URL
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const tunnelUrl = (await response.text()).trim();
+                
+                if (tunnelUrl && tunnelUrl.startsWith('http')) {
+                    document.getElementById('status').textContent = `Redirecting to: ${tunnelUrl}`;
+                    document.getElementById('manualLink').href = tunnelUrl;
+                    
+                    // Wait a moment to show the URL, then redirect
+                    setTimeout(() => {
+                        window.location.href = tunnelUrl;
+                    }, 2000);
+                } else {
+                    throw new Error('Invalid URL found in tunnel.txt');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status').textContent = 
+                    `Error: ${error.message}. Please check if the tunnel is running.`;
+                document.getElementById('status').style.color = '#ff6b6b';
+            }
+        }
+
+        // Start the process when page loads
+        document.addEventListener('DOMContentLoaded', fetchAndRedirect);
+        
+        // Manual redirect link
+        document.getElementById('manualLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (this.href !== '#') {
+                window.location.href = this.href;
+            }
+        });
+    </script>
+</body>
+</html>
