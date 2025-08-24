@@ -53,4 +53,4 @@ ___
 Visit docs/config.md
 
 ## Access
-(https://four123-scoutingpage.onrender.com/)
+(https://cap0703.github.io/4123-ScoutingPage/)
