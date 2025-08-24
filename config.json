@@ -33,7 +33,7 @@
         ]
       },
       "team_color": {
-        "type": "Single Choice List",
+        "type": "Single Choice with Image",
         "options": [
           "Blue1",
           "Blue2",
@@ -41,7 +41,8 @@
           "Red1",
           "Red2",
           "Red3"
-        ]
+        ],
+        "image": "/photos/reefscape.JPEG"
       }
     },
     "auto_period":{

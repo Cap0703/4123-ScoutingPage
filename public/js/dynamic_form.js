@@ -110,6 +110,43 @@ function renderSingleChoice(name, path, state, options){
   );
 }
 
+function renderSingleChoiceWithImage(name, path, state, options, imagePath) {
+  const id = `scimg_${name}_${Math.random().toString(36).slice(2,7)}`;
+  
+  // Create container for the image and select
+  const container = el('div', {class: 'single-choice-with-image'});
+  
+  // Add image if provided
+  if (imagePath) {
+    const img = el('img', {
+      src: imagePath,
+      alt: name + ' reference image',
+      class: 'choice-reference-image'
+    });
+    container.appendChild(img);
+  }
+  
+  // Create the select element
+  const sel = el('select', {
+    id,
+    onchange: e => set(state, path, e.target.value)
+  });
+  
+  sel.appendChild(el('option', {value: ''}, 'Select…'));
+  (options || []).forEach(o => {
+    sel.appendChild(el('option', {value: o}, o));
+  });
+  
+  // Add the select to a form row
+  const formRow = el('div', {class: 'form-row'}, 
+    el('label', {for: id}, name),
+    el('div', {class: 'form-controls'}, sel)
+  );
+  
+  container.appendChild(formRow);
+  return container;
+}
+
 function renderSingleChoiceWithValue(name, path, state, options, values){
   const id = `scwv_${name}_${Math.random().toString(36).slice(2,7)}`;
   const sel = el('select',{
@@ -223,9 +260,9 @@ function renderScoring(name, path, state){
   const madePath = path.concat(['Made']);
   const missPath = path.concat(['Missed']);
   set(state, path, {Made:0, Missed:0});
-  const made = renderNumber(name+' Made', madePath, state, false);
-  const miss = renderNumber(name+' Missed', missPath, state, false);
-  return el('div',{}, made, miss);
+  
+  // Use the new grouped layout instead of separate fields
+  return renderScoringGroup(name, path, state);
 }
 
 // Make sections collapsible on mobile - Improved version
@@ -281,6 +318,12 @@ function renderField(name, spec, path, state){
   // Handle choice lists with different property names
   if (t.includes('single choice')) {
     const options = spec.options || spec.List || spec.list || [];
+    
+    // Handle single choice with image
+    if (spec.image) {
+      return renderSingleChoiceWithImage(name, path, state, options, spec.image);
+    }
+    
     if (spec.values || spec.Values) {
       return renderSingleChoiceWithValue(name, path, state, options, spec.values || spec.Values);
     }
@@ -299,9 +342,9 @@ function renderField(name, spec, path, state){
   if (t === 'image file' || t === 'picture') return renderImage(name, path, state);
   
   // Composite scoring group with Made/Missed/Value in config (like L1, L2, etc.)
-  // This check now comes AFTER the Boolean with Value check
+  // Use the new grouped layout for scoring fields
   if (typeof spec === 'object' && ('Made' in spec || ('Value' in spec && t !== 'boolean with value'))) {
-    return renderScoring(name, path, state);
+    return renderScoringGroup(name, path, state, spec);
   }
   
   // Nested object - recursively render its properties
@@ -322,6 +365,22 @@ function renderField(name, spec, path, state){
   
   // fallback - treat as string
   return renderString(name, path, state);
+}
+
+function renderScoringGroup(name, path, state, spec) {
+  const group = el('div', {class: 'scoring-group'});
+  
+  // Create Made field
+  const madeField = renderNumber(name + ' Made', path.concat(['Made']), state, false);
+  madeField.classList.add('scoring-field');
+  group.appendChild(madeField);
+  
+  // Create Missed field
+  const missedField = renderNumber(name + ' Missed', path.concat(['Missed']), state, false);
+  missedField.classList.add('scoring-field');
+  group.appendChild(missedField);
+  
+  return group;
 }
 
 function sectionScore(stateSection, configSection){
