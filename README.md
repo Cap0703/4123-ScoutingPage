@@ -25,8 +25,9 @@ _________________
   }
 }
 ```
-Each section contains fields. The field type determines which form input is rendered.
+
 ### Field Types
+Each section contains fields. The field type determines which form input is rendered.
 _________________
 
 #### Boolean
@@ -36,7 +37,7 @@ Checkbox that stores true/false.
   "Type": "Boolean"
 }
 ```
-
+---
 #### Boolean With Value
 Checkbox that adds points when checked.
 ```
