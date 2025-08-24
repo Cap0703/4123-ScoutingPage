@@ -688,6 +688,8 @@ async function loadTeam(){
     config = configResp;
     window.config = configResp;
     
+    await loadTeamInfo(team);
+    
     // Now load team info and other data
     const [avgResp, rowsResp] = await Promise.all([
       fetch(`/api/team/${team}/averages`).then(r => r.json()),
@@ -695,7 +697,6 @@ async function loadTeam(){
     ]);
     
     // Load team info after config is available
-    await loadTeamInfo(team);
     
     if (avgResp.error) {
       document.getElementById('summary').innerHTML = `Error: ${avgResp.error}`;
