@@ -1,0 +1,67 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Raw Pit Data</title>
+<link rel="stylesheet" href="/css/style.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/">Home</a>
+  <a href="/pages/match_scouting.html">Match Scouting</a>
+  <a href="/pages/pit_scouting.html">Pit Scouting</a>
+  <a href="/pages/team_summary.html">Team Summary</a>
+  <a href="/pages/match_simulator.html">Match Simulator</a>
+  <a href="/pages/rankings.html">Rankings</a>
+  <a href="/pages/raw_match.html">Raw Match Data</a>
+  <a href="/pages/raw_match_edit.html">Raw Match Data Edit</a>
+  <a href="/pages/raw_pit.html">Raw Pit Data</a>
+  <a href="/pages/raw_pit_edit.html">Raw Pit Data Edit</a>
+</nav>
+<div class="container">
+  <h1>Raw Pit Data</h1>
+  <div class="form-row"><label>Show</label><div class="form-controls"><input id="limit" type="number" value="50"/><button id="load" class="btn">Load</button></div></div>
+  <div class="form-row"><a class="btn" href="/api/export/pits.csv">Export CSV</a></div>
+  <table id="tbl" class="table"></table>
+  <div class="center"><button id="more" class="btn">Load More</button></div>
+</div>
+<footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
+
+<script>
+let offset = 0;
+async function load(reset){
+  const limit = Number(document.getElementById('limit').value||50);
+  if (reset){ offset = 0; document.getElementById('tbl').innerHTML=''; }
+  
+  try {
+    const response = await fetch(`/api/pits?limit=${limit}&offset=${offset}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const rows = await response.json();
+    
+    const tbl = document.getElementById('tbl');
+    if (!tbl.querySelector('th')){
+      const head = document.createElement('tr');
+      ['ID','Created','Pit JSON','Image'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; head.appendChild(th); });
+      tbl.appendChild(head);
+    }
+    rows.forEach(r=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${r.id}</td><td>${r.created_at||''}</td>
+        <td><pre>${JSON.stringify(r.pit_json,null,2)}</pre></td>
+        <td>${r.image_path? `<img src="${r.image_path}" width="140"/>` : ''}</td>`;
+      tbl.appendChild(tr);
+    });
+    offset += rows.length;
+  } catch (error) {
+    console.error('Error loading pit data:', error);
+    alert('Error loading pit data. Please check the console for details.');
+  }
+}
+document.getElementById('load').addEventListener('click', ()=>load(true));
+document.getElementById('more').addEventListener('click', ()=>load(false));
+load(true);
+</script>
+
+</body></html>
