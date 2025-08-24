@@ -619,5 +619,5 @@ h1 {
 
 .mobile-number-input button {
   padding: 8px 12px;
-  min-width: 44px; /* Minimum touch target size */
+  min-width: 44px;
 }
