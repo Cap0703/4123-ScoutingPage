@@ -558,19 +558,29 @@ h1 {
 
 /* For mobile responsiveness */
 @media (max-width: 768px) {
-  .choice-reference-image {
-    max-height: 150px;
-  }
   .scoring-group {
+    gap: 5px;
+  }
+  
+  .scoring-field .number-controls {
     flex-direction: column;
     gap: 5px;
   }
   
-  .scoring-field {
+  .scoring-field .number-controls input {
     width: 100%;
+    text-align: center;
+  }
+  
+  .scoring-field .number-controls button {
+    padding: 6px;
+    min-width: 40px;
+  }
+  
+  .scoring-field label {
+    font-size: 0.8em;
   }
 }
-/* Group made/missed fields together */
 .scoring-group {
   display: flex;
   gap: 10px;
@@ -590,4 +600,24 @@ h1 {
 .scoring-field label {
   font-size: 0.9em;
   opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-number-input .number-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-number-input input {
+  width: 60px;
+  text-align: center;
+  padding: 8px;
+}
+
+.mobile-number-input button {
+  padding: 8px 12px;
+  min-width: 44px; /* Minimum touch target size */
 }
