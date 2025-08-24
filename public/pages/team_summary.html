@@ -579,22 +579,26 @@ function createTable(tableName, tableConfig, processedData) {
 }
 
 // Load team information from the API
-async function loadTeamInfo(team) {
+async function loadTeamInfo(team, config) {
   const teamInfoContainer = document.getElementById('teamInfo');
   const teamInfoContent = document.getElementById('teamInfoContent');
   const teamStatsContainer = document.getElementById('teamStats');
   const teamStatsContent = document.getElementById('teamStatsContent');
   
+  // Reset containers
+  teamInfoContainer.style.display = 'none';
+  teamStatsContainer.style.display = 'none';
+  teamInfoContent.innerHTML = '';
+  teamStatsContent.innerHTML = '';
+  console.log('Team info config:', config?.team_summary?.team_info);
+  console.log('Should fetch team info:', Object.values(config?.team_summary?.team_info || {}).some(val => val === true));
   try {
-    const config = window.config || {};
-    const teamInfoConfig = config.team_summary?.team_info || {};
+    const teamInfoConfig = config?.team_summary?.team_info || {};
     
     // Only fetch if at least one option is enabled
     const shouldFetch = Object.values(teamInfoConfig).some(val => val === true);
     
     if (!shouldFetch) {
-      teamInfoContainer.style.display = 'none';
-      teamStatsContainer.style.display = 'none';
       return;
     }
     
@@ -603,8 +607,7 @@ async function loadTeamInfo(team) {
     const data = await response.json();
     
     if (data.error) {
-      teamInfoContainer.style.display = 'none';
-      teamStatsContainer.style.display = 'none';
+      console.warn('Team info API error:', data.error);
       return;
     }
     
@@ -616,11 +619,15 @@ async function loadTeamInfo(team) {
     }
     
     infoHtml += '</div>';
-    teamInfoContent.innerHTML = infoHtml;
-    teamInfoContainer.style.display = 'block';
+    
+    if (infoHtml.includes('info-item')) {
+      teamInfoContent.innerHTML = infoHtml;
+      teamInfoContainer.style.display = 'block';
+    }
     
     // Display team stats (EPA and rankings)
     let statsHtml = '<div class="team-stats-grid">';
+    let hasStats = false;
     
     if (teamInfoConfig.get_team_epa && data.epa !== null) {
       statsHtml += `
@@ -629,6 +636,7 @@ async function loadTeamInfo(team) {
           <div class="stat-label">EPA</div>
         </div>
       `;
+      hasStats = true;
     }
     
     if (teamInfoConfig.get_team_rank_in_state && data.state_rank !== null && data.state_total !== null) {
@@ -638,6 +646,7 @@ async function loadTeamInfo(team) {
           <div class="stat-label">State Rank</div>
         </div>
       `;
+      hasStats = true;
     }
     
     if (teamInfoConfig.get_team_rank_in_country && data.country_rank !== null && data.country_total !== null) {
@@ -647,6 +656,7 @@ async function loadTeamInfo(team) {
           <div class="stat-label">Country Rank</div>
         </div>
       `;
+      hasStats = true;
     }
     
     if (teamInfoConfig.get_team_rank_in_world && data.world_rank !== null && data.world_total !== null) {
@@ -656,6 +666,7 @@ async function loadTeamInfo(team) {
           <div class="stat-label">World Rank</div>
         </div>
       `;
+      hasStats = true;
     }
     
     if (teamInfoConfig.get_team_rank_in_district && data.district_rank !== null && data.district_total !== null) {
@@ -665,16 +676,18 @@ async function loadTeamInfo(team) {
           <div class="stat-label">District Rank</div>
         </div>
       `;
+      hasStats = true;
     }
     
     statsHtml += '</div>';
-    teamStatsContent.innerHTML = statsHtml;
-    teamStatsContainer.style.display = statsHtml.includes('stat-item') ? 'block' : 'none';
+    
+    if (hasStats) {
+      teamStatsContent.innerHTML = statsHtml;
+      teamStatsContainer.style.display = 'block';
+    }
     
   } catch (error) {
     console.error('Error loading team info:', error);
-    teamInfoContainer.style.display = 'none';
-    teamStatsContainer.style.display = 'none';
   }
 }
 
@@ -689,7 +702,7 @@ async function loadTeam(){
     window.config = configResp;
     
     await loadTeamInfo(team);
-    
+
     // Now load team info and other data
     const [avgResp, rowsResp] = await Promise.all([
       fetch(`/api/team/${team}/averages`).then(r => r.json()),
