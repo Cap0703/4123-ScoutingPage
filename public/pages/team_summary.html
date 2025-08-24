@@ -590,21 +590,49 @@ async function loadTeamInfo(team, config) {
   teamStatsContainer.style.display = 'none';
   teamInfoContent.innerHTML = '';
   teamStatsContent.innerHTML = '';
-  console.log('Team info config:', config?.team_summary?.team_info);
-  console.log('Should fetch team info:', Object.values(config?.team_summary?.team_info || {}).some(val => val === true));
+  
+  // Debug: log the entire config to see its structure
+  console.log('Full config:', config);
+  
   try {
-    const teamInfoConfig = config?.team_summary?.team_info || {};
+    // Try different possible locations for team_info config
+    let teamInfoConfig = null;
+    
+    // Check various possible locations
+    if (config?.team_summary?.team_info) {
+      teamInfoConfig = config.team_summary.team_info;
+    } else if (config?.team_info) {
+      teamInfoConfig = config.team_info;
+    } else if (config?.team_summary) {
+      // team_summary might be the team_info config itself
+      teamInfoConfig = config.team_summary;
+    }
+    
+    console.log('Team info config found:', teamInfoConfig);
+    
+    if (!teamInfoConfig) {
+      console.warn('No team info configuration found in config');
+      return;
+    }
     
     // Only fetch if at least one option is enabled
-    const shouldFetch = Object.values(teamInfoConfig).some(val => val === true);
+    const shouldFetch = Object.values(teamInfoConfig).some(val => val === true && 
+        typeof val === 'boolean' && 
+        !['year'].includes(Object.keys(teamInfoConfig)[Object.values(teamInfoConfig).indexOf(val)]));
+    
+    console.log('Should fetch team info:', shouldFetch);
     
     if (!shouldFetch) {
       return;
     }
     
     const year = teamInfoConfig.year || 2025;
+    console.log('Fetching team info for year:', year);
+    
     const response = await fetch(`/api/team/${team}/info?year=${year}`);
     const data = await response.json();
+    
+    console.log('Team info API response:', data);
     
     if (data.error) {
       console.warn('Team info API error:', data.error);
@@ -613,14 +641,16 @@ async function loadTeamInfo(team, config) {
     
     // Display team information
     let infoHtml = '<div class="team-info-grid">';
+    let hasInfo = false;
     
     if (teamInfoConfig.get_team_name && data.name) {
       infoHtml += `<div class="info-item"><strong>Team Name:</strong> ${data.name}</div>`;
+      hasInfo = true;
     }
     
     infoHtml += '</div>';
     
-    if (infoHtml.includes('info-item')) {
+    if (hasInfo) {
       teamInfoContent.innerHTML = infoHtml;
       teamInfoContainer.style.display = 'block';
     }
@@ -629,7 +659,7 @@ async function loadTeamInfo(team, config) {
     let statsHtml = '<div class="team-stats-grid">';
     let hasStats = false;
     
-    if (teamInfoConfig.get_team_epa && data.epa !== null) {
+    if (teamInfoConfig.get_team_epa && data.epa !== null && data.epa !== undefined) {
       statsHtml += `
         <div class="stat-item">
           <div class="stat-value">${data.epa.toFixed(1)}</div>
@@ -639,40 +669,40 @@ async function loadTeamInfo(team, config) {
       hasStats = true;
     }
     
-    if (teamInfoConfig.get_team_rank_in_state && data.state_rank !== null && data.state_total !== null) {
+    if (teamInfoConfig.get_team_rank_in_state && data.state_rank !== null && data.state_rank !== undefined) {
       statsHtml += `
         <div class="stat-item">
-          <div class="stat-value">${data.state_rank}/${data.state_total}</div>
+          <div class="stat-value">${data.state_rank}/${data.state_total || '?'}</div>
           <div class="stat-label">State Rank</div>
         </div>
       `;
       hasStats = true;
     }
     
-    if (teamInfoConfig.get_team_rank_in_country && data.country_rank !== null && data.country_total !== null) {
+    if (teamInfoConfig.get_team_rank_in_country && data.country_rank !== null && data.country_rank !== undefined) {
       statsHtml += `
         <div class="stat-item">
-          <div class="stat-value">${data.country_rank}/${data.country_total}</div>
+          <div class="stat-value">${data.country_rank}/${data.country_total || '?'}</div>
           <div class="stat-label">Country Rank</div>
         </div>
       `;
       hasStats = true;
     }
     
-    if (teamInfoConfig.get_team_rank_in_world && data.world_rank !== null && data.world_total !== null) {
+    if (teamInfoConfig.get_team_rank_in_world && data.world_rank !== null && data.world_rank !== undefined) {
       statsHtml += `
         <div class="stat-item">
-          <div class="stat-value">${data.world_rank}/${data.world_total}</div>
+          <div class="stat-value">${data.world_rank}/${data.world_total || '?'}</div>
           <div class="stat-label">World Rank</div>
         </div>
       `;
       hasStats = true;
     }
     
-    if (teamInfoConfig.get_team_rank_in_district && data.district_rank !== null && data.district_total !== null) {
+    if (teamInfoConfig.get_team_rank_in_district && data.district_rank !== null && data.district_rank !== undefined) {
       statsHtml += `
         <div class="stat-item">
-          <div class="stat-value">${data.district_rank}/${data.district_total}</div>
+          <div class="stat-value">${data.district_rank}/${data.district_total || '?'}</div>
           <div class="stat-label">District Rank</div>
         </div>
       `;
@@ -701,7 +731,7 @@ async function loadTeam(){
     config = configResp;
     window.config = configResp;
     
-    await loadTeamInfo(team);
+    await loadTeamInfo(team, configResp);;
 
     // Now load team info and other data
     const [avgResp, rowsResp] = await Promise.all([
