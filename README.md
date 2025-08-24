@@ -46,7 +46,7 @@ Checkbox that adds points when checked.
   "Value": 3
 }
 ```
-***
+---
 #### String
 Text input field.
 ```
@@ -54,7 +54,7 @@ Text input field.
   "Type": "String"
 }
 ```
-
+---
 #### Integer
 Number input with +/– buttons.
 ```
@@ -62,7 +62,7 @@ Number input with +/– buttons.
   "Type": "Integer"
 }
 ```
-
+---
 #### Scoring Object
 Made/Missed counters with point value.
 ```
@@ -74,7 +74,7 @@ Made/Missed counters with point value.
 ```
 Form auto-renders Made and Missed inputs.
 Total Points = Made × Value.
-
+---
 #### Single Choice
 Dropdown selection.
 ```
@@ -83,7 +83,7 @@ Dropdown selection.
   "options": ["Left", "Center", "Right"]
 }
 ```
-
+---
 #### Single Choice with Values
 Dropdown with scoring values.
 ```
@@ -93,7 +93,7 @@ Dropdown with scoring values.
   "values": [2, 6]
 }
 ```
-
+---
 #### Multiple Choice
 Checkbox list
 ```
@@ -102,7 +102,7 @@ Checkbox list
   "options": ["Cube", "Cone"]
 }
 ```
-
+---
 #### Multiple Choice with Values
 Checkbox list where each option has a point value.
 ```
@@ -112,7 +112,7 @@ Checkbox list where each option has a point value.
   "Values": [5, 0]
 }
 ```
-
+---
 #### Timer
 Start/Stop/Reset timer field.
 ```
@@ -120,7 +120,7 @@ Start/Stop/Reset timer field.
   "Type": "Timer"
 }
 ```
-
+---
 #### Image
 File upload
 ```
