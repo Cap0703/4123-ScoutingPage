@@ -25,6 +25,8 @@ A json configurable webpage for all things FRC Scouting
 ```
 Each section contains fields. The field type determines which form input is rendered.
 ### Field Types
+_________________
+
 #### Boolean
 Checkbox that stores true/false.
 ```
