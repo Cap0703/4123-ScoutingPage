@@ -164,6 +164,7 @@ Formulas in this section use SQL-like syntax but are executed in JavaScript on t
         "auto_L4_made"
       ],
       "graph": "line graph"
+    }
   },
   "tables": {
     "title":["Match Point Breakdown"],
@@ -178,6 +179,7 @@ Formulas in this section use SQL-like syntax but are executed in JavaScript on t
           "total_points"
         ]
       }
+    }
   }
 }
 ```

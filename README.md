@@ -10,6 +10,41 @@
 * Match Scouting - Includes sections such as; pre-match info, autonomous, teleop, endgame, and misc sections
 * Mobile Support - Sections are collapsible on mobile for better user experience
 
+## Infrastructure
+* Frontend: HTML, CSS, JavaScript
+* Backend: Python (Flask)
+* Database: SQLite3
+
+## API Endpoints
+```
+GET /api/config
+```
+&emsp;Returns config.json
+
+---
+```
+POST /api/matches
+```
+&emsp;Upload match scouting entry
+
+---
+```
+POST /api/pits
+```
+&emsp;Upload pit scouting entry
+
+---
+```
+GET /api/team/{team}/averages
+```
+&emsp;Computed team average per team
+
+---
+```
+GET /api/team/{team}/matches
+```
+&emsp;Raw match data per team
+
 ## Documentation
 Visit docs/config.md
 
