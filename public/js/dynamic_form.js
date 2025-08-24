@@ -228,19 +228,19 @@ function renderScoring(name, path, state){
   return el('div',{}, made, miss);
 }
 
-// Make sections collapsible on mobile
+// Make sections collapsible on mobile - Improved version
 function makeSectionCollapsible(sectionElement, defaultCollapsed = false) {
-  const header = sectionElement.querySelector('h2');
+  const header = sectionElement.querySelector('.section-header');
   if (!header) return;
   
   // Find all content elements (everything except the header)
   const content = Array.from(sectionElement.children).filter(
-    child => child !== header.parentElement && !child.classList.contains('section-score')
+    child => !child.classList.contains('section-header') && !child.classList.contains('section-score')
   );
   
   // Create collapse icon
   const icon = el('span', {class: 'collapse-icon'}, defaultCollapsed ? '▶' : '▼');
-  header.parentElement.style.cursor = 'pointer';
+  header.style.cursor = 'pointer';
   header.insertBefore(icon, header.firstChild);
   
   // Set initial state
@@ -250,18 +250,20 @@ function makeSectionCollapsible(sectionElement, defaultCollapsed = false) {
     });
   }
   
-  // Add click event to toggle visibility
-  header.parentElement.addEventListener('click', (e) => {
-    // Don't toggle if clicking on the score display
-    if (e.target.classList.contains('section-score')) return;
+  // Add click event to toggle visibility - but ignore clicks on form elements
+  header.addEventListener('click', (e) => {
+    // Don't toggle if clicking on a form element or its label
+    const isFormElement = e.target.closest('input, select, textarea, button, label[for]');
     
-    const isCollapsed = content[0] && content[0].style.display === 'none';
-    
-    content.forEach(item => {
-      item.style.display = isCollapsed ? '' : 'none';
-    });
-    
-    icon.textContent = isCollapsed ? '▼' : '▶';
+    if (!isFormElement) {
+      const isCollapsed = content[0] && content[0].style.display === 'none';
+      
+      content.forEach(item => {
+        item.style.display = isCollapsed ? '' : 'none';
+      });
+      
+      icon.textContent = isCollapsed ? '▼' : '▶';
+    }
   });
 }
 
