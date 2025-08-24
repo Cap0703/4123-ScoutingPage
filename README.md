@@ -12,6 +12,8 @@ A json configurable webpage for all things FRC Scouting
 
 ## Documentation
 ### Match Form Structure
+_________________
+
 ```
 {
   "match_form": {
@@ -34,12 +36,99 @@ Checkbox that stores true/false.
   "Type": "Boolean"
 }
 ```
+
 #### Boolean With Value
+Checkbox that adds points when checked.
 ```
 "left_starting_zone": {
   "Type": "Boolean with Value",
   "Value": 3
 }
 ```
+
+#### String
+Text input field.
+```
+"comments": {
+  "Type": "String"
+}
+```
+
+#### Integer
+Number input with +/– buttons.
+```
+"cubes_scored": {
+  "Type": "Integer"
+}
+```
+
+#### Scoring Object
+Made/Missed counters with point value.
+```
+"L1": {
+  "Made": 0,
+  "Missed": 0,
+  "Value": 3
+}
+```
+Form auto-renders Made and Missed inputs.
+Total Points = Made × Value.
+
+#### Single Choice
+Dropdown selection.
+```
+"starting_position": {
+  "Type": "Single Choice",
+  "options": ["Left", "Center", "Right"]
+}
+```
+
+#### Single Choice with Values
+Dropdown with scoring values.
+```
+"final_status": {
+  "Type": "Single Choice",
+  "options": ["Parked", "Climbed"],
+  "values": [2, 6]
+}
+```
+
+#### Multiple Choice
+Checkbox list
+```
+"game_pieces": {
+  "Type": "Multiple Choice",
+  "options": ["Cube", "Cone"]
+}
+```
+
+#### Multiple Choice with Values
+Checkbox list where each option has a point value.
+```
+"coopertition_bonus": {
+  "Type": "Multiple Choice",
+  "options": ["Balanced", "Unbalanced"],
+  "Values": [5, 0]
+}
+```
+
+#### Timer
+Start/Stop/Reset timer field.
+```
+"hang_time": {
+  "Type": "Timer"
+}
+```
+
+#### Image
+File upload
+```
+"robot_picture": {
+  "Type": "Image File"
+}
+```
+
+
+
 ## Access
 (https://four123-scoutingpage.onrender.com/)
