@@ -10,8 +10,20 @@ A json configurable webpage for all things FRC Scouting
 * Match Scouting - Includes sections such as; pre-match info, autonomous, teleop, endgame, and misc sections
 * Mobile Support - Sections are collapsible on mobile for better user experience
 
-## Documentation (config.json)
-** Boolean
+## Documentation
+### Match Form Structure
+```
+{
+  "match_form": {
+    "pre-match_info": { ... },
+    "auto_period": { ... },
+    "teleop_period": { ... },
+    "endgame": { ... },
+    "misc": { ... }
+  }
+}
+```
+### Fields
 
 
 
