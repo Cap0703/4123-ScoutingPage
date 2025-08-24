@@ -23,9 +23,21 @@ A json configurable webpage for all things FRC Scouting
   }
 }
 ```
-### Fields
-
-
-
+Each section contains fields. The field type determines which form input is rendered.
+### Field Types
+#### Boolean
+Checkbox that stores true/false.
+```
+"mobility": {
+  "Type": "Boolean"
+}
+```
+#### Boolean With Value
+```
+"left_starting_zone": {
+  "Type": "Boolean with Value",
+  "Value": 3
+}
+```
 ## Access
 (https://four123-scoutingpage.onrender.com/)
