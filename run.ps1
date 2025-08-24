@@ -48,8 +48,27 @@ if ($tunnelUrl) {
     if ($currentUrl -ne $tunnelUrl) {
         Set-Content -Path $tunnelFile -Value $tunnelUrl
         Write-Output "Tunnel URL saved to $tunnelFile"
+        
+        # Push to GitHub if URL changed
+        Write-Output "Pushing new URL to GitHub..."
+        try {
+            # Add the changed file
+            git add $tunnelFile
+            
+            # Commit with message
+            $commitMessage = "Update tunnel URL: $tunnelUrl"
+            git commit -m $commitMessage
+            
+            # Push to remote
+            git push
+            
+            Write-Output "Successfully pushed new URL to GitHub"
+        }
+        catch {
+            Write-Error "Failed to push to GitHub: $($_.Exception.Message)"
+        }
     } else {
-        Write-Output "Tunnel URL unchanged, not updating $tunnelFile"
+        Write-Output "Tunnel URL unchanged, not updating $tunnelFile or GitHub"
     }
 } else {
     Write-Error "Failed to extract Cloudflare tunnel URL from stderr."
