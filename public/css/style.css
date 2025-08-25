@@ -621,3 +621,140 @@ h1 {
   padding: 8px 12px;
   min-width: 44px;
 }
+
+.success {
+  color: #2e7d32;
+  background-color: #e8f5e9;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.error {
+  color: #c62828;
+  background-color: #ffebee;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.warning {
+  color: #f57c00;
+  background-color: #fff3e0;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.info {
+  color: #0277bd;
+  background-color: #e1f5fe;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.form-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Announcements styles */
+.announcements-container {
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 800px;
+}
+
+.announcements-container h2 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.announcement {
+  margin-bottom: 1.5rem;
+}
+
+.announcement-title {
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  color: #12365f;
+}
+
+.announcement-description {
+  margin-bottom: 1rem;
+  color: #4a4949;
+}
+
+.announcement-divider {
+  border: 0;
+  height: 1px;
+  background: #ddd;
+  margin: 1rem 0;
+}
+
+/* Checklist styles */
+.checklist-container {
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 800px;
+}
+
+.checklist-container h2 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.checklist {
+  background: #727272;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.checklist-item {
+  margin-bottom: 0.8rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.checklist-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.checklist-item label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.checklist-item input[type="checkbox"] {
+  margin-right: 10px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.checklist-item span {
+  flex: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .announcements-container,
+  .checklist-container {
+    padding: 0 1rem;
+  }
+  
+  .checklist {
+    padding: 1rem;
+  }
+}

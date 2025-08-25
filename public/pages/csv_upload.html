@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>CSV Upload</title>
+    <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div class="mobile-nav">
+  <button class="hamburger" onclick="toggleMenu()">☰</button>
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+    <a href="/" onclick="toggleMenu()">Home</a>
+    <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
+    <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
+    <a href="/pages/team_summary.html" onclick="toggleMenu()">Team Summary</a>
+    <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
+    <a href="/pages/rankings.html" onclick="toggleMenu()">Rankings</a>
+    <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
+    <a href="/pages/raw_match_edit.html" onclick="toggleMenu()">Raw Match Data Edit</a>
+    <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
+    <a href="/pages/raw_pit_edit.html" onclick="toggleMenu()">Raw Pit Data Edit</a>
+    <a href="/pages/csv_upload.html" onclick="toggleMenu()">CSV Upload</a>
+  </div>
+</div>
+<script>
+// Mobile menu functionality
+function toggleMenu() {
+  const menu = document.getElementById('mobileMenu');
+  const isOpening = !menu.classList.contains('open');
+  menu.classList.toggle('open');
+  document.body.classList.toggle('menu-open', isOpening);
+  if (isOpening) {
+    setTimeout(() => {
+      menu.scrollTop = 0;
+    }, 50);
+  }
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', function(event) {
+  const menu = document.getElementById('mobileMenu');
+  const hamburger = document.querySelector('.hamburger');
+  if (menu.classList.contains('open') && 
+      !menu.contains(event.target) && 
+      event.target !== hamburger) {
+    toggleMenu();
+  }
+});
+
+// Close menu on escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    const menu = document.getElementById('mobileMenu');
+    if (menu.classList.contains('open')) {
+      toggleMenu();
+    }
+  }
+});
+
+// Prevent background scrolling when menu is open
+document.addEventListener('touchmove', function(event) {
+  const menu = document.getElementById('mobileMenu');
+  if (menu.classList.contains('open')) {
+    if (!menu.contains(event.target)) {
+      event.preventDefault();
+    }
+  }
+}, { passive: false });
+</script>
+<nav class="navbar">
+  <a href="/">Home</a>
+  <a href="/pages/match_scouting.html">Match Scouting</a>
+  <a href="/pages/pit_scouting.html">Pit Scouting</a>
+  <a href="/pages/team_summary.html">Team Summary</a>
+  <a href="/pages/match_simulator.html">Match Simulator</a>
+  <a href="/pages/rankings.html">Rankings</a>
+  <a href="/pages/raw_match.html">Raw Match Data</a>
+  <a href="/pages/raw_match_edit.html">Raw Match Data Edit</a>
+  <a href="/pages/raw_pit.html">Raw Pit Data</a>
+  <a href="/pages/raw_pit_edit.html">Raw Pit Data Edit</a>
+  <a href="/pages/csv_upload.html">CSV Upload</a>
+</nav>
+<div class="container">
+  <h1>CSV Upload</h1>
+  <p>Upload CSV files that were previously exported from this system.</p>
+  
+  <div class="form-section">
+    <h2>Upload Matches CSV</h2>
+    <input type="file" id="matchesFile" accept=".csv" />
+    <button class="btn" onclick="uploadMatches()">Upload Matches CSV</button>
+    <div id="matchesStatus"></div>
+  </div>
+  
+  <div class="form-section">
+    <h2>Upload Pits CSV</h2>
+    <input type="file" id="pitsFile" accept=".csv" />
+    <button class="btn" onclick="uploadPits()">Upload Pits CSV</button>
+    <div id="pitsStatus"></div>
+  </div>
+</div>
+<footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
+
+<script>
+async function uploadMatches() {
+  const fileInput = document.getElementById('matchesFile');
+  const statusDiv = document.getElementById('matchesStatus');
+  
+  if (!fileInput.files.length) {
+    statusDiv.innerHTML = '<div class="error">Please select a CSV file</div>';
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('csv', fileInput.files[0]);
+  
+  try {
+    statusDiv.innerHTML = '<div class="info">Uploading...</div>';
+    const response = await fetch('/api/upload/csv', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      let message = `<div class="success">${result.message}</div>`;
+      if (result.errors && result.errors.length) {
+        message += `<div class="warning">Some errors occurred:<ul>${result.errors.map(e => `<li>${e}</li>`).join('')}</ul></div>`;
+      }
+      statusDiv.innerHTML = message;
+    } else {
+      statusDiv.innerHTML = `<div class="error">Error: ${result.error || 'Unknown error'}</div>`;
+    }
+  } catch (error) {
+    statusDiv.innerHTML = `<div class="error">Upload failed: ${error.message}</div>`;
+  }
+}
+
+async function uploadPits() {
+  const fileInput = document.getElementById('pitsFile');
+  const statusDiv = document.getElementById('pitsStatus');
+  
+  if (!fileInput.files.length) {
+    statusDiv.innerHTML = '<div class="error">Please select a CSV file</div>';
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('csv', fileInput.files[0]);
+  
+  try {
+    statusDiv.innerHTML = '<div class="info">Uploading...</div>';
+    const response = await fetch('/api/upload/csv', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      let message = `<div class="success">${result.message}</div>`;
+      if (result.errors && result.errors.length) {
+        message += `<div class="warning">Some errors occurred:<ul>${result.errors.map(e => `<li>${e}</li>`)}.join('}</ul></div>`;
+      }
+      statusDiv.innerHTML = message;
+    } else {
+      statusDiv.innerHTML = `<div class="error">Error: ${result.error || 'Unknown error'}</div>`;
+    }
+  } catch (error) {
+    statusDiv.innerHTML = `<div class="error">Upload failed: ${error.message}</div>`;
+  }
+}
+</script>
+
+</body>
+</html>

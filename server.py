@@ -665,5 +665,116 @@ def export_pits_csv():
 def serve_uploaded_file(filename):
     return send_from_directory(UPLOADS_DIR, filename)
 
+@app.route('/api/upload/csv', methods=['POST'])
+def upload_csv():
+    try:
+        if 'csv' not in request.files:
+            return jsonify({'error': 'No CSV file provided'}), 400
+            
+        file = request.files['csv']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+            
+        if not file.filename.endswith('.csv'):
+            return jsonify({'error': 'File must be a CSV'}), 400
+            
+        # Read and parse CSV
+        import csv
+        from io import StringIO
+        
+        stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
+        csv_data = csv.DictReader(stream)
+        
+        # Determine if it's matches or pits data
+        first_row = next(csv_data, None)
+        if not first_row:
+            return jsonify({'error': 'Empty CSV file'}), 400
+            
+        stream.seek(0)  # Reset stream
+        csv_data = csv.DictReader(stream)
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        records_processed = 0
+        errors = []
+        
+        # Check if it's matches data
+        if 'pre_match_json' in first_row:
+            for i, row in enumerate(csv_data):
+                try:
+                    # Convert JSON strings back to objects
+                    pre_match_json = json.loads(row['pre_match_json']) if row['pre_match_json'] else {}
+                    auto_json = json.loads(row['auto_json']) if row['auto_json'] else {}
+                    teleop_json = json.loads(row['teleop_json']) if row['teleop_json'] else {}
+                    endgame_json = json.loads(row['endgame_json']) if row['endgame_json'] else {}
+                    misc_json = json.loads(row['misc_json']) if row['misc_json'] else {}
+                    
+                    # Check if this record already exists
+                    cursor.execute('SELECT id FROM matches WHERE id = ?', (row['id'],))
+                    existing = cursor.fetchone()
+                    
+                    if existing:
+                        # Update existing record
+                        cursor.execute('''
+                            UPDATE matches SET pre_match_json=?, auto_json=?, teleop_json=?, endgame_json=?, misc_json=?
+                            WHERE id=?
+                        ''', (json.dumps(pre_match_json), json.dumps(auto_json), json.dumps(teleop_json), 
+                              json.dumps(endgame_json), json.dumps(misc_json), row['id']))
+                    else:
+                        # Insert new record
+                        cursor.execute('''
+                            INSERT INTO matches(id, created_at, pre_match_json, auto_json, teleop_json, endgame_json, misc_json)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ''', (row['id'], row['created_at'], json.dumps(pre_match_json), json.dumps(auto_json),
+                              json.dumps(teleop_json), json.dumps(endgame_json), json.dumps(misc_json)))
+                    
+                    records_processed += 1
+                except Exception as e:
+                    errors.append(f"Row {i+1}: {str(e)}")
+        
+        # Check if it's pits data
+        elif 'pit_json' in first_row:
+            for i, row in enumerate(csv_data):
+                try:
+                    # Convert JSON strings back to objects
+                    pit_json = json.loads(row['pit_json']) if row['pit_json'] else {}
+                    image_path = row.get('image_path', '')
+                    
+                    # Check if this record already exists
+                    cursor.execute('SELECT id FROM pits WHERE id = ?', (row['id'],))
+                    existing = cursor.fetchone()
+                    
+                    if existing:
+                        # Update existing record
+                        cursor.execute('''
+                            UPDATE pits SET pit_json=?, image_path=?
+                            WHERE id=?
+                        ''', (json.dumps(pit_json), image_path, row['id']))
+                    else:
+                        # Insert new record
+                        cursor.execute('''
+                            INSERT INTO pits(id, created_at, pit_json, image_path)
+                            VALUES (?, ?, ?, ?)
+                        ''', (row['id'], row['created_at'], json.dumps(pit_json), image_path))
+                    
+                    records_processed += 1
+                except Exception as e:
+                    errors.append(f"Row {i+1}: {str(e)}")
+        else:
+            conn.close()
+            return jsonify({'error': 'Unknown CSV format'}), 400
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': f'Successfully processed {records_processed} records',
+            'errors': errors if errors else None
+        })
+        
+    except Exception as e:
+        return jsonify({'error': 'upload', 'details': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3000, debug=True)

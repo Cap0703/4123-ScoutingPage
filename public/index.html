@@ -86,11 +86,123 @@ document.addEventListener('touchmove', function(event) {
     <div class="center">
       <h1>FRC 4123 Scouting Webpage</h1>
       <p class="badge">Created by Conrad Oldoerp</p>
+      
+      <!-- Announcements Section -->
+      <div id="announcements-container" class="announcements-container"></div>
+      
+      <!-- Checklist Section -->
+      <div id="checklist-container" class="checklist-container"></div>
+      
       <div class="card">
         <p>Dynamic, JSON-configurable forms. Totals auto-calculated and stored. Inline editing, CSV export, rankings, simulator, and Chart.js coral accuracy.</p>
       </div>
     </div>
 </div>
 <footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
+
+<script>
+// Load home page content from config
+async function loadHomeContent() {
+  try {
+    const response = await fetch('/api/config');
+    const config = await response.json();
+    
+    // Load content from the body section
+    if (config.Home && config.Home.body) {
+      renderHomeContent(config.Home.body);
+    }
+  } catch (error) {
+    console.error('Error loading home content:', error);
+  }
+}
+
+// Render home content based on the body structure
+function renderHomeContent(bodyContent) {
+  const container = document.querySelector('.container .center');
+  if (!container || !bodyContent) return;
+  
+  let html = '';
+  
+  // Process each item in the body
+  for (const [key, item] of Object.entries(bodyContent)) {
+    if (item.type === 'announcement') {
+      html += renderAnnouncement(item);
+    } else if (item.type === 'checklist') {
+      html += renderChecklist(item);
+    }
+  }
+  
+  // Add the existing card at the end
+  html += `
+    <div class="card">
+      <p>Dynamic, JSON-configurable forms. Totals auto-calculated and stored. Inline editing, CSV export, rankings, simulator, and Chart.js coral accuracy.</p>
+    </div>
+  `;
+  
+  // Insert the content after the title and badge
+  const title = container.querySelector('h1');
+  const badge = container.querySelector('.badge');
+  const existingCard = container.querySelector('.card');
+  
+  if (existingCard) {
+    existingCard.remove();
+  }
+  
+  title.insertAdjacentHTML('afterend', html);
+}
+
+// Render a single announcement
+function renderAnnouncement(announcement) {
+  return `
+    <div class="announcement">
+      <div class="announcement-title">${announcement.title || 'Untitled'}</div>
+      <div class="announcement-description">${announcement.description || ''}</div>
+      <hr class="announcement-divider">
+    </div>
+  `;
+}
+
+// Render a checklist
+function renderChecklist(checklist) {
+  if (!checklist.options || checklist.options.length === 0) return '';
+  
+  let html = `
+    <div class="checklist-container">
+      <h2>${checklist.title || 'Checklist'}</h2>
+      <div class="checklist">
+  `;
+  
+  checklist.options.forEach((item, index) => {
+    // Try to get saved state from localStorage
+    const isChecked = localStorage.getItem(`checklist_${index}`) === 'true';
+    
+    html += `
+      <div class="checklist-item">
+        <label>
+          <input type="checkbox" data-index="${index}" ${isChecked ? 'checked' : ''} 
+                 onchange="updateChecklistItem(this)">
+          <span>${item}</span>
+        </label>
+      </div>
+    `;
+  });
+  
+  html += `
+      </div>
+    </div>
+  `;
+  
+  return html;
+}
+
+// Update checklist item state
+function updateChecklistItem(checkbox) {
+  const index = checkbox.getAttribute('data-index');
+  localStorage.setItem(`checklist_${index}`, checkbox.checked);
+}
+
+// Load home content when page loads
+document.addEventListener('DOMContentLoaded', loadHomeContent);
+</script>
 
 </body></html>
