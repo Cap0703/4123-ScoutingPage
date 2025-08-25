@@ -101,80 +101,98 @@ document.addEventListener('touchmove', function(event) {
 <footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
 
 <script>
+// Global variables
+let checklistItems = [];
+let checklistState = {};
+
 // Load home page content from config
 async function loadHomeContent() {
   try {
     const response = await fetch('/api/config');
     const config = await response.json();
     
-    // Load content from the body section
+    // Load announcements and checklist from the body section
     if (config.Home && config.Home.body) {
-      renderHomeContent(config.Home.body);
+      const bodyItems = Object.values(config.Home.body);
+      
+      // Separate announcements and checklist
+      const announcements = bodyItems.filter(item => item.type === 'announcement');
+      const checklist = bodyItems.find(item => item.type === 'checklist');
+      
+      if (announcements.length > 0) {
+        renderAnnouncements(announcements);
+      }
+      
+      if (checklist) {
+        checklistItems = checklist.options || [];
+        // Load checklist state from server
+        await loadChecklistState();
+        renderChecklist(checklist);
+      }
     }
   } catch (error) {
     console.error('Error loading home content:', error);
   }
 }
 
-// Render home content based on the body structure
-function renderHomeContent(bodyContent) {
-  const container = document.querySelector('.container .center');
-  if (!container || !bodyContent) return;
-  
-  let html = '';
-  
-  // Process each item in the body
-  for (const [key, item] of Object.entries(bodyContent)) {
-    if (item.type === 'announcement') {
-      html += renderAnnouncement(item);
-    } else if (item.type === 'checklist') {
-      html += renderChecklist(item);
+// Load checklist state from server
+async function loadChecklistState() {
+  try {
+    const response = await fetch('/api/checklist');
+    if (response.ok) {
+      checklistState = await response.json();
+    } else {
+      // Initialize empty state if not found
+      checklistState = {};
     }
+  } catch (error) {
+    console.error('Error loading checklist state:', error);
+    checklistState = {};
   }
-  
-  // Add the existing card at the end
-  html += `
-    <div class="card">
-      <p>Dynamic, JSON-configurable forms. Totals auto-calculated and stored. Inline editing, CSV export, rankings, simulator, and Chart.js coral accuracy.</p>
-    </div>
-  `;
-  
-  // Insert the content after the title and badge
-  const title = container.querySelector('h1');
-  const badge = container.querySelector('.badge');
-  const existingCard = container.querySelector('.card');
-  
-  if (existingCard) {
-    existingCard.remove();
-  }
-  
-  title.insertAdjacentHTML('afterend', html);
 }
 
-// Render a single announcement
-function renderAnnouncement(announcement) {
-  return `
-    <div class="announcement">
-      <div class="announcement-title">${announcement.title || 'Untitled'}</div>
-      <div class="announcement-description">${announcement.description || ''}</div>
-      <hr class="announcement-divider">
-    </div>
-  `;
+// Save checklist state to server
+async function saveChecklistState() {
+  try {
+    await fetch('/api/checklist', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(checklistState)
+    });
+  } catch (error) {
+    console.error('Error saving checklist state:', error);
+  }
 }
 
-// Render a checklist
+// Render announcements
+function renderAnnouncements(announcements) {
+  const container = document.getElementById('announcements-container');
+  if (!container || !announcements || announcements.length === 0) return;
+  
+  let html = '<h2>Announcements</h2>';
+  announcements.forEach(announcement => {
+    html += `
+      <div class="announcement">
+        <div class="announcement-title">${announcement.title || 'Untitled'}</div>
+        <div class="announcement-description">${announcement.description || ''}</div>
+        <hr class="announcement-divider">
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+// Render checklist
 function renderChecklist(checklist) {
-  if (!checklist.options || checklist.options.length === 0) return '';
+  const container = document.getElementById('checklist-container');
+  if (!container || !checklistItems || checklistItems.length === 0) return;
   
-  let html = `
-    <div class="checklist-container">
-      <h2>${checklist.title || 'Checklist'}</h2>
-      <div class="checklist">
-  `;
-  
-  checklist.options.forEach((item, index) => {
-    // Try to get saved state from localStorage
-    const isChecked = localStorage.getItem(`checklist_${index}`) === 'true';
+  let html = `<h2>${checklist.title || 'Checklist'}</h2><div class="checklist">`;
+  checklistItems.forEach((item, index) => {
+    const isChecked = checklistState[index] || false;
     
     html += `
       <div class="checklist-item">
@@ -186,23 +204,35 @@ function renderChecklist(checklist) {
       </div>
     `;
   });
+  html += '</div>';
   
-  html += `
-      </div>
-    </div>
-  `;
-  
-  return html;
+  container.innerHTML = html;
 }
 
 // Update checklist item state
-function updateChecklistItem(checkbox) {
+async function updateChecklistItem(checkbox) {
   const index = checkbox.getAttribute('data-index');
-  localStorage.setItem(`checklist_${index}`, checkbox.checked);
+  checklistState[index] = checkbox.checked;
+  
+  // Save to server
+  await saveChecklistState();
 }
 
 // Load home content when page loads
 document.addEventListener('DOMContentLoaded', loadHomeContent);
+
+// Poll for checklist updates every 5 seconds
+setInterval(async () => {
+  const oldState = JSON.stringify(checklistState);
+  await loadChecklistState();
+  const newState = JSON.stringify(checklistState);
+  
+  // If state changed, re-render checklist
+  if (oldState !== newState) {
+    const checklist = { options: checklistItems };
+    renderChecklist(checklist);
+  }
+}, 5000);
 </script>
 
 </body></html>

@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime
 import subprocess
 import sys
+import threading
 
 app = Flask(__name__)
 CORS(app)
@@ -103,6 +104,25 @@ def endgame_score(data, conf):
         # Handle old format
         status_config = final_status_config.get(status, {})
         return int(status_config.get('Value', 0)) if status_config else 0
+
+checklist_state = {}
+checklist_lock = threading.Lock()
+
+@app.route('/api/checklist', methods=['GET'])
+def get_checklist_state():
+    with checklist_lock:
+        return jsonify(checklist_state)
+
+@app.route('/api/checklist', methods=['POST'])
+def update_checklist_state():
+    try:
+        new_state = request.get_json()
+        with checklist_lock:
+            checklist_state.clear()
+            checklist_state.update(new_state)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': 'update_checklist', 'details': str(e)}), 500
 
 # Serve static files
 @app.route('/')
