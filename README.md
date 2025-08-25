@@ -52,5 +52,8 @@ ___
 ## Documentation
 Visit docs/config.md
 
+## Updates
+Figuring out how to make a simple tool to create config.json easily
+
 ## Access
 (https://cap0703.github.io/4123-ScoutingPage/)
