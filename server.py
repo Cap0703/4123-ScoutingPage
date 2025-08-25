@@ -53,6 +53,17 @@ def init_db():
             image_path TEXT
         )
     ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS checklist_items(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            checklist_key TEXT NOT NULL UNIQUE,
+            title TEXT NOT NULL,
+            options_json TEXT NOT NULL,
+            checked_json TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -109,21 +120,90 @@ checklist_state = {}
 checklist_lock = threading.Lock()
 
 @app.route('/api/checklist', methods=['GET'])
-def get_checklist_state():
-    with checklist_lock:
-        return jsonify(checklist_state)
-
-@app.route('/api/checklist', methods=['POST'])
-def update_checklist_state():
+def get_checklist():
     try:
-        new_state = request.get_json()
-        with checklist_lock:
-            checklist_state.clear()
-            checklist_state.update(new_state)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM checklist_items')
+        rows = cursor.fetchall()
+        conn.close()
+        
+        print("Database checklist items:")  # Debug log
+        for row in rows:
+            print(f"  Key: {row['checklist_key']}, Checked: {row['checked_json']}")  # Debug log
+        
+        checklist_data = {}
+        for row in rows:
+            checklist_data[row['checklist_key']] = {
+                'title': row['title'],
+                'options': json.loads(row['options_json']),
+                'checked': json.loads(row['checked_json'])
+            }
+            
+        return jsonify(checklist_data)
+    except Exception as e:
+        print(f"Error getting checklist: {e}")  # Debug log
+        return jsonify({'error': 'db', 'details': str(e)}), 500
+
+@app.route('/api/checklist/<checklist_key>', methods=['POST'])
+def update_checklist(checklist_key):
+    try:
+        data = request.get_json()
+        checked_items = data.get('checked', [])
+        
+        print(f"Updating checklist {checklist_key} with checked items: {checked_items}")  # Debug log
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if checklist exists
+        cursor.execute('SELECT * FROM checklist_items WHERE checklist_key = ?', (checklist_key,))
+        row = cursor.fetchone()
+        
+        if row:
+            # Update existing checklist
+            cursor.execute('''
+                UPDATE checklist_items 
+                SET checked_json = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE checklist_key = ?
+            ''', (json.dumps(checked_items), checklist_key))
+            print(f"Updated existing checklist {checklist_key}")  # Debug log
+        else:
+            # Get config to create new checklist
+            conf = read_config()
+            home_config = conf.get('Home', {})
+            body_config = home_config.get('body', {})
+            
+            # Find the checklist in config
+            checklist_config = None
+            for key, item in body_config.items():
+                if key == checklist_key and item.get('type') == 'checklist':
+                    checklist_config = item
+                    break
+            
+            if not checklist_config:
+                return jsonify({'error': 'Checklist not found in config'}), 404
+                
+            # Create new checklist
+            cursor.execute('''
+                INSERT INTO checklist_items (checklist_key, title, options_json, checked_json)
+                VALUES (?, ?, ?, ?)
+            ''', (
+                checklist_key,
+                checklist_config.get('title', 'Checklist'),
+                json.dumps(checklist_config.get('options', [])),
+                json.dumps(checked_items)
+            ))
+            print(f"Created new checklist {checklist_key}")  # Debug log
+        
+        conn.commit()
+        conn.close()
+        
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': 'update_checklist', 'details': str(e)}), 500
-
+        print(f"Error updating checklist: {e}")  # Debug log
+        return jsonify({'error': 'update', 'details': str(e)}), 500
+    
 # Serve static files
 @app.route('/')
 def serve_index():

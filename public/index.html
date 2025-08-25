@@ -101,9 +101,8 @@ document.addEventListener('touchmove', function(event) {
 <footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
 
 <script>
-// Global variables
-let checklistItems = [];
-let checklistState = {};
+// Global variable to store checklist data
+let checklistData = {};
 
 // Load home page content from config
 async function loadHomeContent() {
@@ -111,128 +110,233 @@ async function loadHomeContent() {
     const response = await fetch('/api/config');
     const config = await response.json();
     
-    // Load announcements and checklist from the body section
+    // Load announcements
     if (config.Home && config.Home.body) {
-      const bodyItems = Object.values(config.Home.body);
-      
-      // Separate announcements and checklist
-      const announcements = bodyItems.filter(item => item.type === 'announcement');
-      const checklist = bodyItems.find(item => item.type === 'checklist');
-      
-      if (announcements.length > 0) {
-        renderAnnouncements(announcements);
-      }
-      
-      if (checklist) {
-        checklistItems = checklist.options || [];
-        // Load checklist state from server
-        await loadChecklistState();
-        renderChecklist(checklist);
-      }
+      renderHomeContent(config.Home.body);
     }
+    
+    // Load checklist data from server
+    await loadChecklistData();
+    
+    // Initialize any missing checklists
+    await initializeMissingChecklists(config);
   } catch (error) {
     console.error('Error loading home content:', error);
   }
 }
 
-// Load checklist state from server
-async function loadChecklistState() {
+// Initialize any checklists that exist in config but not in database
+async function initializeMissingChecklists(config) {
   try {
-    const response = await fetch('/api/checklist');
-    if (response.ok) {
-      checklistState = await response.json();
-    } else {
-      // Initialize empty state if not found
-      checklistState = {};
+    const bodyConfig = config.Home?.body;
+    if (!bodyConfig) return;
+    
+    for (const [key, item] of Object.entries(bodyConfig)) {
+      if (item.type === 'checklist' && !checklistData[key]) {
+        // This checklist exists in config but not in database, initialize it
+        console.log(`Initializing missing checklist: ${key}`);
+        await fetch(`/api/checklist/${key}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            checked: []
+          })
+        });
+      }
+    }
+    
+    // Reload checklist data after initialization
+    await loadChecklistData();
+    
+    // Re-render checklists
+    if (bodyConfig) {
+      renderChecklists(bodyConfig);
     }
   } catch (error) {
-    console.error('Error loading checklist state:', error);
-    checklistState = {};
+    console.error('Error initializing missing checklists:', error);
   }
 }
 
-// Save checklist state to server
-async function saveChecklistState() {
+
+// Render home content based on config structure
+function renderHomeContent(bodyConfig) {
+  const announcementsContainer = document.getElementById('announcements-container');
+  const checklistContainer = document.getElementById('checklist-container');
+  
+  if (!bodyConfig) return;
+  
+  let announcementsHtml = '';
+  let checklistsHtml = '';
+  
+  // Process each item in the body config
+  for (const [key, item] of Object.entries(bodyConfig)) {
+    if (item.type === 'announcement') {
+      announcementsHtml += `
+        <div class="announcement">
+          <div class="announcement-title">${item.title || 'Untitled'}</div>
+          <div class="announcement-description">${item.description || ''}</div>
+          <hr class="announcement-divider">
+        </div>
+      `;
+    } else if (item.type === 'checklist') {
+      // We'll render checklists after loading data from server
+      checklistsHtml += `<div id="checklist-${key}" class="checklist-wrapper"></div>`;
+    }
+  }
+  
+  // Render announcements
+  if (announcementsHtml) {
+    announcementsContainer.innerHTML = `<h2>Announcements</h2>${announcementsHtml}`;
+  }
+  
+  // Render checklist placeholders
+  if (checklistsHtml) {
+    checklistContainer.innerHTML = checklistsHtml;
+    
+    // Now render each checklist with data from server
+    renderChecklists(bodyConfig);
+  }
+}
+
+// Load checklist data from server
+async function loadChecklistData() {
   try {
-    await fetch('/api/checklist', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(checklistState)
-    });
+    const response = await fetch('/api/checklist');
+    checklistData = await response.json();
   } catch (error) {
-    console.error('Error saving checklist state:', error);
+    console.error('Error loading checklist data:', error);
+    checklistData = {};
   }
 }
 
-// Render announcements
-function renderAnnouncements(announcements) {
-  const container = document.getElementById('announcements-container');
-  if (!container || !announcements || announcements.length === 0) return;
-  
-  let html = '<h2>Announcements</h2>';
-  announcements.forEach(announcement => {
-    html += `
-      <div class="announcement">
-        <div class="announcement-title">${announcement.title || 'Untitled'}</div>
-        <div class="announcement-description">${announcement.description || ''}</div>
-        <hr class="announcement-divider">
-      </div>
-    `;
-  });
-  
-  container.innerHTML = html;
+// Render checklists with data from server
+function renderChecklists(bodyConfig) {
+  for (const [key, item] of Object.entries(bodyConfig)) {
+    if (item.type === 'checklist') {
+      const checklistElement = document.getElementById(`checklist-${key}`);
+      if (checklistElement) {
+        renderChecklist(key, item, checklistElement);
+      }
+    }
+  }
 }
-
-// Render checklist
-function renderChecklist(checklist) {
-  const container = document.getElementById('checklist-container');
-  if (!container || !checklistItems || checklistItems.length === 0) return;
+// Load checklist data from server
+async function loadChecklistData() {
+  try {
+    const response = await fetch('/api/checklist');
+    const data = await response.json();
+    console.log('Checklist data from server:', data); // Debug log
+    checklistData = data;
+  } catch (error) {
+    console.error('Error loading checklist data:', error);
+    checklistData = {};
+  }
+}
+// Render a single checklist
+// Render a single checklist
+function renderChecklist(key, config, container) {
+  // Get the stored checklist data or use defaults
+  const storedChecklist = checklistData[key];
   
-  let html = `<h2>${checklist.title || 'Checklist'}</h2><div class="checklist">`;
-  checklistItems.forEach((item, index) => {
-    const isChecked = checklistState[index] || false;
+  // Use the title from config, but checked items from stored data
+  const checklist = {
+    title: config.title || 'Checklist',
+    options: config.options || [],
+    checked: storedChecklist ? storedChecklist.checked : []
+  };
+  
+  console.log(`Rendering checklist ${key}:`, checklist); // Debug log
+  
+  let html = `<h2>${checklist.title}</h2><div class="checklist">`;
+  
+  checklist.options.forEach((option, index) => {
+    const isChecked = checklist.checked.includes(index);
     
     html += `
       <div class="checklist-item">
         <label>
-          <input type="checkbox" data-index="${index}" ${isChecked ? 'checked' : ''} 
-                 onchange="updateChecklistItem(this)">
-          <span>${item}</span>
+          <input type="checkbox" data-key="${key}" data-index="${index}" 
+                 ${isChecked ? 'checked' : ''} onchange="updateChecklistItem(this)">
+          <span>${option}</span>
         </label>
       </div>
     `;
   });
-  html += '</div>';
   
+  html += '</div>';
   container.innerHTML = html;
 }
 
 // Update checklist item state
+// Update checklist item state
 async function updateChecklistItem(checkbox) {
-  const index = checkbox.getAttribute('data-index');
-  checklistState[index] = checkbox.checked;
+  const key = checkbox.getAttribute('data-key');
+  const index = parseInt(checkbox.getAttribute('data-index'));
+  const isChecked = checkbox.checked;
   
-  // Save to server
-  await saveChecklistState();
+  // Update local state
+  if (!checklistData[key]) {
+    checklistData[key] = {
+      title: '',
+      options: [],
+      checked: []
+    };
+  }
+  
+  // Update the checked array
+  if (isChecked) {
+    if (!checklistData[key].checked.includes(index)) {
+      checklistData[key].checked.push(index);
+      // Sort to maintain order
+      checklistData[key].checked.sort((a, b) => a - b);
+    }
+  } else {
+    checklistData[key].checked = checklistData[key].checked.filter(i => i !== index);
+  }
+  
+  console.log(`Updating checklist ${key}:`, checklistData[key].checked); // Debug log
+  
+  // Send update to server
+  try {
+    const response = await fetch(`/api/checklist/${key}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        checked: checklistData[key].checked
+      })
+    });
+    
+    const result = await response.json();
+    console.log('Server response:', result); // Debug log
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Server error');
+    }
+  } catch (error) {
+    console.error('Error updating checklist:', error);
+    // Revert the checkbox state if update fails
+    checkbox.checked = !isChecked;
+    // Also revert the local state
+    if (isChecked) {
+      checklistData[key].checked = checklistData[key].checked.filter(i => i !== index);
+    } else {
+      if (!checklistData[key].checked.includes(index)) {
+        checklistData[key].checked.push(index);
+        checklistData[key].checked.sort((a, b) => a - b);
+      }
+    }
+  }
 }
 
 // Load home content when page loads
 document.addEventListener('DOMContentLoaded', loadHomeContent);
 
-// Poll for checklist updates every 5 seconds
-setInterval(async () => {
-  const oldState = JSON.stringify(checklistState);
-  await loadChecklistState();
-  const newState = JSON.stringify(checklistState);
-  
-  // If state changed, re-render checklist
-  if (oldState !== newState) {
-    const checklist = { options: checklistItems };
-    renderChecklist(checklist);
-  }
-}, 5000);
+// Periodically refresh checklist data to sync with other users
+setInterval(loadChecklistData, 5000); // Refresh every 5 seconds
 </script>
 
 </body></html>
