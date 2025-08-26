@@ -134,7 +134,7 @@ async function initializeMissingChecklists(config) {
     for (const [key, item] of Object.entries(bodyConfig)) {
       if (item.type === 'checklist' && !checklistData[key]) {
         // This checklist exists in config but not in database, initialize it
-        console.log(`Initializing missing checklist: ${key}`);
+      //console.log(`Initializing missing checklist: ${key}`);
         await fetch(`/api/checklist/${key}`, {
           method: 'POST',
           headers: {
@@ -227,7 +227,7 @@ async function loadChecklistData() {
   try {
     const response = await fetch('/api/checklist');
     const data = await response.json();
-    console.log('Checklist data from server:', data); // Debug log
+  //console.log('Checklist data from server:', data); // Debug log
     checklistData = data;
   } catch (error) {
     console.error('Error loading checklist data:', error);
@@ -247,7 +247,7 @@ function renderChecklist(key, config, container) {
     checked: storedChecklist ? storedChecklist.checked : []
   };
   
-  console.log(`Rendering checklist ${key}:`, checklist); // Debug log
+//console.log(`Rendering checklist ${key}:`, checklist); // Debug log
   
   let html = `<h2>${checklist.title}</h2><div class="checklist">`;
   
@@ -296,7 +296,7 @@ async function updateChecklistItem(checkbox) {
     checklistData[key].checked = checklistData[key].checked.filter(i => i !== index);
   }
   
-  console.log(`Updating checklist ${key}:`, checklistData[key].checked); // Debug log
+//console.log(`Updating checklist ${key}:`, checklistData[key].checked); // Debug log
   
   // Send update to server
   try {
@@ -311,7 +311,7 @@ async function updateChecklistItem(checkbox) {
     });
     
     const result = await response.json();
-    console.log('Server response:', result); // Debug log
+//  console.log('Server response:', result); // Debug log
     
     if (!response.ok) {
       throw new Error(result.error || 'Server error');

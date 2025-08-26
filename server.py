@@ -128,7 +128,7 @@ def get_checklist():
         rows = cursor.fetchall()
         conn.close()
         
-        print("Database checklist items:")  # Debug log
+       #print("Database checklist items:")  # Debug log
         for row in rows:
             print(f"  Key: {row['checklist_key']}, Checked: {row['checked_json']}")  # Debug log
         
@@ -151,7 +151,7 @@ def update_checklist(checklist_key):
         data = request.get_json()
         checked_items = data.get('checked', [])
         
-        print(f"Updating checklist {checklist_key} with checked items: {checked_items}")  # Debug log
+       #print(f"Updating checklist {checklist_key} with checked items: {checked_items}")  # Debug log
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -167,7 +167,7 @@ def update_checklist(checklist_key):
                 SET checked_json = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE checklist_key = ?
             ''', (json.dumps(checked_items), checklist_key))
-            print(f"Updated existing checklist {checklist_key}")  # Debug log
+           #print(f"Updated existing checklist {checklist_key}")  # Debug log
         else:
             # Get config to create new checklist
             conf = read_config()
@@ -194,7 +194,7 @@ def update_checklist(checklist_key):
                 json.dumps(checklist_config.get('options', [])),
                 json.dumps(checked_items)
             ))
-            print(f"Created new checklist {checklist_key}")  # Debug log
+           #print(f"Created new checklist {checklist_key}")  # Debug log
         
         conn.commit()
         conn.close()
