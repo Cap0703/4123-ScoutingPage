@@ -542,15 +542,15 @@ def get_team_info(team):
 @app.route('/api/team/<team>/pit', methods=['GET'])
 def get_team_pit(team):
     try:
-        print(f"Looking for pit data for team: {team} (type: {type(team)})")
+       #print(f"Looking for pit data for team: {team} (type: {type(team)})")
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT id, pit_json FROM pits')
         all_pits = cursor.fetchall()
-        print("All pit entries:")
+       #print("All pit entries:")
         for pit in all_pits:
             pit_json = json.loads(pit['pit_json'])
-            print(f"  ID {pit['id']}: Team {pit_json.get('team_number')} (type: {type(pit_json.get('team_number'))})")
+       #    print(f"  ID {pit['id']}: Team {pit_json.get('team_number')} (type: {type(pit_json.get('team_number'))})")
         cursor.execute('''
             SELECT * FROM pits 
             WHERE json_extract(pit_json, '$.team_number') = ?

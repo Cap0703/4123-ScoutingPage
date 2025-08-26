@@ -111,6 +111,7 @@ document.addEventListener('touchmove', function(event) {
   const totals = document.getElementById('totals');
   const app = await buildMatchForm(document.getElementById('form-root'), totals);
   document.getElementById('submit').addEventListener('click', async ()=>{
+    console.log("Scouting");
     const res = await app.submit();
     document.getElementById('result').textContent = `Saved #${res.id} • Total ${res.total} (A${res.autoPts}/T${res.telePts}/E${res.endPts})`;
   });
