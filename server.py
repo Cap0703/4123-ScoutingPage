@@ -550,7 +550,7 @@ def get_team_pit(team):
        #print("All pit entries:")
         for pit in all_pits:
             pit_json = json.loads(pit['pit_json'])
-       #    print(f"  ID {pit['id']}: Team {pit_json.get('team_number')} (type: {type(pit_json.get('team_number'))})")
+            print(f"  ID {pit['id']}: Team {pit_json.get('team_number')} (type: {type(pit_json.get('team_number'))})")
         cursor.execute('''
             SELECT * FROM pits 
             WHERE json_extract(pit_json, '$.team_number') = ?

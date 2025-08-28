@@ -1,0 +1,4 @@
+ * Serving Flask app 'server'
+ * Debug mode: on
+  Key: third, Checked: [0, 19, 25, 35]
+  Key: third, Checked: [0, 19, 25, 35]

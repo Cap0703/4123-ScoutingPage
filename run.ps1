@@ -6,7 +6,7 @@ $tunnelFile = Join-Path $scriptDir "tunnel.txt"
 
 # Start the Python app (keep handle)
 Write-Output "Starting Flask server..."
-$flask = Start-Process python -ArgumentList "server.py" -PassThru
+$flask = Start-Process python -ArgumentList "server.py" -PassThru -NoNewWindow
 
 # Start Cloudflare tunnel (keep handle)
 Write-Output "Starting Cloudflare tunnel..."
