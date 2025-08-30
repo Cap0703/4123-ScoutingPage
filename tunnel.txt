@@ -1,1 +1,1 @@
-https://delaware-estate-combat-roberts.trycloudflare.com
+https://api.trycloudflare.com
