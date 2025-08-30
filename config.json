@@ -689,6 +689,50 @@
           ],
           "graph": "line graph"
         }
+      },
+      "tables":{
+        "title":["Match Point Breakdown", "All Match Data"],
+        "table":{
+          "match_point_breakdown_table":{
+            "columns": [
+              "match_number", 
+              "match_type", 
+              "auto_points", 
+              "teleop_points", 
+              "endgame_points", 
+              "total_points"
+            ]
+          },
+          "all_match_data_table": {
+            "columns": [
+              "match_number",
+              "match_type",
+              "team_color",
+              "left_starting_zone",
+              "auto_L1_made", "auto_L1_missed",
+              "auto_L2_made", "auto_L2_missed",
+              "auto_L3_made", "auto_L3_missed",
+              "auto_L4_made", "auto_L4_missed",
+              "auto_processor_made", "auto_processor_missed",
+              "auto_net_made", "auto_net_missed",
+              "teleop_L1_made", "teleop_L1_missed",
+              "teleop_L2_made", "teleop_L2_missed",
+              "teleop_L3_made", "teleop_L3_missed",
+              "teleop_L4_made", "teleop_L4_missed",
+              "teleop_processor_made", "teleop_processor_missed",
+              "teleop_net_made", "teleop_net_missed",
+              "final_status",
+              "auto_points",
+              "teleop_points",
+              "endgame_points",
+              "total_points",
+              "auto_coral_used",
+              "teleop_coral_used",
+              "auto_coral_accuracy",
+              "teleop_coral_accuracy"
+            ]
+          }
+        }
       }
     }
   }
