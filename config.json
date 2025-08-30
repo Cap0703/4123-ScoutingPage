@@ -10,7 +10,7 @@
     "max_upload_mb": 8
   },
   "Home": {
-    "body":{
+    "body": {
       "first": {
         "type": "announcement",
         "title": "Welcome to the 2025 Off-Season!",
@@ -109,94 +109,105 @@
         "image": "/photos/reefscape.JPEG"
       }
     },
-    "auto_period":{
+    "auto_period": {
       "left_starting_zone": {
-        "type":"Boolean with Value",
-        "Value":3
+        "type": "Boolean with Value"
       },
-      "L1":{
-        "Made":true,
-        "Missed":true,
-        "Value":3
+      "L1": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 3
       },
-      "L2":{
-        "Made":true,
-        "Missed":true,
-        "Value":4
+      "L2": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 4
       },
-      "L3":{
-        "Made":true,
-        "Missed":true,
-        "Value":6
+      "L3": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 6
       },
-      "L4":{
-        "Made":true,
-        "Missed":true,
-        "Value":7
+      "L4": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 7
       },
-      "Net":{
-        "Made":true,
-        "Missed":true,
-        "Value":4
+      "Net": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 4
       },
-      "Processor":{
-        "Made":true,
-        "Missed":true,
-        "Value":6
+      "Processor": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 6
       }
     },
-    "teleop_period":{
-      "L1":{
-        "Made":true,
-        "Missed":true,
-        "Value":2
+    "teleop_period": {
+      "L1": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 2
       },
-      "L2":{
-        "Made":true,
-        "Missed":true,
-        "Value":3
+      "L2": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 3
       },
-      "L3":{
-        "Made":true,
-        "Missed":true,
-        "Value":4
+      "L3": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 4
       },
-      "L4":{
-        "Made":true,
-        "Missed":true,
-        "Value":5
+      "L4": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 5
       },
-      "Net":{
-        "Made":true,
-        "Missed":true,
-        "Value":4
+      "Net": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 4
       },
-      "Processor":{
-        "Made":true,
-        "Missed":true,
-        "Value":6
+      "Processor": {
+        "type": "Scoring Object",
+        "Made": true,
+        "Missed": true,
+        "Value": 6
       },
       "pickup_location": {
-        "type":"Single Choice List",
-        "options":[
-        "None",
-        "Both",
-        "Ground",
-        "Coral Station"
+        "type": "Single Choice List",
+        "options": [
+          "None",
+          "Both",
+          "Ground",
+          "Coral Station"
         ]
       }
     },
     "endgame": {
       "final_status": {
-        "type": "Single Choice List With Value",
-        "options":[
-          "Not Attempted",
-          "Park",
+        "type": "Single Choice List with Value",
+        "options": [
+          "Not Attemped",
+          "Parked",
           "Failed Climb",
           "Shallow Climb",
           "Deep Climb"
         ],
-        "values":[
+        "values": [
           0,
           2,
           2,
@@ -207,20 +218,20 @@
     },
     "misc": {
       "died": {
-        "type":"Boolean"
+        "type": "Boolean"
       },
       "tippy": {
-        "type":"Boolean"
+        "type": "Boolean"
       },
       "driver_skill": {
         "type": "Single Choice List",
-        "options":[
+        "options": [
           "Not Observed",
           "Not Effective",
           "Average",
           "Effective"
-      ]
-    },
+        ]
+      },
       "defense_rating": {
         "type": "Single Choice List",
         "options": [
@@ -230,23 +241,23 @@
           "Average",
           "Good",
           "Excellent"
-      ]
-    },
-    "speed_rating": {
-      "type":"Single Choice List",
-      "options": [
-        "Really Slow",
-        "Slow",
-        "Average",
-        "Fast",
-        "Really Fast"
-      ]
-    },
-    "comments": {
-      "type": "String"
+        ]
+      },
+      "speed_rating": {
+        "type": "Single Choice List",
+        "options": [
+          "Really Slow",
+          "Slow",
+          "Average",
+          "Fast",
+          "Really Fast"
+        ]
+      },
+      "comments": {
+        "type": "String"
+      }
     }
-   }
-},
+  },
   "pit_form": {
     "fields": {
       "scouter": {
@@ -613,15 +624,15 @@
       "auto_coral_accuracy": "CASE WHEN auto_coral_used > 0 THEN ROUND((auto_L1_made + auto_L2_made + auto_L3_made + auto_L4_made) * 100.0 / auto_coral_used, 1) ELSE 0 END",
       "teleop_coral_accuracy": "CASE WHEN teleop_coral_used > 0 THEN ROUND((teleop_L1_made + teleop_L2_made + teleop_L3_made + teleop_L4_made) * 100.0 / teleop_coral_used, 1) ELSE 0 END"
     },
-    "body":{
-      "charts":{
-        "Auto Coral Performance":{
-          "x_label":"Match #",
-          "y_label":"Auto Coral",
-          "backgroundColor":"rgba(153, 102, 255, 0.2)",
-          "borderColor":"rgba(153, 102, 255, 1)",
-          "x":"match_number",
-          "y":[
+    "body": {
+      "charts": {
+        "Auto Coral Performance": {
+          "x_label": "Match #",
+          "y_label": "Auto Coral",
+          "backgroundColor": "rgba(153, 102, 255, 0.2)",
+          "borderColor": "rgba(153, 102, 255, 1)",
+          "x": "match_number",
+          "y": [
             "auto_coral_used",
             "auto_L1_made",
             "auto_L2_made",
@@ -630,13 +641,13 @@
           ],
           "graph": "line graph"
         },
-        "Teleop Coral Performance":{
-          "x_label":"Match #",
-          "y_label":"Teleop Coral",
-          "backgroundColor":"rgba(153, 102, 255, 0.2)",
-          "borderColor":"rgba(153, 102, 255, 1)",
-          "x":"match_number",
-          "y":[
+        "Teleop Coral Performance": {
+          "x_label": "Match #",
+          "y_label": "Teleop Coral",
+          "backgroundColor": "rgba(153, 102, 255, 0.2)",
+          "borderColor": "rgba(153, 102, 255, 1)",
+          "x": "match_number",
+          "y": [
             "teleop_coral_used",
             "teleop_L1_made",
             "teleop_L2_made",
@@ -645,13 +656,15 @@
           ],
           "graph": "line graph"
         },
-        "Total Points":{
-          "x_label":"Match #",
-          "y_label":"Total Points",
-          "backgroundColor":"rgba(153, 102, 255, 0.2)",
-          "borderColor":"rgba(153, 102, 255, 1)",
-          "x":"match_number",
-          "y":"total_points",
+        "Total Points": {
+          "x_label": "Match #",
+          "y_label": "Total Points",
+          "backgroundColor": "rgba(153, 102, 255, 0.2)",
+          "borderColor": "rgba(153, 102, 255, 1)",
+          "x": "match_number",
+          "y": [
+            "total_points"
+          ],
           "graph": "line graph"
         },
         "Auto Coral Accuracy": {
@@ -660,7 +673,9 @@
           "backgroundColor": "rgba(255, 159, 64, 0.2)",
           "borderColor": "rgba(255, 159, 64, 1)",
           "x": "match_number",
-          "y": "auto_coral_accuracy",
+          "y": [
+            "auto_coral_accuracy"
+          ],
           "graph": "line graph"
         },
         "Teleop Coral Accuracy": {
@@ -669,52 +684,10 @@
           "backgroundColor": "rgba(54, 162, 235, 0.2)",
           "borderColor": "rgba(54, 162, 235, 1)",
           "x": "match_number",
-          "y": "teleop_coral_accuracy",
+          "y": [
+            "teleop_coral_accuracy"
+          ],
           "graph": "line graph"
-        }
-      },
-      "tables":{
-        "title":["Match Point Breakdown", "All Match Data"],
-        "table":{
-          "match_point_breakdown_table":{
-            "columns": [
-              "match_number", 
-              "match_type", 
-              "auto_points", 
-              "teleop_points", 
-              "endgame_points", 
-              "total_points"
-            ]
-          },
-          "all_match_data_table": {
-            "columns": [
-              "match_number",
-              "match_type",
-              "team_color",
-              "left_starting_zone",
-              "auto_L1_made", "auto_L1_missed",
-              "auto_L2_made", "auto_L2_missed",
-              "auto_L3_made", "auto_L3_missed",
-              "auto_L4_made", "auto_L4_missed",
-              "auto_processor_made", "auto_processor_missed",
-              "auto_net_made", "auto_net_missed",
-              "teleop_L1_made", "teleop_L1_missed",
-              "teleop_L2_made", "teleop_L2_missed",
-              "teleop_L3_made", "teleop_L3_missed",
-              "teleop_L4_made", "teleop_L4_missed",
-              "teleop_processor_made", "teleop_processor_missed",
-              "teleop_net_made", "teleop_net_missed",
-              "final_status",
-              "auto_points",
-              "teleop_points",
-              "endgame_points",
-              "total_points",
-              "auto_coral_used",
-              "teleop_coral_used",
-              "auto_coral_accuracy",
-              "teleop_coral_accuracy"
-            ]
-          }
         }
       }
     }

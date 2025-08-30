@@ -1,1 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRC Scouting Config Creator</title>
+    <style>
+        :root {
+            --primary: #0b233f;
+            --accent: #d4af37;
+            --bg: #111111;
+            --muted: #6b6b6b;
+            --light-bg: #1e1e1e;
+            --border: #333;
+            --text: #fff;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: var(--primary);
+            border-radius: 8px;
+        }
+        
+        h1 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+        
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background-color: var(--light-bg);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .tab.active {
+            background-color: var(--primary);
+            color: var(--accent);
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background-color: var(--light-bg);
+            border-radius: 0 0 5px 5px;
+            margin-bottom: 20px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            background-color: #2a2a2a;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: var(--accent);
+            color: var(--primary);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.3s;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .array-item {
+            background-color: #2a2a2a;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .add-btn {
+            margin-top: 10px;
+            background-color: #28a745;
+        }
+        
+        .actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .json-output {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 30px;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .field-types {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .field-type {
+            background-color: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+        
+        .field-type:hover {
+            background-color: var(--primary);
+        }
+        
+        .nested-container {
+            border-left: 3px solid var(--accent);
+            padding-left: 15px;
+            margin-top: 10px;
+        }
+        .navbar{display:flex;gap:10px;justify-content:center;align-items:center;padding:14px;background:linear-gradient(90deg,var(--navy),#07182b);border-bottom:2px solid var(--gold);position:sticky;top:0;z-index:9}
+        .navbar a{color:var(--text);text-decoration:none;padding:8px 12px;border-radius:12px;border:1px solid transparent}
+        .navbar a:hover{border-color:var(--gold)}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FRC Scouting Config Creator</h1>
+            <p>Easily create and customize the configuration for your FRC scouting system</p>
+        </header>
+        <nav class="navbar">
+            <a href="/">Home</a>
+            <a href="/pages/match_scouting.html">Match Scouting</a>
+            <a href="/pages/pit_scouting.html">Pit Scouting</a>
+            <a href="/pages/team_summary.html">Team Summary</a>
+            <a href="/pages/match_simulator.html">Match Simulator</a>
+            <a href="/pages/rankings.html">Rankings</a>
+            <a href="/pages/raw_match.html">Raw Match Data</a>
+            <a href="/pages/raw_match_edit.html">Raw Match Data Edit</a>
+            <a href="/pages/raw_pit.html">Raw Pit Data</a>
+            <a href="/pages/raw_pit_edit.html">Raw Pit Data Edit</a>
+            <a href="/pages/config_creator.html">Config Creator</a>
+        </nav>
+        <div class="tabs">
+            <div class="tab active" data-tab="theme">Theme</div>
+            <div class="tab" data-tab="limits">Limits</div>
+            <div class="tab" data-tab="home">Home Page</div>
+            <div class="tab" data-tab="match-form">Match Form</div>
+            <div class="tab" data-tab="pit-form">Pit Form</div>
+            <div class="tab" data-tab="rankings">Rankings</div>
+            <div class="tab" data-tab="match-scouting">Match Scouting</div>
+            <div class="tab" data-tab="pit-scouting">Pit Scouting</div>
+            <div class="tab" data-tab="team-summary">Team Summary</div>
+            <div class="tab" data-tab="export">Export</div>
+        </div>
+        
+        <div class="tab-content active" id="theme-content">
+            <h2>Theme Configuration</h2>
+            <div class="form-group">
+                <label for="primary-color">Primary Color</label>
+                <input type="color" id="primary-color" value="#0b233f">
+            </div>
+            <div class="form-group">
+                <label for="accent-color">Accent Color</label>
+                <input type="color" id="accent-color" value="#d4af37">
+            </div>
+            <div class="form-group">
+                <label for="bg-color">Background Color</label>
+                <input type="color" id="bg-color" value="#111111">
+            </div>
+            <div class="form-group">
+                <label for="muted-color">Muted Color</label>
+                <input type="color" id="muted-color" value="#6b6b6b">
+            </div>
+        </div>
+        
+        <div class="tab-content" id="limits-content">
+            <h2>System Limits</h2>
+            <div class="form-group">
+                <label for="raw-table-cap">Raw Table Cap</label>
+                <input type="number" id="raw-table-cap" value="50">
+            </div>
+            <div class="form-group">
+                <label for="max-upload-mb">Max Upload Size (MB)</label>
+                <input type="number" id="max-upload-mb" value="8">
+            </div>
+        </div>
+        
+        <div class="tab-content" id="home-content">
+            <h2>Home Page Configuration</h2>
+            <div id="home-sections">
+                <!-- Home sections will be added here dynamically -->
+            </div>
+            <button class="add-btn" id="add-home-section">Add Section</button>
+            
+            <div class="field-types">
+                <div class="field-type" data-type="announcement">Announcement</div>
+                <div class="field-type" data-type="checklist">Checklist</div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="match-form-content">
+            <h2>Match Form Configuration</h2>
+            <div class="nested-container">
+                <h3>Pre-Match Information</h3>
+                <div id="pre-match-fields">
+                    <!-- Pre-match fields will be added here dynamically -->
+                </div>
+                <button class="add-btn" id="add-pre-match-field">Add Field</button>
+                
+                <h3>Auto Period</h3>
+                <div id="auto-period-fields">
+                    <!-- Auto period fields will be added here dynamically -->
+                </div>
+                <button class="add-btn" id="add-auto-period-field">Add Field</button>
+                
+                <h3>Teleop Period</h3>
+                <div id="teleop-period-fields">
+                    <!-- Teleop period fields will be added here dynamically -->
+                </div>
+                <button class="add-btn" id="add-teleop-period-field">Add Field</button>
+                
+                <h3>Endgame</h3>
+                <div id="endgame-fields">
+                    <!-- Endgame fields will be added here dynamically -->
+                </div>
+                <button class="add-btn" id="add-endgame-field">Add Field</button>
+                
+                <h3>Miscellaneous</h3>
+                <div id="misc-fields">
+                    <!-- Misc fields will be added here dynamically -->
+                </div>
+                <button class="add-btn" id="add-misc-field">Add Field</button>
+            </div>
+            
+            <div class="field-types">
+                <div class="field-type" data-type="String">String</div>
+                <div class="field-type" data-type="Typed Integer">Typed Integer</div>
+                <div class="field-type" data-type="Scoring Object"> Scoring Object</div>
+                <div class="field-type" data-type="Single Choice List">Single Choice List</div>
+                <div class="field-type" data-type="Single Choice with Image">Single Choice with Image</div>
+                <div class="field-type" data-type="Boolean with Value">Boolean with Value</div>
+                <div class="field-type" data-type="Boolean">Boolean</div>
+                <div class="field-type" data-type="Multiple Choice List">Multiple Choice List</div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="pit-form-content">
+            <h2>Pit Form Configuration</h2>
+            <div id="pit-fields">
+                <!-- Pit fields will be added here dynamically -->
+            </div>
+            <button class="add-btn" id="add-pit-field">Add Field</button>
+            
+            <div class="field-types">
+                <div class="field-type" data-type="String">String</div>
+                <div class="field-type" data-type="Integer">Integer</div>
+                <div class="field-type" data-type="Float">Float</div>
+                <div class="field-type" data-type="Single Choice List">Single Choice List</div>
+                <div class="field-type" data-type="Boolean">Boolean</div>
+                <div class="field-type" data-type="Multiple Choice List">Multiple Choice List</div>
+                <div class="field-type" data-type="image file">Image File</div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="rankings-content">
+            <h2>Rankings Options</h2>
+            <div id="rankings-options">
+                <!-- Rankings options will be added here dynamically -->
+            </div>
+            <button class="add-btn" id="add-ranking-option">Add Ranking Option</button>
+        </div>
 
+        <div class="tab-content" id="match-scouting-content">
+            <h2>Match Scouting Data</h2>
+            <div id="match-scouting-fields"></div>
+            <button class="add-btn" id="add-match-scouting-field">Add Computed Field</button>
+            <h3>Body Sections</h3>
+            <div id="match-scouting-body"></div>
+            <button class="add-btn" id="add-match-scouting-section">Add Section</button>
+        </div>
+
+        <div class="tab-content" id="pit-scouting-content">
+            <h2>Pit Scouting Data</h2>
+            <div id="pit-scouting-fields"></div>
+            <button class="add-btn" id="add-pit-scouting-field">Add Computed Field</button>
+            <h3>Body Sections</h3>
+            <div id="pit-scouting-body"></div>
+            <button class="add-btn" id="add-pit-scouting-section">Add Section</button>
+        </div>
+
+        <div class="tab-content" id="team-summary-content">
+            <h2>Team Summary</h2>
+            <div class="form-group"><label>Year</label><input type="number" id="team-summary-year" value="2025"></div>
+            <div id="team-summary-fields"></div>
+            <button class="add-btn" id="add-team-summary-field">Add Computed Field</button>
+            <h3>Charts</h3>
+            <div id="team-summary-body"></div>
+            <button class="add-btn" id="add-team-summary-chart">Add Chart</button>
+        </div>
+
+        <div class="tab-content" id="export-content">
+            <h2>Export Configuration</h2>
+            <div class="actions">
+                <button id="generate-json">Generate JSON</button>
+                <button id="download-json">Download JSON</button>
+                <button id="load-json">Load from JSON</button>
+                <input type="file" id="json-file" accept=".json" style="display: none;">
+            </div>
+            
+            <div class="json-output" id="json-output"></div>
+        </div>
+        
+        <div class="actions">
+            <button id="prev-tab">Previous</button>
+            <button id="next-tab">Next</button>
+        </div>
+    </div>
+
+    <script>
+        // Current configuration object
+        let config = {
+            theme: {
+                primary: "#0b233f",
+                accent: "#d4af37",
+                bg: "#111111",
+                muted: "#6b6b6b"
+            },
+            limits: {
+                raw_table_cap: 50,
+                max_upload_mb: 8
+            },
+            Home: { body: {} },
+            match_form: {
+                "pre-match_info": {}, auto_period: {}, teleop_period: {}, endgame: {}, misc: {}
+            },
+            pit_form: {},
+            rankings_options: {},
+            match_scouting_data: { computed_fields: {}, body: {} },
+            pit_scouting_data: { computed_fields: {}, body: {} },
+            team_summary: { team_info: {}, computed_fields: {}, body: {} }
+        };
+
+        // Tab management
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const tabNames = ['theme', 'limits', 'home', 'match-form', 'pit-form', 'rankings', 'export'];
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                activateTab(tabId);
+            });
+        });
+        
+        document.getElementById('prev-tab').addEventListener('click', () => {
+            const currentIndex = tabNames.findIndex(name => 
+                document.getElementById(`${name}-content`).classList.contains('active')
+            );
+            if (currentIndex > 0) {
+                activateTab(tabNames[currentIndex - 1]);
+            }
+        });
+        
+        document.getElementById('next-tab').addEventListener('click', () => {
+            const currentIndex = tabNames.findIndex(name => 
+                document.getElementById(`${name}-content`).classList.contains('active')
+            );
+            if (currentIndex < tabNames.length - 1) {
+                activateTab(tabNames[currentIndex + 1]);
+            }
+        });
+        
+        function activateTab(tabId) {
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+            document.getElementById(`${tabId}-content`).classList.add('active');
+        }
+        
+        // Theme configuration
+        const themeInputs = {
+            'primary-color': 'primary',
+            'accent-color': 'accent',
+            'bg-color': 'bg',
+            'muted-color': 'muted'
+        };
+        
+        Object.keys(themeInputs).forEach(inputId => {
+            const input = document.getElementById(inputId);
+            input.addEventListener('change', () => {
+                config.theme[themeInputs[inputId]] = input.value;
+            });
+        });
+        
+        // Limits configuration
+        document.getElementById('raw-table-cap').addEventListener('change', (e) => {
+            config.limits.raw_table_cap = parseInt(e.target.value);
+        });
+        
+        document.getElementById('max-upload-mb').addEventListener('change', (e) => {
+            config.limits.max_upload_mb = parseInt(e.target.value);
+        });
+        
+        // Home page configuration
+        document.getElementById('add-home-section').addEventListener('click', () => {
+            addHomeSection('new_section', 'announcement');
+        });
+        
+        function addHomeSection(key, type) {
+            const sectionId = `home-section-${Date.now()}`;
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'array-item';
+            sectionDiv.id = sectionId;
+            
+            sectionDiv.innerHTML = `
+                <button class="remove-btn" data-section="${sectionId}">×</button>
+                <div class="form-group">
+                    <label>Section Key</label>
+                    <input type="text" class="section-key" value="${key}" placeholder="section_key">
+                </div>
+                <div class="form-group">
+                    <label>Section Type</label>
+                    <select class="section-type">
+                        <option value="announcement" ${type === 'announcement' ? 'selected' : ''}>Announcement</option>
+                        <option value="checklist" ${type === 'checklist' ? 'selected' : ''}>Checklist</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" class="section-title" placeholder="Section Title">
+                </div>
+                <div class="form-group section-description-container">
+                    <label>Description</label>
+                    <textarea class="section-description" placeholder="Section description"></textarea>
+                </div>
+                <div class="form-group section-options-container" style="display: ${type === 'checklist' ? 'block' : 'none'}">
+                    <label>Options (one per line)</label>
+                    <textarea class="section-options" placeholder="Option 1\nOption 2\nOption 3"></textarea>
+                </div>
+            `;
+            
+            document.getElementById('home-sections').appendChild(sectionDiv);
+            
+            // Add event listeners
+            const removeBtn = sectionDiv.querySelector('.remove-btn');
+            removeBtn.addEventListener('click', () => {
+                sectionDiv.remove();
+            });
+            
+            const typeSelect = sectionDiv.querySelector('.section-type');
+            typeSelect.addEventListener('change', (e) => {
+                const optionsContainer = sectionDiv.querySelector('.section-options-container');
+                optionsContainer.style.display = e.target.value === 'checklist' ? 'block' : 'none';
+            });
+        }
+        
+        // Field type selection
+        document.querySelectorAll('.field-type').forEach(typeEl => {
+            typeEl.addEventListener('click', () => {
+                const type = typeEl.getAttribute('data-type');
+                const activeTab = document.querySelector('.tab-content.active').id;
+                
+                if (activeTab === 'home-content') {
+                    addHomeSection(`section_${Date.now()}`, type);
+                } else if (activeTab === 'match-form-content') {
+                    // Determine which section of match form is active
+                    const activeSubsection = document.querySelector('#match-form-content .nested-container h3');
+                    if (activeSubsection) {
+                        const subsection = activeSubsection.textContent.toLowerCase().replace(/\s+/g, '_');
+                        addMatchFormField(subsection, type);
+                    }
+                } else if (activeTab === 'pit-form-content') {
+                    addPitFormField(type);
+                }
+            });
+        });
+        
+        // Match form configuration
+        const sectionIdMap = {
+            "pre-match_information": "pre-match-fields",
+            "auto_period": "auto-period-fields",
+            "auton_period": "auto-period-fields",
+            "teleop_period": "teleop-period-fields",
+            "endgame": "endgame-fields",
+            "endgame_period": "endgame-fields",
+            "miscellaneous": "misc-fields",
+            "misc": "misc-fields"
+        };
+
+        function addMatchFormField(section, type) {
+            const fieldId = `field-${section}-${Date.now()}`;
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'array-item';
+            fieldDiv.id = fieldId;
+
+            let fieldHtml = `
+                <button class="remove-btn" data-field="${fieldId}">×</button>
+                <div class="form-group">
+                    <label>Field Name</label>
+                    <input type="text" class="field-name" placeholder="field_name">
+                </div>
+                <div class="form-group">
+                    <label>Field Type</label>
+                    <select class="field-type-input">
+                        <option ${type === "String" ? "selected" : ""}>String</option>
+                        <option ${type === "Typed Integer" ? "selected" : ""}>Typed Integer</option>
+                        <option ${type === "Integer" ? "selected" : ""}>Integer</option>
+                        <option ${type === "Scoring Object" ? "selected" : ""}>Scoring Object</option>
+                        <option ${type === "Single Choice List" ? "selected" : ""}>Single Choice List</option>
+                        <option ${type === "Single Choice List with Value" ? "selected" : ""}>Single Choice List with Value</option>
+                        <option ${type === "Single Choice List with Image" ? "selected" : ""}>Single Choice List with Image</option>
+                        <option ${type === "Single Choice with Image" ? "selected" : ""}>Single Choice with Image</option>
+                        <option ${type === "Multiple Choice List" ? "selected" : ""}>Multiple Choice List</option>
+                        <option ${type === "Multiple Choice List with Value" ? "selected" : ""}>Multiple Choice List with Value</option>
+                        <option ${type === "Boolean" ? "selected" : ""}>Boolean</option>
+                        <option ${type === "Boolean with Value" ? "selected" : ""}>Boolean with Value</option>
+                    </select>
+                </div>
+            `;
+
+            // Add initial inputs based on type
+            if (type === "Scoring Object") {
+                fieldHtml += `
+                    <div class="form-group">
+                        <label>Made (Boolean)</label>
+                        <input type="checkbox" class="field-made">
+                        <label>Missed (Boolean)</label>
+                        <input type="checkbox" class="field-missed">
+                        <label>Value</label>
+                        <input type="number" class="field-value" value="0">
+                    </div>
+                `;
+            }
+
+            if (type === 'Single Choice List' || type === 'Multiple Choice List' || 
+                type === 'Single Choice List with Value' || type === 'Multiple Choice List with Value' ||
+                type === 'Single Choice List with Image') {
+                fieldHtml += `
+                    <div class="form-group">
+                        <label>Options (comma separated)</label>
+                        <input type="text" class="field-options" placeholder="Option1, Option2, Option3">
+                    </div>
+                `;
+            }
+
+            if (type === 'Single Choice with Image') {
+                fieldHtml += `
+                    <div class="form-group">
+                        <label>Options (comma separated)</label>
+                        <input type="text" class="field-options" placeholder="Option1, Option2, Option3">
+                    </div>
+                    <div class="form-group">
+                        <label>Image Path</label>
+                        <input type="text" class="field-image" placeholder="/path/to/image.jpg">
+                    </div>
+                `;
+            }
+
+            if (type === 'Boolean with Value' || type === 'Single Choice List with Value' || type === 'Multiple Choice List with Value') {
+                fieldHtml += `
+                    <div class="form-group">
+                        <label>Value(s)</label>
+                        <input type="text" class="field-value" placeholder="e.g. 0,2,4,6">
+                    </div>
+                `;
+            }
+
+            fieldDiv.innerHTML = fieldHtml;
+
+            // Use mapped ID
+            const container = document.getElementById(sectionIdMap[section]);
+            if (container) {
+                container.appendChild(fieldDiv);
+            }
+
+            const typeSelect = fieldDiv.querySelector('.field-type-input');
+            typeSelect.addEventListener('change', () => {
+                // Remove old extras
+                fieldDiv.querySelectorAll('.extra-input').forEach(el => el.remove());
+
+                const selected = typeSelect.value;
+
+                // Options (for choice types)
+                if (selected === "Single Choice List" || selected === "Multiple Choice List" ||
+                    selected === "Single Choice List with Value" || selected === "Multiple Choice List with Value" ||
+                    selected === "Single Choice List with Image") {
+                    const extra = document.createElement('div');
+                    extra.className = 'form-group extra-input';
+                    extra.innerHTML = `
+                        <label>Options (comma separated)</label>
+                        <input type="text" class="field-options" placeholder="Option1, Option2, Option3">
+                    `;
+                    fieldDiv.appendChild(extra);
+                }
+
+                // Image path
+                if (selected === "Single Choice with Image" || selected === "Single Choice List with Image") {
+                    const extra = document.createElement('div');
+                    extra.className = 'form-group extra-input';
+                    extra.innerHTML = `
+                        <label>Image Path</label>
+                        <input type="text" class="field-image" placeholder="/path/to/image.jpg">
+                    `;
+                    fieldDiv.appendChild(extra);
+                }
+
+                if (selected === "Scoring Object") {
+                    const extra = document.createElement('div');
+                    extra.className = 'form-group extra-input';
+                    extra.innerHTML = `
+                        <div class="form-group">
+                            <label>Made (Boolean)</label>
+                            <input type="checkbox" class="field-made">
+                            <label>Missed (Boolean)</label>
+                            <input type="checkbox" class="field-missed">
+                            <label>Value</label>
+                            <input type="number" class="field-value" value="0">
+                        </div>
+                    `;
+                    fieldDiv.appendChild(extra);
+                }
+
+                // Value field (Boolean with Value OR List with Value types)
+                if (selected === "Boolean with Value" ||
+                    selected === "Single Choice List with Value" ||
+                    selected === "Multiple Choice List with Value") {
+                    const extra = document.createElement('div');
+                    extra.className = 'form-group extra-input';
+                    extra.innerHTML = `
+                        <label>Value(s)</label>
+                        <input type="text" class="field-value" placeholder="e.g. 0,2,4,6">
+                    `;
+                    fieldDiv.appendChild(extra);
+                }
+            });
+
+            // Remove button
+            const removeBtn = fieldDiv.querySelector('.remove-btn');
+            removeBtn.addEventListener('click', () => {
+                fieldDiv.remove();
+            });
+        }
+        
+        // Add event listeners for match form add buttons
+        document.getElementById('add-pre-match-field').addEventListener('click', () => {
+            addMatchFormField('pre-match_information', 'String');
+        });
+        
+        document.getElementById('add-auto-period-field').addEventListener('click', () => {
+            addMatchFormField('auto_period', 'Boolean with Value');
+        });
+        
+        document.getElementById('add-teleop-period-field').addEventListener('click', () => {
+            addMatchFormField('teleop_period', 'Boolean with Value');
+        });
+        
+        document.getElementById('add-endgame-field').addEventListener('click', () => {
+            addMatchFormField('endgame_period', 'Single Choice List');
+        });
+        
+        document.getElementById('add-misc-field').addEventListener('click', () => {
+            addMatchFormField('miscellaneous', 'String');
+        });
+        
+        // Pit form configuration
+        function addPitFormField(type) {
+            const fieldId = `pit-field-${Date.now()}`;
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'array-item';
+            fieldDiv.id = fieldId;
+            
+            let fieldHtml = `
+                <button class="remove-btn" data-field="${fieldId}">×</button>
+                <div class="form-group">
+                    <label>Field Name</label>
+                    <input type="text" class="field-name" placeholder="field_name">
+                </div>
+                <div class="form-group">
+                    <label>Field Type</label>
+                    <input type="text" class="field-type-input" value="${type}" readonly>
+                </div>
+            `;
+            
+            // Add specific inputs based on field type
+            if (type === 'Single Choice List' || type === 'Multiple Choice List') {
+                fieldHtml += `
+                    <div class="form-group">
+                        <label>Options (comma separated)</label>
+                        <input type="text" class="field-options" placeholder="Option1, Option2, Option3">
+                    </div>
+                `;
+            }
+            
+            fieldDiv.innerHTML = fieldHtml;
+            document.getElementById('pit-fields').appendChild(fieldDiv);
+            
+            // Add event listener for remove button
+            const removeBtn = fieldDiv.querySelector('.remove-btn');
+            removeBtn.addEventListener('click', () => {
+                fieldDiv.remove();
+            });
+        }
+
+        function addComputedField(containerId) {
+        const fieldId = `comp-field-${Date.now()}`;
+        const fieldDiv = document.createElement("div");
+        fieldDiv.className = "array-item";
+        fieldDiv.id = fieldId;
+
+        fieldDiv.innerHTML = `
+            <button class="remove-btn" data-field="${fieldId}">×</button>
+            <div class="form-group">
+            <label>Field Name</label>
+            <input type="text" class="field-name" placeholder="field_name">
+            </div>
+            <div class="form-group">
+            <label>Expression</label>
+            <input type="text" class="field-expression" placeholder="SQL/CASE/json_extract...">
+            </div>
+        `;
+
+        document.getElementById(containerId).appendChild(fieldDiv);
+        fieldDiv.querySelector(".remove-btn").addEventListener("click", () => fieldDiv.remove());
+        }
+
+    document.getElementById("add-match-scouting-section")
+        .addEventListener("click", () => addBodySection("match-scouting-body"));
+    document.getElementById("add-pit-scouting-section")
+        .addEventListener("click", () => addBodySection("pit-scouting-body"));
+    document.getElementById("add-team-summary-chart")
+        .addEventListener("click", () => addChart("team-summary-body"));
+        
+        document.getElementById('add-pit-field').addEventListener('click', () => {
+            addPitFormField('String');
+        });
+        
+        // Rankings configuration
+        document.getElementById('add-ranking-option').addEventListener('click', () => {
+            addRankingOption();
+        });
+        
+        function addRankingOption() {
+            const optionId = `ranking-${Date.now()}`;
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'array-item';
+            optionDiv.id = optionId;
+            
+            optionDiv.innerHTML = `
+                <button class="remove-btn" data-option="${optionId}">×</button>
+                <div class="form-group">
+                    <label>Option Name</label>
+                    <input type="text" class="option-name" placeholder="Average Points">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" class="option-description" placeholder="Description of this ranking option">
+                </div>
+                <div class="form-group">
+                    <label>SQL Query</label>
+                    <textarea class="option-sql" placeholder="SELECT ..." rows="4"></textarea>
+                </div>
+            `;
+            
+            document.getElementById('rankings-options').appendChild(optionDiv);
+            
+            // Add event listener for remove button
+            const removeBtn = optionDiv.querySelector('.remove-btn');
+            removeBtn.addEventListener('click', () => {
+                optionDiv.remove();
+            });
+        }
+        
+        // Export configuration
+        document.getElementById('generate-json').addEventListener('click', generateJSON);
+        document.getElementById('download-json').addEventListener('click', downloadJSON);
+        document.getElementById('load-json').addEventListener('click', () => {
+            document.getElementById('json-file').click();
+        });
+        
+        document.getElementById('json-file').addEventListener('change', loadJSON);
+        
+function generateJSON() {
+    // Update config with current values
+    config.theme.primary = document.getElementById('primary-color').value;
+    config.theme.accent = document.getElementById('accent-color').value;
+    config.theme.bg = document.getElementById('bg-color').value;
+    config.theme.muted = document.getElementById('muted-color').value;
+    
+    config.limits.raw_table_cap = parseInt(document.getElementById('raw-table-cap').value);
+    config.limits.max_upload_mb = parseInt(document.getElementById('max-upload-mb').value);
+    
+    // Home sections
+    config.Home.body = {};
+    document.querySelectorAll('#home-sections .array-item').forEach(section => {
+        const key = section.querySelector('.section-key').value;
+        const type = section.querySelector('.section-type').value;
+        const title = section.querySelector('.section-title').value;
+        const description = section.querySelector('.section-description').value;
+        
+        config.Home.body[key] = {type, title};
+        
+        if (description) {
+            config.Home.body[key].description = description;
+        }
+        
+        if (type === 'checklist') {
+            const options = section.querySelector('.section-options').value.split('\n')
+                .filter(opt => opt.trim() !== '');
+            config.Home.body[key].options = options;
+        }
+    });
+    
+    // Match form
+    config.match_form = {
+        "pre-match_info": {},
+        auto_period: {},
+        teleop_period: {},
+        endgame: {},
+        misc: {}
+    };
+    
+    // Process pre-match fields
+    document.querySelectorAll('#pre-match-fields .array-item').forEach(field => {
+        processMatchFormField(field, config.match_form["pre-match_info"]);
+    });
+    
+    // Process auto period fields
+    document.querySelectorAll('#auto-period-fields .array-item').forEach(field => {
+        processMatchFormField(field, config.match_form.auto_period);
+    });
+    
+    // Process teleop period fields
+    document.querySelectorAll('#teleop-period-fields .array-item').forEach(field => {
+        processMatchFormField(field, config.match_form.teleop_period);
+    });
+    
+    // Process endgame fields
+    document.querySelectorAll('#endgame-fields .array-item').forEach(field => {
+        processMatchFormField(field, config.match_form.endgame);
+    });
+    
+    // Process misc fields
+    document.querySelectorAll('#misc-fields .array-item').forEach(field => {
+        processMatchFormField(field, config.match_form.misc);
+    });
+    
+    // Pit form
+    config.pit_form = {fields: {}};
+    document.querySelectorAll('#pit-fields .array-item').forEach(field => {
+        const name = field.querySelector('.field-name').value;
+        const type = field.querySelector('.field-type-input').value;
+        
+        config.pit_form.fields[name] = {type};
+        
+        if (type === 'Single Choice List' || type === 'Multiple Choice List') {
+            const options = field.querySelector('.field-options').value.split(',')
+                .map(opt => opt.trim())
+                .filter(opt => opt !== '');
+            config.pit_form.fields[name].options = options;
+        }
+    });
+    
+    // Rankings options
+    config.rankings_options = {};
+    document.querySelectorAll('#rankings-options .array-item').forEach(option => {
+        const name = option.querySelector('.option-name').value;
+        const description = option.querySelector('.option-description').value;
+        const sql = option.querySelector('.option-sql').value;
+        
+        config.rankings_options[name] = {description, sql};
+    });
+    
+    // Match scouting computed fields
+    config.match_scouting_data.computed_fields = {};
+    document.querySelectorAll("#match-scouting-fields .array-item").forEach(field => {
+        const name = field.querySelector(".field-name").value;
+        const expr = field.querySelector(".field-expression").value;
+        if (name && expr) config.match_scouting_data.computed_fields[name] = expr;
+    });
+    
+    // Pit scouting computed fields
+    config.pit_scouting_data.computed_fields = {};
+    document.querySelectorAll("#pit-scouting-fields .array-item").forEach(field => {
+        const name = field.querySelector(".field-name").value;
+        const expr = field.querySelector(".field-expression").value;
+        if (name && expr) config.pit_scouting_data.computed_fields[name] = expr;
+    });
+    
+    // Team summary
+    config.team_summary.team_info.year = parseInt(document.getElementById("team-summary-year").value);
+    config.team_summary.computed_fields = {};
+    document.querySelectorAll("#team-summary-fields .array-item").forEach(field => {
+        const name = field.querySelector(".field-name").value;
+        const expr = field.querySelector(".field-expression").value;
+        if (name && expr) config.team_summary.computed_fields[name] = expr;
+    });
+
+        // Match scouting body
+        config.match_scouting_data.body = { table: { title: "Match Scouting Data", sections: [] }};
+        document.querySelectorAll("#match-scouting-body .array-item").forEach(sec=>{
+            const name = sec.querySelector(".section-name").value;
+            const fields = sec.querySelector(".section-fields").value.split(",").map(f=>f.trim()).filter(f=>f);
+            if (name && fields.length) {
+                config.match_scouting_data.body.table.sections.push({ name, fields });
+            }
+        });
+
+        // Pit scouting body
+        config.pit_scouting_data.body = { table: { title: "Pit Scouting Data", sections: [] }};
+        document.querySelectorAll("#pit-scouting-body .array-item").forEach(sec=>{
+            const name = sec.querySelector(".section-name").value;
+            const fields = sec.querySelector(".section-fields").value.split(",").map(f=>f.trim()).filter(f=>f);
+            if (name && fields.length) {
+                config.pit_scouting_data.body.table.sections.push({ name, fields });
+            }
+        });
+
+        // Team summary body (charts)
+        config.team_summary.body = { charts: {} };
+        document.querySelectorAll("#team-summary-body .array-item").forEach(chart=>{
+            const name = chart.querySelector(".chart-name").value;
+            if (name) {
+                // Parse Y as a comma-separated list
+                const yValue = chart.querySelector(".chart-y").value;
+                const yList = yValue.split(',').map(item => item.trim()).filter(item => item);
+                
+                config.team_summary.body.charts[name] = {
+                    x_label: chart.querySelector(".chart-x_label").value,
+                    y_label: chart.querySelector(".chart-y_label").value,
+                    backgroundColor: chart.querySelector(".chart-bg").value,
+                    borderColor: chart.querySelector(".chart-border").value,
+                    x: chart.querySelector(".chart-x").value,
+                    y: yList, // This is now an array, not a string
+                    graph: chart.querySelector(".chart-graph").value
+                };
+            }
+        });
+    
+    // Display the JSON
+    const output = document.getElementById('json-output');
+    output.textContent = JSON.stringify(config, null, 2);
+    output.style.display = 'block';
+    
+    return config;
+}
+
+function processMatchFormField(field, sectionObj) {
+    const name = field.querySelector('.field-name').value;
+    const type = field.querySelector('.field-type-input').value;
+    
+    if (!name || !type) return; // Skip if no name or type
+    
+    sectionObj[name] = {type};
+    
+    // Handle different field types
+    if (type === 'Scoring Object') {
+        const madeInput = field.querySelector('.field-made');
+        const missedInput = field.querySelector('.field-missed');
+        const valueInput = field.querySelector('.field-value');
+        
+        if (madeInput) sectionObj[name].Made = madeInput.checked;
+        if (missedInput) sectionObj[name].Missed = missedInput.checked;
+        if (valueInput) sectionObj[name].Value = parseInt(valueInput.value) || 0;
+    } 
+    else if (type === 'Single Choice List' || type === 'Multiple Choice List' || 
+             type === 'Single Choice List with Value' || type === 'Multiple Choice List with Value' ||
+             type === 'Single Choice List with Image' || type === "Single Choice with Image") {
+        
+        const optionsInput = field.querySelector('.field-options');
+        if (optionsInput && optionsInput.value) {
+            const options = optionsInput.value.split(',')
+                .map(opt => opt.trim())
+                .filter(opt => opt !== '');
+            sectionObj[name].options = options;
+        }
+        
+        if (type === 'Single Choice List with Image' || type === 'Single Choice with Image') {
+            const imageInput = field.querySelector('.field-image');
+            if (imageInput && imageInput.value) {
+                sectionObj[name].image = imageInput.value;
+            }
+        }
+        
+        if (type === 'Single Choice List with Value' || type === 'Multiple Choice List with Value') {
+            const valueInput = field.querySelector('.field-value');
+            if (valueInput && valueInput.value) {
+                const values = valueInput.value.split(',')
+                    .map(val => val.trim())
+                    .filter(val => val !== '')
+                    .map(val => isNaN(val) ? val : parseInt(val));
+                sectionObj[name].values = values;
+            }
+        }
+    }
+
+    else if (type === 'Single Choice with Image') {
+        const imageInput = field.querySelector('.field-image');
+        if (imageInput && imageInput.value) {
+            sectionObj[name].image = imageInput.value;
+        }
+        
+        const optionsInput = field.querySelector('.field-options');
+        if (optionsInput && optionsInput.value) {
+            const options = optionsInput.value.split(',')
+                .map(opt => opt.trim())
+                .filter(opt => opt !== '');
+            sectionObj[name].options = options;
+        }
+    }
+}
+
+
+        function downloadJSON() {
+            const config = generateJSON();
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "config.json";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+function loadJSON(evt) {
+    const file = evt.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const loaded = JSON.parse(e.target.result);
+            config = loaded; // update global
+
+            // Clear existing content
+            document.getElementById("home-sections").innerHTML = "";
+            document.getElementById("pre-match-fields").innerHTML = "";
+            document.getElementById("auto-period-fields").innerHTML = "";
+            document.getElementById("teleop-period-fields").innerHTML = "";
+            document.getElementById("endgame-fields").innerHTML = "";
+            document.getElementById("misc-fields").innerHTML = "";
+            document.getElementById("pit-fields").innerHTML = "";
+            document.getElementById("rankings-options").innerHTML = "";
+            document.getElementById("match-scouting-fields").innerHTML = "";
+            document.getElementById("pit-scouting-fields").innerHTML = "";
+            document.getElementById("team-summary-fields").innerHTML = "";
+            document.getElementById("match-scouting-body").innerHTML = "";
+            document.getElementById("pit-scouting-body").innerHTML = "";
+            document.getElementById("team-summary-body").innerHTML = "";
+
+            /* ------------------------
+               Theme & Limits
+            ------------------------- */
+            if (loaded.theme) {
+                document.getElementById("primary-color").value = loaded.theme.primary || "#0b233f";
+                document.getElementById("accent-color").value = loaded.theme.accent || "#d4af37";
+                document.getElementById("bg-color").value = loaded.theme.bg || "#111111";
+                document.getElementById("muted-color").value = loaded.theme.muted || "#6b6b6b";
+            }
+            if (loaded.limits) {
+                document.getElementById("raw-table-cap").value = loaded.limits.raw_table_cap || 50;
+                document.getElementById("max-upload-mb").value = loaded.limits.max_upload_mb || 8;
+            }
+
+            /* ------------------------
+               Home
+            ------------------------- */
+            const homeData = loaded.home || loaded.Home;
+            if (homeData?.body) {
+                Object.entries(homeData.body).forEach(([key, sec]) => {
+                    addHomeSection(key, sec.type);
+                    const sectionDiv = document.querySelector("#home-sections .array-item:last-child");
+                    if (sectionDiv) {
+                        sectionDiv.querySelector(".section-key").value = key;
+                        sectionDiv.querySelector(".section-title").value = sec.title || "";
+                        if (sec.description) sectionDiv.querySelector(".section-description").value = sec.description;
+                        if (sec.options) sectionDiv.querySelector(".section-options").value = sec.options.join("\n");
+                    }
+                });
+            }
+
+            /* ------------------------
+               Match form
+            ------------------------- */
+            const matchData = loaded.match_form || loaded.match_scouting;
+            if (matchData) {
+                const preMatchKey = matchData["pre-match_info"] || matchData["pre-match_information"];
+                if (preMatchKey) Object.entries(preMatchKey).forEach(([name, def]) => loadFieldIntoMatch("pre-match_information", name, def));
+
+                const autoKey = matchData.auton_period || matchData.auto_period;
+                if (autoKey) Object.entries(autoKey).forEach(([name, def]) => loadFieldIntoMatch("auton_period", name, def));
+
+                if (matchData.teleop_period)
+                    Object.entries(matchData.teleop_period).forEach(([name, def]) => loadFieldIntoMatch("teleop_period", name, def));
+
+                const endgameKey = matchData.endgame_period || matchData.endgame;
+                if (endgameKey) Object.entries(endgameKey).forEach(([name, def]) => loadFieldIntoMatch("endgame_period", name, def));
+
+                const miscKey = matchData.miscellaneous || matchData.misc;
+                if (miscKey) Object.entries(miscKey).forEach(([name, def]) => loadFieldIntoMatch("miscellaneous", name, def));
+            }
+
+            /* ------------------------
+               Pit form
+            ------------------------- */
+            const pitData = (loaded.pit_form && loaded.pit_form.fields) || loaded.pit_form;
+            if (pitData) {
+                Object.entries(pitData).forEach(([name, field]) => {
+                    if (field.type) {
+                        addPitFormField(field.type);
+                        const fieldDiv = document.querySelector("#pit-fields .array-item:last-child");
+                        if (fieldDiv) {
+                            fieldDiv.querySelector(".field-name").value = name;
+                            if (field.options) fieldDiv.querySelector(".field-options").value = field.options.join(",");
+                        }
+                    }
+                });
+            }
+
+            /* ------------------------
+               Rankings
+            ------------------------- */
+            if (loaded.rankings_options) {
+                Object.entries(loaded.rankings_options).forEach(([name, option]) => {
+                    addRankingOption();
+                    const optionDiv = document.querySelector("#rankings-options .array-item:last-child");
+                    if (optionDiv) {
+                        optionDiv.querySelector(".option-name").value = name;
+                        optionDiv.querySelector(".option-description").value = option.description || "";
+                        optionDiv.querySelector(".option-sql").value = option.sql || "";
+                    }
+                });
+            }
+
+            /* ------------------------
+               Computed Fields
+            ------------------------- */
+            if (loaded.match_scouting_data?.computed_fields) {
+                Object.entries(loaded.match_scouting_data.computed_fields).forEach(([name, expr]) => {
+                    addComputedField("match-scouting-fields");
+                    const fieldDiv = document.querySelector("#match-scouting-fields .array-item:last-child");
+                    if (fieldDiv) {
+                        fieldDiv.querySelector(".field-name").value = name;
+                        fieldDiv.querySelector(".field-expression").value = expr;
+                    }
+                });
+            }
+            if (loaded.pit_scouting_data?.computed_fields) {
+                Object.entries(loaded.pit_scouting_data.computed_fields).forEach(([name, expr]) => {
+                    addComputedField("pit-scouting-fields");
+                    const fieldDiv = document.querySelector("#pit-scouting-fields .array-item:last-child");
+                    if (fieldDiv) {
+                        fieldDiv.querySelector(".field-name").value = name;
+                        fieldDiv.querySelector(".field-expression").value = expr;
+                    }
+                });
+            }
+            if (loaded.team_summary?.computed_fields) {
+                Object.entries(loaded.team_summary.computed_fields).forEach(([name, expr]) => {
+                    addComputedField("team-summary-fields");
+                    const fieldDiv = document.querySelector("#team-summary-fields .array-item:last-child");
+                    if (fieldDiv) {
+                        fieldDiv.querySelector(".field-name").value = name;
+                        fieldDiv.querySelector(".field-expression").value = expr;
+                    }
+                });
+            }
+
+            /* ------------------------
+               Body Sections + Charts
+            ------------------------- */
+            if (loaded.match_scouting_data?.body?.table?.sections) {
+                loaded.match_scouting_data.body.table.sections.forEach(sec => {
+                    addBodySection("match-scouting-body");
+                    const div = document.querySelector("#match-scouting-body .array-item:last-child");
+                    div.querySelector(".section-name").value = sec.name || "";
+                    div.querySelector(".section-fields").value = (sec.fields || []).join(", ");
+                });
+            }
+            if (loaded.pit_scouting_data?.body?.table?.sections) {
+                loaded.pit_scouting_data.body.table.sections.forEach(sec => {
+                    addBodySection("pit-scouting-body");
+                    const div = document.querySelector("#pit-scouting-body .array-item:last-child");
+                    div.querySelector(".section-name").value = sec.name || "";
+                    div.querySelector(".section-fields").value = (sec.fields || []).join(", ");
+                });
+            }
+            if (loaded.team_summary?.body?.charts) {
+                Object.entries(loaded.team_summary.body.charts).forEach(([chartName, obj]) => {
+                    addChart("team-summary-body");
+                    const div = document.querySelector("#team-summary-body .array-item:last-child");
+                    div.querySelector(".chart-name").value = chartName;
+                    div.querySelector(".chart-x_label").value = obj.x_label || "";
+                    div.querySelector(".chart-y_label").value = obj.y_label || "";
+                    div.querySelector(".chart-bg").value = obj.backgroundColor || "";
+                    div.querySelector(".chart-border").value = obj.borderColor || "";
+                    div.querySelector(".chart-x").value = obj.x || "";
+                    
+                    // Handle Y as array (convert to comma-separated string for input)
+                    if (Array.isArray(obj.y)) {
+                        div.querySelector(".chart-y").value = obj.y.join(", ");
+                    } else {
+                        div.querySelector(".chart-y").value = obj.y || "";
+                    }
+                    
+                    div.querySelector(".chart-graph").value = obj.graph || "";
+                });
+            }
+            /* ------------------------
+               Team Info
+            ------------------------- */
+            if (loaded.team_summary?.team_info?.year) {
+                document.getElementById("team-summary-year").value = loaded.team_summary.team_info.year;
+            }
+
+            alert("Config loaded successfully!");
+        } catch (error) {
+            alert("Error loading config: " + error.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+
+        function loadFieldIntoMatch(section, name, def) {
+            addMatchFormField(section, def.type);
+            const fieldDiv = document.querySelector(`#${sectionIdMap[section]} .array-item:last-child`);
+
+            if (fieldDiv) {
+                fieldDiv.querySelector(".field-name").value = name;
+                fieldDiv.querySelector(".field-type-input").value = def.type;
+
+                if (def.type === "Scoring Object") {
+                    if (def.Made) fieldDiv.querySelector(".field-made").checked = true;
+                    if (def.Missed) fieldDiv.querySelector(".field-missed").checked = true;
+                    if (def.value !== undefined) {
+                        const valueInput = fieldDiv.querySelector(".field-value");
+                        if (valueInput) valueInput.value = def.value;
+                    }
+                }
+
+                if (def.options && fieldDiv.querySelector(".field-options")) {
+                    fieldDiv.querySelector(".field-options").value = def.options.join(",");
+                }
+                if (def.image && fieldDiv.querySelector(".field-image")) {
+                    fieldDiv.querySelector(".field-image").value = def.image;
+                }
+                if (def.value && def.type !== "Scoring Object" && fieldDiv.querySelector(".field-value")) {
+                    if (Array.isArray(def.value)) {
+                        fieldDiv.querySelector(".field-value").value = def.value.join(",");
+                    } else {
+                        fieldDiv.querySelector(".field-value").value = def.value;
+                    }
+                }
+            }
+        }
+        
+        // Initialize with some default content
+        window.addEventListener('DOMContentLoaded', () => {
+            // Don't add default content on load to keep it clean
+        });
+
+        function addBodySection(containerId) {
+            const sectionId = `section-${Date.now()}`;
+            const div = document.createElement("div");
+            div.className = "array-item";
+            div.id = sectionId;
+            div.innerHTML = `
+                <button class="remove-btn" data-field="${sectionId}">×</button>
+                <div class="form-group"><label>Section Name</label><input type="text" class="section-name"></div>
+                <div class="form-group"><label>Fields (comma separated)</label><input type="text" class="section-fields"></div>
+            `;
+            document.getElementById(containerId).appendChild(div);
+            div.querySelector(".remove-btn").addEventListener("click", ()=>div.remove());
+        }
+
+function addChart(containerId) {
+    const chartId = `chart-${Date.now()}`;
+    const div = document.createElement("div");
+    div.className = "array-item";
+    div.id = chartId;
+    div.innerHTML = `
+        <button class="remove-btn" data-field="${chartId}">×</button>
+        <div class="form-group"><label>Chart Name</label><input type="text" class="chart-name"></div>
+        <div class="form-group"><label>X Label</label><input type="text" class="chart-x_label"></div>
+        <div class="form-group"><label>Y Label</label><input type="text" class="chart-y_label"></div>
+        <div class="form-group"><label>Background Color</label><input type="text" class="chart-bg"></div>
+        <div class="form-group"><label>Border Color</label><input type="text" class="chart-border"></div>
+        <div class="form-group"><label>X (single field)</label><input type="text" class="chart-x"></div>
+        <div class="form-group"><label>Y (comma-separated fields)</label><input type="text" class="chart-y"></div>
+        <div class="form-group"><label>Graph Type</label><input type="text" class="chart-graph" placeholder="bar/line/pie"></div>
+    `;
+    document.getElementById(containerId).appendChild(div);
+    div.querySelector(".remove-btn").addEventListener("click", ()=>div.remove());
+}
+
+    </script>
+</body>
+</html>
