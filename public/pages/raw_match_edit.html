@@ -4,6 +4,7 @@
 <title>Raw Match Data Edit</title>
 <link rel="stylesheet" href="/css/style.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/js/auth.js"></script>
 </head>
 <body>
 <div class="mobile-nav">
@@ -84,21 +85,35 @@ document.addEventListener('touchmove', function(event) {
   <a href="/pages/config_creator.html">Config Creator</a>
 </nav>
 <div class="container">
+  <div class="container admin-only"></div>
   <h1>Raw Match Data Edit</h1>
   <div class="form-row"><label>Show</label><div class="form-controls"><input id="limit" type="number" value="50"/><button id="load" class="btn">Load</button></div></div>
   <div class="form-row"><a class="btn" href="/api/export/matches.csv">Export CSV</a></div>
   <table id="tbl" class="table"></table>
   <div class="center"><button id="more" class="btn">Load More</button></div>
+  </div>
 </div>
 <footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
 
 <script>
 let offset = 0;
 function jsonArea(obj){ const ta=document.createElement('textarea'); ta.value=JSON.stringify(obj,null,2); ta.style.width='100%'; ta.rows=8; return ta; }
+
+// Get auth token from localStorage and create headers
+function getAuthHeaders() {
+    const token = localStorage.getItem('authToken');
+    return token ? { 'Authorization': token } : {};
+}
+
 async function load(reset){
   const limit = Number(document.getElementById('limit').value||50);
   if (reset){ offset = 0; document.getElementById('tbl').innerHTML=''; }
-  const rows = await fetch(`/api/matches?limit=${limit}&offset=${offset}`).then(r=>r.json());
+  
+  // Add Authorization header to the request
+  const rows = await fetch(`/api/matches?limit=${limit}&offset=${offset}`, {
+    headers: getAuthHeaders()
+  }).then(r=>r.json());
+  
   const tbl = document.getElementById('tbl');
   if (!tbl.querySelector('th')){
     const head = document.createElement('tr');
@@ -116,12 +131,25 @@ async function load(reset){
     const save = document.createElement('button'); save.className='btn'; save.textContent='Save';
     save.onclick = async ()=>{
       const body = { pre_match_json: JSON.parse(pre.value), auto_json: JSON.parse(auto.value), teleop_json: JSON.parse(tele.value), endgame_json: JSON.parse(endg.value), misc_json: JSON.parse(misc.value) };
-      await fetch(`/api/matches/${r.id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      await fetch(`/api/matches/${r.id}`, {
+        method:'PUT', 
+        headers: {
+          'Content-Type':'application/json',
+          ...getAuthHeaders()  // Add auth header
+        }, 
+        body: JSON.stringify(body)
+      });
       save.textContent='Saved';
       setTimeout(()=>save.textContent='Save',1000);
     };
     const del = document.createElement('button'); del.className='btn btn-red'; del.textContent='Delete';
-    del.onclick = async ()=>{ await fetch(`/api/matches/${r.id}`, {method:'DELETE'}); tr.remove(); };
+    del.onclick = async ()=>{ 
+      await fetch(`/api/matches/${r.id}`, {
+        method:'DELETE',
+        headers: getAuthHeaders()  // Add auth header
+      }); 
+      tr.remove(); 
+    };
     ops.append(save, del);
     tr.innerHTML = `<td>${r.id}</td><td>${r.created_at||''}</td>`;
     const tds = ['pre','auto','tele','endg','misc'].map(()=>document.createElement('td'));

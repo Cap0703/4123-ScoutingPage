@@ -9,6 +9,9 @@ from datetime import datetime
 import subprocess
 import sys
 import threading
+import hashlib
+import secrets
+from functools import wraps
 
 app = Flask(__name__)
 CORS(app)
@@ -34,6 +37,8 @@ def get_db_connection():
 
 def init_db():
     conn = get_db_connection()
+    
+    # Create all tables in a single function
     conn.execute('''
         CREATE TABLE IF NOT EXISTS matches(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,10 +69,324 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS users(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'scout',
+            auth_token TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create default admin user if none exists
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM users WHERE role = "admin"')
+    admin_count = cursor.fetchone()[0]
+    
+    if admin_count == 0:
+        # Default admin: username=admin, password=admin123
+        password_hash = hashlib.sha256('admin123'.encode()).hexdigest()
+        cursor.execute(
+            'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+            ('admin', password_hash, 'admin')
+        )
+        print("Created default admin user: admin/admin123")
+    
     conn.commit()
     conn.close()
 
+# Initialize the database when the server starts
 init_db()
+
+def login_required(role="scout"):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            auth_header = request.headers.get('Authorization')
+            if not auth_header:
+                return jsonify({'error': 'Authentication required'}), 401
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM users WHERE auth_token = ?', (auth_header,))
+            user = cursor.fetchone()
+            conn.close()
+            
+            if not user:
+                return jsonify({'error': 'Invalid token'}), 401
+            user_role = user['role']
+            if role == "admin" and user_role != "admin":
+                return jsonify({'error': 'Admin access required'}), 403
+                
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+#############################################################################
+
+
+
+
+
+
+
+
+
+# In server.py - make sure these endpoints are correct:
+
+@app.route('/api/users', methods=['POST'])
+@login_required(role="admin")
+def create_user():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        role = data.get('role', 'scout')
+        
+        if not username or not password:
+            return jsonify({'error': 'Username and password required'}), 400
+        
+        # Hash the password
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+                (username, password_hash, role)
+            )
+            conn.commit()
+            user_id = cursor.lastrowid
+            conn.close()
+            
+            return jsonify({'message': 'User created successfully', 'user_id': user_id})
+        except sqlite3.IntegrityError:
+            conn.close()
+            return jsonify({'error': 'Username already exists'}), 400
+    except Exception as e:
+        return jsonify({'error': 'User creation failed', 'details': str(e)}), 500
+
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+@login_required(role="admin")
+def delete_user(user_id):
+    try:
+        # Prevent deleting your own account
+        auth_header = request.headers.get('Authorization')
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM users WHERE auth_token = ?', (auth_header,))
+        current_user = cursor.fetchone()
+        
+        if current_user and current_user['id'] == user_id:
+            conn.close()
+            return jsonify({'error': 'Cannot delete your own account'}), 400
+        
+        cursor.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'User deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': 'User deletion failed', 'details': str(e)}), 500
+
+@app.route('/api/users', methods=['GET'])
+@login_required(role="admin")
+def get_users():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, username, role, created_at FROM users ORDER BY username')
+        users = cursor.fetchall()
+        conn.close()
+        
+        return jsonify([dict(user) for user in users])
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch users', 'details': str(e)}), 500
+
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        print(f"Login attempt: username={username}, password={password}")  # DEBUG
+        
+        if not username or not password:
+            return jsonify({'error': 'Username and password required'}), 400
+        
+        # Hash the password
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT id, username, role FROM users WHERE username = ? AND password_hash = ?',
+            (username, password_hash)
+        )
+        user = cursor.fetchone()
+        conn.close()
+        
+        print(f"User found: {user}")  # DEBUG
+        
+        if not user:
+            return jsonify({'error': 'Invalid credentials'}), 401
+        
+        # Generate auth token
+        auth_token = secrets.token_hex(16)
+        
+        # Store token in database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET auth_token = ? WHERE id = ?',
+            (auth_token, user['id'])
+        )
+        conn.commit()
+        conn.close()
+        
+        print(f"Login successful, token: {auth_token}")  # DEBUG
+        
+        return jsonify({
+            'message': 'Login successful',
+            'token': auth_token,
+            'user': {
+                'id': user['id'],
+                'username': user['username'],
+                'role': user['role']
+            }
+        })
+    except Exception as e:
+        print(f"Login error: {e}")  # DEBUG
+        return jsonify({'error': 'Login failed', 'details': str(e)}), 500
+
+@app.route('/api/register', methods=['POST'])
+@login_required(role="admin")  # Only admins can register new users
+def register():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        role = data.get('role', 'scout')
+        
+        if not username or not password:
+            return jsonify({'error': 'Username and password required'}), 400
+        
+        # Hash the password
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+                (username, password_hash, role)
+            )
+            conn.commit()
+            user_id = cursor.lastrowid
+            conn.close()
+            
+            return jsonify({'message': 'User created successfully', 'user_id': user_id})
+        except sqlite3.IntegrityError:
+            conn.close()
+            return jsonify({'error': 'Username already exists'}), 400
+    except Exception as e:
+        return jsonify({'error': 'Registration failed', 'details': str(e)}), 500
+
+@app.route('/api/user', methods=['GET'])
+def get_current_user():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({'error': 'Authorization required'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'SELECT id, username, role FROM users WHERE auth_token = ?',
+        (auth_header,)
+    )
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user:
+        return jsonify({'error': 'Invalid token'}), 401
+    
+    return jsonify(dict(user))
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({'error': 'Authorization required'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'UPDATE users SET auth_token = NULL WHERE auth_token = ?',
+        (auth_header,)
+    )
+    conn.commit()
+    
+    # Check if any rows were affected
+    if cursor.rowcount > 0:
+        conn.close()
+        return jsonify({'message': 'Logged out successfully'})
+    else:
+        conn.close()
+        return jsonify({'error': 'Invalid token or already logged out'}), 400
+
+@app.route('/api/debug/tokens', methods=['GET'])
+def debug_tokens():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, username, auth_token FROM users')
+    users = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(user) for user in users])
+
+@app.route('/api/debug/users', methods=['GET'])
+@login_required(role="admin")
+def debug_users():
+    """Debug endpoint to see all user data"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM users')
+        users = cursor.fetchall()
+        conn.close()
+        
+        return jsonify([dict(user) for user in users])
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch users', 'details': str(e)}), 500
+
+@app.route('/api/debug/check-auth', methods=['GET'])
+def debug_check_auth():
+    """Debug endpoint to check authentication status"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({'authenticated': False, 'message': 'No authorization header'})
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, username, role FROM users WHERE auth_token = ?', (auth_header,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user:
+        return jsonify({'authenticated': True, 'user': dict(user)})
+    else:
+        return jsonify({'authenticated': False, 'message': 'Invalid token'})
+
+
+
+
+
+
+
+################################################################################
 
 def score_obj(section, conf_section):
     if not section or not conf_section:
@@ -302,6 +621,7 @@ def get_matches():
         return jsonify({'error': 'list', 'details': str(e)}), 500
 
 @app.route('/api/matches/<int:match_id>', methods=['PUT'])
+@login_required(role="admin")
 def update_match(match_id):
     try:
         conn = get_db_connection()
@@ -332,6 +652,7 @@ def update_match(match_id):
         return jsonify({'error': 'update', 'details': str(e)}), 500
 
 @app.route('/api/matches/<int:match_id>', methods=['DELETE'])
+@login_required(role="admin")
 def delete_match(match_id):
     try:
         conn = get_db_connection()
@@ -387,6 +708,7 @@ def get_pits():
         return jsonify({'error': 'list', 'details': str(e)}), 500
 
 @app.route('/api/pits/<int:pit_id>', methods=['PUT'])
+@login_required(role="admin")
 def update_pit(pit_id):
     try:
         conn = get_db_connection()
@@ -412,6 +734,7 @@ def update_pit(pit_id):
         return jsonify({'error': 'update', 'details': str(e)}), 500
 
 @app.route('/api/pits/<int:pit_id>', methods=['DELETE'])
+@login_required(role="admin")
 def delete_pit(pit_id):
     try:
         conn = get_db_connection()

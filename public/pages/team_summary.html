@@ -87,24 +87,27 @@
   max-height: 400px;
 }
 </style>
+<script src="/js/auth.js"></script>
 </head>
 <body>
 <div class="mobile-nav">
   <button class="hamburger" onclick="toggleMenu()">☰</button>
   <div class="mobile-menu" id="mobileMenu">
     <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
-    <a href="/" onclick="toggleMenu()">Home</a>
-    <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
-    <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
-    <a href="/pages/team_summary.html" onclick="toggleMenu()">Team Summary</a>
-    <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
-    <a href="/pages/rankings.html" onclick="toggleMenu()">Rankings</a>
-    <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
-    <a href="/pages/raw_match_edit.html" onclick="toggleMenu()">Raw Match Data Edit</a>
-    <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
-    <a href="/pages/raw_pit_edit.html" onclick="toggleMenu()">Raw Pit Data Edit</a>
-    <a href="/pages/csv_upload.html" onclick="toggleMenu()">CSV Upload</a>
-    <a href="/pages/config_creator.html" onclick="toggleMenu()">Config Creator</a>
+  <a href="/">Home</a>
+  <a href="/pages/match_scouting.html">Match Scouting</a>
+  <a href="/pages/pit_scouting.html">Pit Scouting</a>
+  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+  <a href="/pages/match_simulator.html">Match Simulator</a>
+  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+  <a href="/pages/raw_match.html">Raw Match Data</a>
+  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+  <a href="/pages/raw_pit.html">Raw Pit Data</a>
+  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+  <a href="/pages/config_creator.html">Config Creator</a>
+  <a href="/pages/admin.html" class="admin-only">User Management</a>
+  <a href="/pages/logout.html">Logout</a>
   </div>
 </div>
 <script>
@@ -157,16 +160,19 @@ document.addEventListener('touchmove', function(event) {
   <a href="/">Home</a>
   <a href="/pages/match_scouting.html">Match Scouting</a>
   <a href="/pages/pit_scouting.html">Pit Scouting</a>
-  <a href="/pages/team_summary.html">Team Summary</a>
+  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
   <a href="/pages/match_simulator.html">Match Simulator</a>
-  <a href="/pages/rankings.html">Rankings</a>
+  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
   <a href="/pages/raw_match.html">Raw Match Data</a>
-  <a href="/pages/raw_match_edit.html">Raw Match Data Edit</a>
+  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
   <a href="/pages/raw_pit.html">Raw Pit Data</a>
-  <a href="/pages/raw_pit_edit.html">Raw Pit Data Edit</a>
-  <a href="/pages/csv_upload.html">CSV Upload</a>
+  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
   <a href="/pages/config_creator.html">Config Creator</a>
+  <a href="/pages/admin.html" class="admin-only">User Management</a>
+  <a href="/pages/logout.html">Logout</a>
 </nav>
+<div class="container admin-only">
 <div class="container">
   <h1>Team Summary</h1>
   <div class="form-row">
@@ -193,9 +199,54 @@ document.addEventListener('touchmove', function(event) {
   <div id="chartsContainer"></div>
   <div id="tablesContainer"></div>
 </div>
+</div>
 <footer>FRC 4123 Scouting • Conrad Oldoerp</footer>
 
 <script>
+// Wait for auth to be fully initialized
+function waitForAuth() {
+    return new Promise((resolve) => {
+        if (window.auth && window.auth.isInitialized) {
+            resolve();
+        } else {
+            setTimeout(() => waitForAuth().then(resolve), 100);
+        }
+    });
+}
+
+// Check authentication and admin status
+async function checkAuth() {
+    await waitForAuth();
+    
+    if (!auth.isLoggedIn()) {
+        // Redirect to login if not logged in
+        const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login.html?redirect=${currentPath}`;
+        return false;
+    }
+    
+    if (!auth.isAdmin()) {
+        // Show access denied message for non-admin users
+        document.body.innerHTML = `
+            <div class="container">
+                <h2>Access Denied</h2>
+                <p>You need administrator privileges to access the Team Summary page.</p>
+                <a href="/">Return to Home</a>
+            </div>
+        `;
+        return false;
+    }
+    
+    return true;
+}
+
+function getAuthHeaders() {
+    const token = localStorage.getItem('authToken');
+    return token ? { 'Authorization': token } : {};
+}
+
+
+
 let charts = {};
 let config = null;
 
@@ -633,7 +684,9 @@ async function loadTeamInfo(team, config) {
     const year = teamInfoConfig.year || 2025;
     console.log('Fetching team info for year:', year);
     
-    const response = await fetch(`/api/team/${team}/info?year=${year}`);
+const response = await fetch(`/api/team/${team}/info?year=${year}`, {
+    headers: getAuthHeaders()
+});
     const data = await response.json();
     
     console.log('Team info API response:', data);
@@ -726,6 +779,9 @@ async function loadTeamInfo(team, config) {
 }
 
 async function loadTeam(){
+    const isAuthenticated = await checkAuth();
+    if (!isAuthenticated) return;
+
   const team = document.getElementById('team').value;
   if (!team) return;
   
@@ -738,10 +794,14 @@ async function loadTeam(){
     await loadTeamInfo(team, configResp);;
 
     // Now load team info and other data
-    const [avgResp, rowsResp] = await Promise.all([
-      fetch(`/api/team/${team}/averages`).then(r => r.json()),
-      fetch(`/api/team/${team}/matches`).then(r => r.json())
-    ]);
+const [avgResp, rowsResp] = await Promise.all([
+    fetch(`/api/team/${team}/averages`, {
+        headers: getAuthHeaders()
+    }).then(r => r.json()),
+    fetch(`/api/team/${team}/matches`, {
+        headers: getAuthHeaders()
+    }).then(r => r.json())
+]);
     
     // Load team info after config is available
     
@@ -766,7 +826,9 @@ async function loadTeam(){
     // Load pit data and robot image
     let teamPitData = null;
     try {
-      teamPitData = await fetch(`/api/team/${team}/pit`).then(r => r.json());
+teamPitData = await fetch(`/api/team/${team}/pit`, {
+    headers: getAuthHeaders()
+}).then(r => r.json());
     } catch (e) {
       console.log('Could not load pit data:', e);
     }
@@ -923,6 +985,10 @@ document.getElementById('go').addEventListener('click', loadTeam);
 // Load on Enter key in team input
 document.getElementById('team').addEventListener('keypress', function(e) {
   if (e.key === 'Enter') loadTeam();
+});
+// Check authentication when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    await checkAuth();
 });
 </script>
 

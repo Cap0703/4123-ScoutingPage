@@ -758,3 +758,18 @@ h1 {
     padding: 1rem;
   }
 }
+/* Add to your style.css */
+.navbar .btn, .mobile-menu .btn {
+    margin: 5px;
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.navbar .btn-red, .mobile-menu .btn-red {
+    background-color: #ff6b6b;
+    color: white;
+}
+
+.navbar .btn-red:hover, .mobile-menu .btn-red:hover {
+    background-color: #ff5252;
+}
