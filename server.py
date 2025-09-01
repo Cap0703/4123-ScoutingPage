@@ -12,6 +12,8 @@ import threading
 import hashlib
 import secrets
 from functools import wraps
+import csv
+from io import StringIO
 
 app = Flask(__name__)
 CORS(app)
@@ -26,6 +28,14 @@ DB_PATH = os.path.join(ROOT, 'scouting.db')
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(PUBLIC_DIR, exist_ok=True)
 
+
+
+
+
+
+
+# ==================== CONFIGURATION & DATABASE FUNCTIONS ====================
+
 def read_config():
     with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
         return json.load(f)
@@ -37,8 +47,6 @@ def get_db_connection():
 
 def init_db():
     conn = get_db_connection()
-    
-    # Create all tables in a single function
     conn.execute('''
         CREATE TABLE IF NOT EXISTS matches(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,12 +87,9 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
-    # Create default admin user if none exists
     cursor = conn.cursor()
     cursor.execute('SELECT COUNT(*) FROM users WHERE role = "admin"')
     admin_count = cursor.fetchone()[0]
-    
     if admin_count == 0:
         # Default admin: username=admin, password=admin123
         password_hash = hashlib.sha256('admin123'.encode()).hexdigest()
@@ -96,10 +101,17 @@ def init_db():
     
     conn.commit()
     conn.close()
-
-# Initialize the database when the server starts
 init_db()
 
+
+
+
+
+
+
+# ==================== AUTHENTICATION & AUTHORIZATION FUNCTIONS ====================
+
+"""Decorator function that requires user authentication with optional role-based authorization."""
 def login_required(role="scout"):
     def decorator(f):
         @wraps(f)
@@ -123,7 +135,128 @@ def login_required(role="scout"):
         return decorated_function
     return decorator
 
-#############################################################################
+
+
+
+
+
+
+# ==================== SCORING & DATA PROCESSING FUNCTIONS ====================
+
+"""Calculates total score for a game section based on configuration values and performance data."""
+def score_obj(section, conf_section):
+    if not section or not conf_section:
+        return 0
+    total = 0
+    for k, v in section.items():
+        if k not in conf_section:
+            continue
+        c = conf_section[k]
+        if isinstance(v, dict) and 'Made' in v:
+            if 'Value' in c and isinstance(c['Value'], (int, float)):
+                total += (int(v.get('Made', 0)) * int(c['Value']))
+        elif isinstance(v, bool):
+            if isinstance(c, dict) and 'Value' in c and isinstance(c['Value'], (int, float)):
+                total += int(c['Value']) if v else 0
+            elif isinstance(c, (int, float)):
+                total += int(c) if v else 0
+    return total
+
+"""Calculates autonomous period score using the score_obj function with auto configuration."""
+def auto_score(data, conf):
+    return score_obj(data, conf.get('match_form', {}).get('auto_period', {}))
+
+"""Calculates teleoperated period score using the score_obj function with teleop configuration."""
+def tele_score(data, conf):
+    return score_obj(data, conf.get('match_form', {}).get('teleop_period', {}))
+
+"""Calculates endgame score based on final robot status from configuration values."""
+def endgame_score(data, conf):
+    final_status_config = conf.get('match_form', {}).get('endgame', {}).get('final_status', {})
+    status = data.get('final_status', '')
+    if 'options' in final_status_config and 'values' in final_status_config:
+        options = final_status_config['options']
+        values = final_status_config['values']
+        if status in options:
+            index = options.index(status)
+            return int(values[index]) if index < len(values) else 0
+        return 0
+    else:
+        status_config = final_status_config.get(status, {})
+        return int(status_config.get('Value', 0)) if status_config else 0
+
+"""Converts a list of dictionaries to CSV format with proper escaping and formatting."""
+def to_csv(rows):
+    if not rows:
+        return ''
+    keys = list(rows[0].keys())
+    header = ','.join(keys)
+    def escape_value(value):
+        if value is None:
+            return ''
+        if isinstance(value, (dict, list)):
+            value = json.dumps(value)
+        return '"{}"'.format(str(value).replace('"', '""'))
+    body = '\n'.join(
+        ','.join(escape_value(row.get(key)) for key in keys)
+        for row in rows
+    )
+    return header + '\n' + body
+
+"""Calculate ranking metric based on the option name and config"""
+def calculate_ranking_metric(option, matches, conf):
+    if option == "Average Points":
+        total = 0
+        for match in matches:
+            auto_pts = auto_score(match['auto'], conf)
+            tele_pts = tele_score(match['teleop'], conf)
+            end_pts = endgame_score(match['endgame'], conf)
+            total += auto_pts + tele_pts + end_pts
+        return total / len(matches) if matches else 0
+    elif option == "Average L4 Auto":
+        total = sum(match['auto'].get('L4', {}).get('Made', 0) for match in matches)
+        return total / len(matches) if matches else 0
+    elif option == "Max Auto L4":
+        return max(match['auto'].get('L4', {}).get('Made', 0) for match in matches) if matches else 0
+    elif option == "Average Teleop L4":
+        total = sum(match['teleop'].get('L4', {}).get('Made', 0) for match in matches)
+        return total / len(matches) if matches else 0
+    elif option == "Died %":
+        died_count = sum(1 for match in matches if match['misc'].get('died', False))
+        return (died_count / len(matches) * 100) if matches else 0
+    elif option == "Tippy %":
+        tippy_count = sum(1 for match in matches if match['misc'].get('tippy', False))
+        return (tippy_count / len(matches) * 100) if matches else 0
+    elif option == "Auto Coral %":
+        match_accuracies = []
+        for match in matches:
+            match_made = 0
+            match_attempted = 0
+            for level in ['L1', 'L2', 'L3', 'L4']:
+                if level in match['auto']:
+                    match_made += match['auto'][level].get('Made', 0)
+                    match_attempted += match['auto'][level].get('Made', 0) + match['auto'][level].get('Missed', 0)
+            if match_attempted > 0:
+                match_accuracies.append((match_made / match_attempted) * 100)
+            else:
+                match_accuracies.append(0)
+        return sum(match_accuracies) / len(match_accuracies) if match_accuracies else 0
+    elif option == "Teleop Coral %":
+        match_accuracies = []
+        for match in matches:
+            match_made = 0
+            match_attempted = 0
+            for level in ['L1', 'L2', 'L3', 'L4']:
+                if level in match['teleop']:
+                    match_made += match['teleop'][level].get('Made', 0)
+                    match_attempted += match['teleop'][level].get('Made', 0) + match['teleop'][level].get('Missed', 0)
+            if match_attempted > 0:
+                match_accuracies.append((match_made / match_attempted) * 100)
+            else:
+                match_accuracies.append(0)
+        
+        return sum(match_accuracies) / len(match_accuracies) if match_accuracies else 0
+        return 0
 
 
 
@@ -131,10 +264,9 @@ def login_required(role="scout"):
 
 
 
+# ==================== USER MANAGEMENT ENDPOINTS ====================
 
-
-# In server.py - make sure these endpoints are correct:
-
+"""Creates a new user with the specified username, password, and role (admin only)."""
 @app.route('/api/users', methods=['POST'])
 @login_required(role="admin")
 def create_user():
@@ -143,13 +275,9 @@ def create_user():
         username = data.get('username')
         password = data.get('password')
         role = data.get('role', 'scout')
-        
         if not username or not password:
             return jsonify({'error': 'Username and password required'}), 400
-        
-        # Hash the password
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
@@ -160,7 +288,6 @@ def create_user():
             conn.commit()
             user_id = cursor.lastrowid
             conn.close()
-            
             return jsonify({'message': 'User created successfully', 'user_id': user_id})
         except sqlite3.IntegrityError:
             conn.close()
@@ -168,6 +295,7 @@ def create_user():
     except Exception as e:
         return jsonify({'error': 'User creation failed', 'details': str(e)}), 500
 
+"""Deletes a user by ID, preventing self-deletion (admin only)."""
 @app.route('/api/users/<int:user_id>', methods=['DELETE'])
 @login_required(role="admin")
 def delete_user(user_id):
@@ -191,6 +319,7 @@ def delete_user(user_id):
     except Exception as e:
         return jsonify({'error': 'User deletion failed', 'details': str(e)}), 500
 
+"""Retrieves a list of all users with their basic information (admin only)."""
 @app.route('/api/users', methods=['GET'])
 @login_required(role="admin")
 def get_users():
@@ -200,27 +329,29 @@ def get_users():
         cursor.execute('SELECT id, username, role, created_at FROM users ORDER BY username')
         users = cursor.fetchall()
         conn.close()
-        
         return jsonify([dict(user) for user in users])
     except Exception as e:
         return jsonify({'error': 'Failed to fetch users', 'details': str(e)}), 500
 
 
+
+
+
+
+
+# ==================== AUTHENTICATION ENDPOINTS ====================
+
+"""Authenticates a user with username and password, returning an auth token on success."""
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
         username = data.get('username')
         password = data.get('password')
-        
-        print(f"Login attempt: username={username}, password={password}")  # DEBUG
-        
+        #print(f"Login attempt: username={username}, password={password}")
         if not username or not password:
             return jsonify({'error': 'Username and password required'}), 400
-        
-        # Hash the password
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -229,16 +360,10 @@ def login():
         )
         user = cursor.fetchone()
         conn.close()
-        
-        print(f"User found: {user}")  # DEBUG
-        
+        #print(f"User found: {user}")
         if not user:
             return jsonify({'error': 'Invalid credentials'}), 401
-        
-        # Generate auth token
         auth_token = secrets.token_hex(16)
-        
-        # Store token in database
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -247,9 +372,7 @@ def login():
         )
         conn.commit()
         conn.close()
-        
-        print(f"Login successful, token: {auth_token}")  # DEBUG
-        
+        #print(f"Login successful, token: {auth_token}")
         return jsonify({
             'message': 'Login successful',
             'token': auth_token,
@@ -260,24 +383,21 @@ def login():
             }
         })
     except Exception as e:
-        print(f"Login error: {e}")  # DEBUG
+        #print(f"Login error: {e}")
         return jsonify({'error': 'Login failed', 'details': str(e)}), 500
 
+"""Registers a new user (admin only endpoint)."""
 @app.route('/api/register', methods=['POST'])
-@login_required(role="admin")  # Only admins can register new users
+@login_required(role="admin")
 def register():
     try:
         data = request.get_json()
         username = data.get('username')
         password = data.get('password')
         role = data.get('role', 'scout')
-        
         if not username or not password:
             return jsonify({'error': 'Username and password required'}), 400
-        
-        # Hash the password
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
@@ -288,7 +408,6 @@ def register():
             conn.commit()
             user_id = cursor.lastrowid
             conn.close()
-            
             return jsonify({'message': 'User created successfully', 'user_id': user_id})
         except sqlite3.IntegrityError:
             conn.close()
@@ -296,12 +415,12 @@ def register():
     except Exception as e:
         return jsonify({'error': 'Registration failed', 'details': str(e)}), 500
 
+"""Returns information about the currently authenticated user based on their auth token."""
 @app.route('/api/user', methods=['GET'])
 def get_current_user():
     auth_header = request.headers.get('Authorization')
     if not auth_header:
         return jsonify({'error': 'Authorization required'}), 401
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -310,18 +429,17 @@ def get_current_user():
     )
     user = cursor.fetchone()
     conn.close()
-    
     if not user:
         return jsonify({'error': 'Invalid token'}), 401
     
     return jsonify(dict(user))
 
+"""Invalidates the current user's authentication token, effectively logging them out."""
 @app.route('/api/logout', methods=['POST'])
 def logout():
     auth_header = request.headers.get('Authorization')
     if not auth_header:
         return jsonify({'error': 'Authorization required'}), 401
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -329,8 +447,6 @@ def logout():
         (auth_header,)
     )
     conn.commit()
-    
-    # Check if any rows were affected
     if cursor.rowcount > 0:
         conn.close()
         return jsonify({'message': 'Logged out successfully'})
@@ -338,6 +454,15 @@ def logout():
         conn.close()
         return jsonify({'error': 'Invalid token or already logged out'}), 400
 
+
+
+
+
+
+
+# ==================== DEBUG ENDPOINTS ====================
+
+"""Debug endpoint to view all user authentication tokens."""
 @app.route('/api/debug/tokens', methods=['GET'])
 def debug_tokens():
     conn = get_db_connection()
@@ -347,6 +472,7 @@ def debug_tokens():
     conn.close()
     return jsonify([dict(user) for user in users])
 
+"""Debug endpoint to see all user data including passwords (admin only)."""
 @app.route('/api/debug/users', methods=['GET'])
 @login_required(role="admin")
 def debug_users():
@@ -357,24 +483,22 @@ def debug_users():
         cursor.execute('SELECT * FROM users')
         users = cursor.fetchall()
         conn.close()
-        
         return jsonify([dict(user) for user in users])
     except Exception as e:
         return jsonify({'error': 'Failed to fetch users', 'details': str(e)}), 500
 
+"""Debug endpoint to check authentication status and validate tokens."""
 @app.route('/api/debug/check-auth', methods=['GET'])
 def debug_check_auth():
     """Debug endpoint to check authentication status"""
     auth_header = request.headers.get('Authorization')
     if not auth_header:
         return jsonify({'authenticated': False, 'message': 'No authorization header'})
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT id, username, role FROM users WHERE auth_token = ?', (auth_header,))
     user = cursor.fetchone()
     conn.close()
-    
     if user:
         return jsonify({'authenticated': True, 'user': dict(user)})
     else:
@@ -386,58 +510,12 @@ def debug_check_auth():
 
 
 
-################################################################################
-
-def score_obj(section, conf_section):
-    if not section or not conf_section:
-        return 0
-    
-    total = 0
-    for k, v in section.items():
-        if k not in conf_section:
-            continue
-            
-        c = conf_section[k]
-        
-        # Handle scoring objects with Made/Missed properties
-        if isinstance(v, dict) and 'Made' in v:
-            if 'Value' in c and isinstance(c['Value'], (int, float)):
-                total += (int(v.get('Made', 0)) * int(c['Value']))
-        # Handle boolean values
-        elif isinstance(v, bool):
-            if isinstance(c, dict) and 'Value' in c and isinstance(c['Value'], (int, float)):
-                total += int(c['Value']) if v else 0
-            elif isinstance(c, (int, float)):
-                total += int(c) if v else 0
-                
-    return total
-
-def auto_score(data, conf):
-    return score_obj(data, conf.get('match_form', {}).get('auto_period', {}))
-
-def tele_score(data, conf):
-    return score_obj(data, conf.get('match_form', {}).get('teleop_period', {}))
-
-def endgame_score(data, conf):
-    final_status_config = conf.get('match_form', {}).get('endgame', {}).get('final_status', {})
-    status = data.get('final_status', '')
-    
-    # Handle new format with options/values
-    if 'options' in final_status_config and 'values' in final_status_config:
-        options = final_status_config['options']
-        values = final_status_config['values']
-        if status in options:
-            index = options.index(status)
-            return int(values[index]) if index < len(values) else 0
-        return 0
-    else:
-        # Handle old format
-        status_config = final_status_config.get(status, {})
-        return int(status_config.get('Value', 0)) if status_config else 0
+# ==================== CHECKLIST MANAGEMENT ENDPOINTS ====================
 
 checklist_state = {}
 checklist_lock = threading.Lock()
 
+"""Retrieves all checklist items from the database."""
 @app.route('/api/checklist', methods=['GET'])
 def get_checklist():
     try:
@@ -446,11 +524,9 @@ def get_checklist():
         cursor.execute('SELECT * FROM checklist_items')
         rows = cursor.fetchall()
         conn.close()
-        
-       #print("Database checklist items:")  # Debug log
-        for row in rows:
-            print(f"  Key: {row['checklist_key']}, Checked: {row['checked_json']}")  # Debug log
-        
+       #print("Database checklist items:")
+        #for row in rows:
+            #print(f"  Key: {row['checklist_key']}, Checked: {row['checked_json']}")
         checklist_data = {}
         for row in rows:
             checklist_data[row['checklist_key']] = {
@@ -458,52 +534,40 @@ def get_checklist():
                 'options': json.loads(row['options_json']),
                 'checked': json.loads(row['checked_json'])
             }
-            
         return jsonify(checklist_data)
     except Exception as e:
-        print(f"Error getting checklist: {e}")  # Debug log
+        print(f"Error getting checklist: {e}")
         return jsonify({'error': 'db', 'details': str(e)}), 500
 
+"""Updates or creates a checklist item with the specified checked items."""
 @app.route('/api/checklist/<checklist_key>', methods=['POST'])
 def update_checklist(checklist_key):
     try:
         data = request.get_json()
         checked_items = data.get('checked', [])
-        
-       #print(f"Updating checklist {checklist_key} with checked items: {checked_items}")  # Debug log
-        
+       #print(f"Updating checklist {checklist_key} with checked items: {checked_items}")
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Check if checklist exists
         cursor.execute('SELECT * FROM checklist_items WHERE checklist_key = ?', (checklist_key,))
         row = cursor.fetchone()
-        
         if row:
-            # Update existing checklist
             cursor.execute('''
                 UPDATE checklist_items 
                 SET checked_json = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE checklist_key = ?
             ''', (json.dumps(checked_items), checklist_key))
-           #print(f"Updated existing checklist {checklist_key}")  # Debug log
+           #print(f"Updated existing checklist {checklist_key}")
         else:
-            # Get config to create new checklist
             conf = read_config()
             home_config = conf.get('Home', {})
             body_config = home_config.get('body', {})
-            
-            # Find the checklist in config
             checklist_config = None
             for key, item in body_config.items():
                 if key == checklist_key and item.get('type') == 'checklist':
                     checklist_config = item
                     break
-            
             if not checklist_config:
                 return jsonify({'error': 'Checklist not found in config'}), 404
-                
-            # Create new checklist
             cursor.execute('''
                 INSERT INTO checklist_items (checklist_key, title, options_json, checked_json)
                 VALUES (?, ?, ?, ?)
@@ -513,25 +577,48 @@ def update_checklist(checklist_key):
                 json.dumps(checklist_config.get('options', [])),
                 json.dumps(checked_items)
             ))
-           #print(f"Created new checklist {checklist_key}")  # Debug log
-        
+           #print(f"Created new checklist {checklist_key}")
         conn.commit()
         conn.close()
-        
         return jsonify({'ok': True})
     except Exception as e:
-        print(f"Error updating checklist: {e}")  # Debug log
+        print(f"Error updating checklist: {e}")
         return jsonify({'error': 'update', 'details': str(e)}), 500
-    
-# Serve static files
+
+
+
+
+
+
+
+
+# ==================== STATIC FILE SERVING ENDPOINTS ====================
+
+"""Serves the main index.html file from the public directory."""
 @app.route('/')
 def serve_index():
     return send_from_directory(PUBLIC_DIR, 'index.html')
 
+"""Serves static files from the public directory."""
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory(PUBLIC_DIR, path)
 
+"""Serves uploaded files from the uploads directory."""
+@app.route('/uploads/<filename>')
+def serve_uploaded_file(filename):
+    return send_from_directory(UPLOADS_DIR, filename)
+
+
+
+
+
+
+
+
+# ==================== CONFIGURATION ENDPOINT ====================
+
+"""Returns the current application configuration from config.json."""
 @app.route('/api/config', methods=['GET'])
 def get_config():
     try:
@@ -539,15 +626,22 @@ def get_config():
     except Exception as e:
         return jsonify({'error': 'config', 'details': str(e)}), 500
 
+
+
+
+
+
+
+# ==================== FILE UPLOAD ENDPOINT ====================
+
+"""Handles file uploads and stores them in the uploads directory with unique filenames."""
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'image' not in request.files:
         return jsonify({'error': 'no file'}), 400
-        
     file = request.files['image']
     if file.filename == '':
         return jsonify({'error': 'no file selected'}), 400
-        
     if file:
         ext = os.path.splitext(file.filename)[1]
         filename = "upload_{}_{}{}".format(int(datetime.now().timestamp()), uuid.uuid4().hex, ext)
@@ -555,23 +649,30 @@ def upload_file():
         file.save(filepath)
         return jsonify({'path': '/uploads/{}'.format(filename)})
 
+
+
+
+
+
+
+# ==================== MATCH DATA ENDPOINTS ====================
+
+"""Creates a new match record with scoring data and calculates points based on configuration."""
+
 @app.route('/api/matches', methods=['POST'])
 def create_match():
     try:
         conf = read_config()
         data = request.get_json()
-        
         pre = data.get('pre_match_json', {})
         auto = data.get('auto_json', {})
         tele = data.get('teleop_json', {})
         endg = data.get('endgame_json', {})
         misc = data.get('misc_json', {})
-        
         auto_pts = auto_score(auto, conf)
         tele_pts = tele_score(tele, conf)
         end_pts = endgame_score(endg, conf)
         total_pts = auto_pts + tele_pts + end_pts
-        
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('''
@@ -581,7 +682,6 @@ def create_match():
         match_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
         return jsonify({
             'id': match_id,
             'autoPts': auto_pts,
@@ -592,6 +692,7 @@ def create_match():
     except Exception as e:
         return jsonify({'error': 'insert', 'details': str(e)}), 500
 
+"""Retrieves match records with pagination support and JSON parsing."""
 @app.route('/api/matches', methods=['GET'])
 def get_matches():
     try:
@@ -605,7 +706,6 @@ def get_matches():
         cursor.execute('SELECT * FROM matches ORDER BY id DESC LIMIT ? OFFSET ?', (limit, offset))
         rows = cursor.fetchall()
         conn.close()
-        
         matches = []
         for row in rows:
             match_data = dict(row)
@@ -615,11 +715,11 @@ def get_matches():
             match_data['endgame_json'] = json.loads(row['endgame_json'])
             match_data['misc_json'] = json.loads(row['misc_json'])
             matches.append(match_data)
-            
         return jsonify(matches)
     except Exception as e:
         return jsonify({'error': 'list', 'details': str(e)}), 500
 
+"""Updates an existing match record with new data (admin only)."""
 @app.route('/api/matches/<int:match_id>', methods=['PUT'])
 @login_required(role="admin")
 def update_match(match_id):
@@ -628,29 +728,26 @@ def update_match(match_id):
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM matches WHERE id = ?', (match_id,))
         row = cursor.fetchone()
-        
         if not row:
             conn.close()
             return jsonify({'error': 'not found'}), 404
-            
         data = request.get_json()
         pre = data.get('pre_match_json', json.loads(row['pre_match_json']))
         auto = data.get('auto_json', json.loads(row['auto_json']))
         tele = data.get('teleop_json', json.loads(row['teleop_json']))
         endg = data.get('endgame_json', json.loads(row['endgame_json']))
         misc = data.get('misc_json', json.loads(row['misc_json']))
-        
         cursor.execute('''
             UPDATE matches SET pre_match_json=?, auto_json=?, teleop_json=?, endgame_json=?, misc_json=?
             WHERE id=?
         ''', (json.dumps(pre), json.dumps(auto), json.dumps(tele), json.dumps(endg), json.dumps(misc), match_id))
         conn.commit()
         conn.close()
-        
         return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'error': 'update', 'details': str(e)}), 500
 
+"""Deletes a match record by ID (admin only)."""
 @app.route('/api/matches/<int:match_id>', methods=['DELETE'])
 @login_required(role="admin")
 def delete_match(match_id):
@@ -664,13 +761,21 @@ def delete_match(match_id):
     except Exception as e:
         return jsonify({'error': 'delete', 'details': str(e)}), 500
 
+
+
+
+
+
+
+# ==================== PIT SCOUTING ENDPOINTS ====================
+
+"""Creates a new pit scouting record with optional image path."""
 @app.route('/api/pits', methods=['POST'])
 def create_pit():
     try:
         data = request.get_json()
         pit = data.get('pit_json', {})
         image_path = data.get('image_path')
-        
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('INSERT INTO pits(pit_json, image_path) VALUES (?, ?)', 
@@ -678,11 +783,11 @@ def create_pit():
         pit_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
         return jsonify({'id': pit_id})
     except Exception as e:
         return jsonify({'error': 'insert', 'details': str(e)}), 500
 
+"""Retrieves pit scouting records with pagination support."""
 @app.route('/api/pits', methods=['GET'])
 def get_pits():
     try:
@@ -690,23 +795,21 @@ def get_pits():
         cap = conf.get('limits', {}).get('raw_table_cap', 50)
         limit = min(int(request.args.get('limit', cap)), 200)
         offset = max(0, int(request.args.get('offset', 0)))
-        
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM pits ORDER BY id DESC LIMIT ? OFFSET ?', (limit, offset))
         rows = cursor.fetchall()
         conn.close()
-        
         pits = []
         for row in rows:
             pit_data = dict(row)
             pit_data['pit_json'] = json.loads(row['pit_json'])
             pits.append(pit_data)
-            
         return jsonify(pits)
     except Exception as e:
         return jsonify({'error': 'list', 'details': str(e)}), 500
 
+"""Updates an existing pit scouting record (admin only)."""
 @app.route('/api/pits/<int:pit_id>', methods=['PUT'])
 @login_required(role="admin")
 def update_pit(pit_id):
@@ -715,24 +818,21 @@ def update_pit(pit_id):
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM pits WHERE id = ?', (pit_id,))
         row = cursor.fetchone()
-        
         if not row:
             conn.close()
             return jsonify({'error': 'not found'}), 404
-            
         data = request.get_json()
         pit = data.get('pit_json', json.loads(row['pit_json']))
         image_path = data.get('image_path', row['image_path'])
-        
         cursor.execute('UPDATE pits SET pit_json=?, image_path=? WHERE id=?', 
                       (json.dumps(pit), image_path, pit_id))
         conn.commit()
         conn.close()
-        
         return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'error': 'update', 'details': str(e)}), 500
 
+"""Deletes a pit scouting record by ID (admin only)."""
 @app.route('/api/pits/<int:pit_id>', methods=['DELETE'])
 @login_required(role="admin")
 def delete_pit(pit_id):
@@ -746,6 +846,15 @@ def delete_pit(pit_id):
     except Exception as e:
         return jsonify({'error': 'delete', 'details': str(e)}), 500
 
+
+
+
+
+
+
+# ==================== TEAM DATA ENDPOINTS ====================
+
+"""Calculates and returns average scores for a specific team across all their matches."""
 @app.route('/api/team/<team>/averages', methods=['GET'])
 def get_team_averages(team):
     try:
@@ -760,7 +869,6 @@ def get_team_averages(team):
             pre_match_data = json.loads(row['pre_match_json'])
             if str(pre_match_data.get('team_number')) == str(team):
                 team_matches.append(row)
-        
         if not team_matches:
             return jsonify({
                 'team': team, 
@@ -775,7 +883,6 @@ def get_team_averages(team):
             auto_data = json.loads(row['auto_json'])
             tele_data = json.loads(row['teleop_json'])
             end_data = json.loads(row['endgame_json'])
-            
             auto_total += auto_score(auto_data, conf)
             tele_total += tele_score(tele_data, conf)
             end_total += endgame_score(end_data, conf)
@@ -791,13 +898,14 @@ def get_team_averages(team):
     except Exception as e:
         return jsonify({'error': 'db', 'details': str(e)}), 500
 
+"""Retrieves all match data for a specific team with calculated scoring."""
 @app.route('/api/team/<team>/matches', methods=['GET'])
 def get_team_matches(team):
     try:
         conf = read_config()
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM matches ORDER BY id')
+        cursor.execute('SELECT * FROM matches ORDER BY id ASC')
         all_matches = cursor.fetchall()
         conn.close()
         matches = []
@@ -822,7 +930,8 @@ def get_team_matches(team):
         return jsonify(matches)
     except Exception as e:
         return jsonify({'error': 'db', 'details': str(e)}), 500
-    
+
+"""Retrieves external team information using a scraper script (team_name_scraper.py) with fallback defaults."""
 @app.route('/api/team/<team>/info', methods=['GET'])
 def get_team_info(team):
     try:
@@ -862,6 +971,7 @@ def get_team_info(team):
             'district_total': None
         })
 
+"""Retrieves pit scouting data for a specific team."""
 @app.route('/api/team/<team>/pit', methods=['GET'])
 def get_team_pit(team):
     try:
@@ -871,9 +981,9 @@ def get_team_pit(team):
         cursor.execute('SELECT id, pit_json FROM pits')
         all_pits = cursor.fetchall()
        #print("All pit entries:")
-        for pit in all_pits:
-            pit_json = json.loads(pit['pit_json'])
-            print(f"  ID {pit['id']}: Team {pit_json.get('team_number')} (type: {type(pit_json.get('team_number'))})")
+        #for pit in all_pits:
+            #pit_json = json.loads(pit['pit_json'])
+            #print(f"  ID {pit['id']}: Team {pit_json.get('team_number')} (type: {type(pit_json.get('team_number'))})")
         cursor.execute('''
             SELECT * FROM pits 
             WHERE json_extract(pit_json, '$.team_number') = ?
@@ -881,7 +991,7 @@ def get_team_pit(team):
         ''', (team,))
         row = cursor.fetchone()
         if not row:
-            print("Team not found with string match, trying integer...")
+            #print("Team not found with string match, trying integer...")
             if team.isdigit():
                 cursor.execute('''
                     SELECT * FROM pits 
@@ -891,16 +1001,25 @@ def get_team_pit(team):
                 row = cursor.fetchone()
         conn.close()
         if not row:
-            print(f"No pit data found for team {team}")
+            #print(f"No pit data found for team {team}")
             return jsonify({'error': 'not found'}), 404
         pit_data = dict(row)
         pit_data['pit_json'] = json.loads(row['pit_json'])
-        print(f"Found pit data: {pit_data}")
+        #print(f"Found pit data: {pit_data}")
         return jsonify(pit_data)
     except Exception as e:
         print(f"Error getting pit data: {e}")
         return jsonify({'error': 'db', 'details': str(e)}), 500
 
+
+
+
+
+
+
+# ==================== RANKINGS ENDPOINT ====================
+
+"""Generates team rankings based on various statistical metrics and filtering options."""
 @app.route('/api/rankings', methods=['GET'])
 def get_rankings():
     try:
@@ -908,27 +1027,20 @@ def get_rankings():
         option = request.args.get('option', list(conf.get('rankings_options', {}).keys())[0])
         min_matches = int(request.args.get('min_matches', 0))
         team_filter = request.args.get('team', '')
-        
         spec = conf.get('rankings_options', {}).get(option)
         if not spec:
             return jsonify({'error': 'unknown option'}), 400
-            
-        # Get all matches
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM matches ORDER BY id')
         all_matches = cursor.fetchall()
         conn.close()
-        
-        # Group matches by team
         team_matches = {}
         for row in all_matches:
             pre_match = json.loads(row['pre_match_json'])
             team_number = str(pre_match.get('team_number'))
-            
             if team_number not in team_matches:
                 team_matches[team_number] = []
-                
             match_data = {
                 'pre_match': pre_match,
                 'auto': json.loads(row['auto_json']),
@@ -937,121 +1049,36 @@ def get_rankings():
                 'misc': json.loads(row['misc_json'])
             }
             team_matches[team_number].append(match_data)
-        
-        # Calculate ranking for each team
         rankings = []
         for team_number, matches in team_matches.items():
             if len(matches) < min_matches:
                 continue
-                
             if team_filter and team_number != team_filter:
                 continue
-            
-            # Calculate the metric based on the option
             metric_value = calculate_ranking_metric(option, matches, conf)
             rankings.append({
                 'team_number': team_number,
                 'matches_count': len(matches),
                 'metric_value': metric_value
             })
-        
-        # Sort based on metric value (descending)
         rankings.sort(key=lambda x: x['metric_value'], reverse=True)
-        
         return jsonify({
             'option': option,
             'description': spec.get('description', option),
             'rows': rankings[:100]
         })
-            
     except Exception as e:
         return jsonify({'error': 'db', 'details': str(e)}), 500
 
-def calculate_ranking_metric(option, matches, conf):
-    """Calculate ranking metric based on the option name and config"""
-    # Default implementations for common ranking types
-    if option == "Average Points":
-        total = 0
-        for match in matches:
-            auto_pts = auto_score(match['auto'], conf)
-            tele_pts = tele_score(match['teleop'], conf)
-            end_pts = endgame_score(match['endgame'], conf)
-            total += auto_pts + tele_pts + end_pts
-        return total / len(matches) if matches else 0
-        
-    elif option == "Average L4 Auto":
-        total = sum(match['auto'].get('L4', {}).get('Made', 0) for match in matches)
-        return total / len(matches) if matches else 0
-        
-    elif option == "Max Auto L4":
-        return max(match['auto'].get('L4', {}).get('Made', 0) for match in matches) if matches else 0
-        
-    elif option == "Average Teleop L4":
-        total = sum(match['teleop'].get('L4', {}).get('Made', 0) for match in matches)
-        return total / len(matches) if matches else 0
-        
-    elif option == "Died %":
-        died_count = sum(1 for match in matches if match['misc'].get('died', False))
-        return (died_count / len(matches) * 100) if matches else 0
-        
-    elif option == "Tippy %":
-        tippy_count = sum(1 for match in matches if match['misc'].get('tippy', False))
-        return (tippy_count / len(matches) * 100) if matches else 0
-        
-    elif option == "Auto Coral %":
-        match_accuracies = []
-        for match in matches:
-            match_made = 0
-            match_attempted = 0
-            for level in ['L1', 'L2', 'L3', 'L4']:
-                if level in match['auto']:
-                    match_made += match['auto'][level].get('Made', 0)
-                    match_attempted += match['auto'][level].get('Made', 0) + match['auto'][level].get('Missed', 0)
-            
-            if match_attempted > 0:
-                match_accuracies.append((match_made / match_attempted) * 100)
-            else:
-                match_accuracies.append(0)
-        
-        return sum(match_accuracies) / len(match_accuracies) if match_accuracies else 0
-        
-    elif option == "Teleop Coral %":
-        match_accuracies = []
-        for match in matches:
-            match_made = 0
-            match_attempted = 0
-            for level in ['L1', 'L2', 'L3', 'L4']:
-                if level in match['teleop']:
-                    match_made += match['teleop'][level].get('Made', 0)
-                    match_attempted += match['teleop'][level].get('Made', 0) + match['teleop'][level].get('Missed', 0)
-            
-            if match_attempted > 0:
-                match_accuracies.append((match_made / match_attempted) * 100)
-            else:
-                match_accuracies.append(0)
-        
-        return sum(match_accuracies) / len(match_accuracies) if match_accuracies else 0
-            
-        # Default fallback - try to extract from SQL pattern or return 0
-        return 0
 
-def to_csv(rows):
-    if not rows:
-        return ''
-    keys = list(rows[0].keys())
-    header = ','.join(keys)
-    def escape_value(value):
-        if value is None:
-            return ''
-        if isinstance(value, (dict, list)):
-            value = json.dumps(value)
-        return '"{}"'.format(str(value).replace('"', '""'))
-    body = '\n'.join(
-        ','.join(escape_value(row.get(key)) for key in keys)
-        for row in rows
-    )
-    return header + '\n' + body
 
+
+
+
+
+# ==================== DATA EXPORT ENDPOINTS ====================
+
+"""Exports all match data as a CSV file download."""
 @app.route('/api/export/matches.csv', methods=['GET'])
 def export_matches_csv():
     try:
@@ -1068,6 +1095,7 @@ def export_matches_csv():
     except Exception as e:
         return 'Error: {}'.format(str(e)), 500
 
+"""Exports all pit scouting data as a CSV file download."""
 @app.route('/api/export/pits.csv', methods=['GET'])
 def export_pits_csv():
     try:
@@ -1084,120 +1112,94 @@ def export_pits_csv():
     except Exception as e:
         return 'Error: {}'.format(str(e)), 500
 
-@app.route('/uploads/<filename>')
-def serve_uploaded_file(filename):
-    return send_from_directory(UPLOADS_DIR, filename)
 
+
+
+
+
+
+# ==================== CSV UPLOAD ENDPOINT ====================
+
+"""Handles CSV file uploads for importing match or pit data into the database."""
 @app.route('/api/upload/csv', methods=['POST'])
 def upload_csv():
     try:
         if 'csv' not in request.files:
             return jsonify({'error': 'No CSV file provided'}), 400
-            
         file = request.files['csv']
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
-            
         if not file.filename.endswith('.csv'):
             return jsonify({'error': 'File must be a CSV'}), 400
-            
-        # Read and parse CSV
-        import csv
-        from io import StringIO
-        
         stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
         csv_data = csv.DictReader(stream)
-        
-        # Determine if it's matches or pits data
         first_row = next(csv_data, None)
         if not first_row:
             return jsonify({'error': 'Empty CSV file'}), 400
-            
-        stream.seek(0)  # Reset stream
+        stream.seek(0)
         csv_data = csv.DictReader(stream)
-        
         conn = get_db_connection()
         cursor = conn.cursor()
-        
         records_processed = 0
         errors = []
-        
-        # Check if it's matches data
         if 'pre_match_json' in first_row:
             for i, row in enumerate(csv_data):
                 try:
-                    # Convert JSON strings back to objects
                     pre_match_json = json.loads(row['pre_match_json']) if row['pre_match_json'] else {}
                     auto_json = json.loads(row['auto_json']) if row['auto_json'] else {}
                     teleop_json = json.loads(row['teleop_json']) if row['teleop_json'] else {}
                     endgame_json = json.loads(row['endgame_json']) if row['endgame_json'] else {}
                     misc_json = json.loads(row['misc_json']) if row['misc_json'] else {}
-                    
-                    # Check if this record already exists
                     cursor.execute('SELECT id FROM matches WHERE id = ?', (row['id'],))
                     existing = cursor.fetchone()
-                    
                     if existing:
-                        # Update existing record
                         cursor.execute('''
                             UPDATE matches SET pre_match_json=?, auto_json=?, teleop_json=?, endgame_json=?, misc_json=?
                             WHERE id=?
                         ''', (json.dumps(pre_match_json), json.dumps(auto_json), json.dumps(teleop_json), 
                               json.dumps(endgame_json), json.dumps(misc_json), row['id']))
                     else:
-                        # Insert new record
                         cursor.execute('''
                             INSERT INTO matches(id, created_at, pre_match_json, auto_json, teleop_json, endgame_json, misc_json)
                             VALUES (?, ?, ?, ?, ?, ?, ?)
                         ''', (row['id'], row['created_at'], json.dumps(pre_match_json), json.dumps(auto_json),
                               json.dumps(teleop_json), json.dumps(endgame_json), json.dumps(misc_json)))
-                    
                     records_processed += 1
                 except Exception as e:
                     errors.append(f"Row {i+1}: {str(e)}")
-        
-        # Check if it's pits data
         elif 'pit_json' in first_row:
             for i, row in enumerate(csv_data):
                 try:
-                    # Convert JSON strings back to objects
                     pit_json = json.loads(row['pit_json']) if row['pit_json'] else {}
                     image_path = row.get('image_path', '')
-                    
-                    # Check if this record already exists
                     cursor.execute('SELECT id FROM pits WHERE id = ?', (row['id'],))
                     existing = cursor.fetchone()
-                    
                     if existing:
-                        # Update existing record
                         cursor.execute('''
                             UPDATE pits SET pit_json=?, image_path=?
                             WHERE id=?
                         ''', (json.dumps(pit_json), image_path, row['id']))
                     else:
-                        # Insert new record
                         cursor.execute('''
                             INSERT INTO pits(id, created_at, pit_json, image_path)
                             VALUES (?, ?, ?, ?)
                         ''', (row['id'], row['created_at'], json.dumps(pit_json), image_path))
-                    
                     records_processed += 1
                 except Exception as e:
                     errors.append(f"Row {i+1}: {str(e)}")
         else:
             conn.close()
             return jsonify({'error': 'Unknown CSV format'}), 400
-        
         conn.commit()
         conn.close()
-        
         return jsonify({
             'message': f'Successfully processed {records_processed} records',
             'errors': errors if errors else None
         })
-        
     except Exception as e:
         return jsonify({'error': 'upload', 'details': str(e)}), 500
+
+# ==================== MAIN APPLICATION ENTRY POINT ====================
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3000, debug=True)

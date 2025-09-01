@@ -86,6 +86,36 @@
   max-width: 100%;
   max-height: 400px;
 }
+.match-type-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.match-type-stat-item {
+  padding: 12px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.match-type-stat-value {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #4ecdc4;
+}
+
+.match-type-stat-label {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-bottom: 5px;
+}
+
+.match-type-stat-count {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
 </style>
 <script src="/js/auth.js"></script>
 </head>
@@ -181,15 +211,31 @@ document.addEventListener('touchmove', function(event) {
       <input id="team" type="number" placeholder="e.g., 4123"/>
       <button id="go" class="btn">Load</button>
     </div>
+    <div class="form-row">
+  <label>Match Type Filter</label>
+  <div class="form-controls">
+    <select id="matchTypeFilter">
+      <option value="all">All Matches</option>
+      <option value="Practice">Practice</option>
+      <option value="Qualification">Qualification</option>
+      <option value="Semifinal">Semifinal</option>
+      <option value="Final">Final</option>
+    </select>
+  </div>
+</div>
   </div>
   <div id="teamInfo" class="card" style="display: none;">
     <h3>Team Information</h3>
     <div id="teamInfoContent"></div>
   </div>
-  <div id="teamStats" class="card" style="display: none;">
-    <h3>Team Stats</h3>
-    <div id="teamStatsContent"></div>
+<div id="teamStats" class="card" style="display: none;">
+  <h3>Team Stats</h3>
+  <div id="teamStatsContent"></div>
+  <div id="matchTypeStats" style="margin-top: 15px; display: none;">
+    <h4>Stats by Match Type</h4>
+    <div id="matchTypeStatsContent"></div>
   </div>
+</div>
   <div id="summary" class="card"></div>
   
   <div id="robotImageContainer" class="card" style="display: none;">
@@ -203,7 +249,10 @@ document.addEventListener('touchmove', function(event) {
 <footer>FRC 4123 Scouting • Conrad Oldoerp</footer>
 
 <script>
-// Wait for auth to be fully initialized
+/**
+ * Waits for the authentication module to be fully initialized before proceeding.
+ * This ensures auth checks don't run before the auth system is ready.
+ */
 function waitForAuth() {
     return new Promise((resolve) => {
         if (window.auth && window.auth.isInitialized) {
@@ -214,19 +263,18 @@ function waitForAuth() {
     });
 }
 
-// Check authentication and admin status
+/**
+ * Checks if the user is authenticated and has admin privileges.
+ * Redirects to login if not authenticated, shows access denied if not admin.
+ */
 async function checkAuth() {
     await waitForAuth();
-    
     if (!auth.isLoggedIn()) {
-        // Redirect to login if not logged in
         const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
         window.location.href = `/login.html?redirect=${currentPath}`;
         return false;
     }
-    
     if (!auth.isAdmin()) {
-        // Show access denied message for non-admin users
         document.body.innerHTML = `
             <div class="container">
                 <h2>Access Denied</h2>
@@ -240,752 +288,713 @@ async function checkAuth() {
     return true;
 }
 
+/**
+ * Retrieves authentication headers for API requests using the stored token.
+ */
 function getAuthHeaders() {
     const token = localStorage.getItem('authToken');
     return token ? { 'Authorization': token } : {};
 }
 
-
-
 let charts = {};
 let config = null;
+let allProcessedData = [];
+let currentMatchTypeFilter = 'all';
 
-// Helper function to safely get nested values from match data
+/**
+ * Safely retrieves nested values from an object using dot notation path.
+ * Returns 0 if any part of the path is undefined.
+ */
 function getNestedValue(obj, path) {
-  return path.split('.').reduce((current, key) => {
-    return current && current[key] !== undefined ? current[key] : 0;
-  }, obj);
+    return path.split('.').reduce((current, key) => {
+        return current && current[key] !== undefined ? current[key] : 0;
+    }, obj);
 }
 
 // JavaScript equivalents of SQL functions
 const sqlFunctions = {
-  ROUND: (value, precision = 0) => {
-    const multiplier = Math.pow(10, precision);
-    return Math.round(value * multiplier) / multiplier;
-  },
-  COALESCE: (...args) => {
-    for (let arg of args) {
-      if (arg !== null && arg !== undefined && !Number.isNaN(arg)) {
-        return arg;
-      }
+    ROUND: (value, precision = 0) => {
+        const multiplier = Math.pow(10, precision);
+        return Math.round(value * multiplier) / multiplier;
+    },
+    COALESCE: (...args) => {
+        for (let arg of args) {
+            if (arg !== null && arg !== undefined && !Number.isNaN(arg)) {
+                return arg;
+            }
+        }
+        return 0;
     }
-    return 0;
-  }
 };
 
-// Function to replace SQL functions with JavaScript equivalents
+/**
+ * Replaces SQL function calls in expressions with JavaScript equivalents.
+ * Handles ROUND and COALESCE functions specifically.
+ */
 function replaceSqlFunctions(expression) {
-  // Handle ROUND function
-  expression = expression.replace(/ROUND\(([^,)]+),\s*([^)]+)\)/g, (match, value, precision) => {
-    return `sqlFunctions.ROUND(${value}, ${precision})`;
-  });
-  
-  expression = expression.replace(/ROUND\(([^)]+)\)/g, (match, value) => {
-    return `sqlFunctions.ROUND(${value})`;
-  });
-  
-  // Handle COALESCE function
-  expression = expression.replace(/COALESCE\(([^)]+)\)/g, (match, args) => {
-    return `sqlFunctions.COALESCE(${args})`;
-  });
-  
-  return expression;
+    expression = expression.replace(/ROUND\(([^,)]+),\s*([^)]+)\)/g, (match, value, precision) => {
+        return `sqlFunctions.ROUND(${value}, ${precision})`;
+    });
+    expression = expression.replace(/ROUND\(([^)]+)\)/g, (match, value) => {
+        return `sqlFunctions.ROUND(${value})`;
+    });
+    expression = expression.replace(/COALESCE\(([^)]+)\)/g, (match, args) => {
+        return `sqlFunctions.COALESCE(${args})`;
+    });
+    return expression;
 }
 
-// Safely accept either a JSON string or an already-parsed object
+/**
+ * Safely parses JSON strings or returns objects as-is.
+ * Handles cases where input might already be parsed or invalid JSON.
+ */
 function parseMaybeJSON(v) {
-  if (v == null) return {};
-  if (typeof v === 'string') {
-    try { return JSON.parse(v); } catch (e) { console.warn('parse error', e, v); return {}; }
-  }
-  if (typeof v === 'object') return v;
-  return {};
+    if (v == null) return {};
+    if (typeof v === 'string') {
+        try { return JSON.parse(v); } catch (e) { console.warn('parse error', e, v); return {}; }
+    }
+    if (typeof v === 'object') return v;
+    return {};
 }
 
-// Calculate field value based on config computed_fields
+/**
+ * Calculates computed field values based on configuration formulas.
+ * Handles complex expressions, SQL functions, and field dependencies.
+ */
 function calculateField(row, fieldName, computedFields, processedRow = null) {
-  const formula = computedFields[fieldName];
-  if (!formula) return 0;
-  
-  // Parse the row data
-  const preMatch = parseMaybeJSON(row.pre_match_json);
-  const auto = parseMaybeJSON(row.auto_json);
-  const teleop = parseMaybeJSON(row.teleop_json);
-  const endgame = parseMaybeJSON(row.endgame_json);
-  const misc = parseMaybeJSON(row.misc_json);
-  
-  // Get the config values for scoring
-  const config = window.config || {};
-  const autoValues = config.match_form?.auto_period || {};
-  const teleopValues = config.match_form?.teleop_period || {};
-  
-  // Handle special cases first
-  // Handle special case for left_starting_zone field specifically
-  if (fieldName === 'left_starting_zone') {
+    const formula = computedFields[fieldName];
+    if (!formula) return 0;
+    const preMatch = parseMaybeJSON(row.pre_match_json);
     const auto = parseMaybeJSON(row.auto_json);
-    const leftStartingZone = getNestedValue(auto, 'left_starting_zone');
-    if (typeof leftStartingZone === 'boolean') {
-      const configValue = getNestedValue(config, 'match_form.auto_period.left_starting_zone.Value');
-      if (configValue !== undefined) {
-        return leftStartingZone ? configValue : 0;
-      }
+    const teleop = parseMaybeJSON(row.teleop_json);
+    const endgame = parseMaybeJSON(row.endgame_json);
+    const misc = parseMaybeJSON(row.misc_json);
+    const config = window.config || {};
+    const autoValues = config.match_form?.auto_period || {};
+    const teleopValues = config.match_form?.teleop_period || {};
+    if (fieldName === 'left_starting_zone') {
+        const auto = parseMaybeJSON(row.auto_json);
+        const leftStartingZone = getNestedValue(auto, 'left_starting_zone');
+        if (typeof leftStartingZone === 'boolean') {
+            const configValue = getNestedValue(config, 'match_form.auto_period.left_starting_zone.Value');
+            if (configValue !== undefined) {
+                return leftStartingZone ? configValue : 0;
+            }
+        }
+        return leftStartingZone ? 3 : 0;
     }
-    return leftStartingZone ? 3 : 0; // Default value if config not found
-  }
-  
-  // Handle simple json_extract for string fields
-  if (formula.startsWith('json_extract(pre_match_json,')) {
-    const fieldMatch = formula.match(/json_extract\(pre_match_json,\s*'\$\.([^']+)'\)/);
-    if (fieldMatch) {
-      const value = getNestedValue(preMatch, fieldMatch[1]);
-      return value;
+    if (formula.startsWith('json_extract(pre_match_json,')) {
+        const fieldMatch = formula.match(/json_extract\(pre_match_json,\s*'\$\.([^']+)'\)/);
+        if (fieldMatch) {
+            const value = getNestedValue(preMatch, fieldMatch[1]);
+            return value;
+        }
     }
-  }
-  
-  if (formula.startsWith('json_extract(') && !formula.includes('+') && !formula.includes('*') && !formula.includes('CASE')) {
-    // Simple single json_extract
-    if (formula.includes('pre_match_json')) {
-      const fieldMatch = formula.match(/json_extract\(pre_match_json,\s*'\$\.([^']+)'\)/);
-      if (fieldMatch) return getNestedValue(preMatch, fieldMatch[1]);
+    if (formula.startsWith('json_extract(') && !formula.includes('+') && !formula.includes('*') && !formula.includes('CASE')) {
+        if (formula.includes('pre_match_json')) {
+            const fieldMatch = formula.match(/json_extract\(pre_match_json,\s*'\$\.([^']+)'\)/);
+            if (fieldMatch) return getNestedValue(preMatch, fieldMatch[1]);
+        }
+        if (formula.includes('auto_json')) {
+            const fieldMatch = formula.match(/json_extract\(auto_json,\s*'\$\.([^']+)'\)/);
+            if (fieldMatch) return getNestedValue(auto, fieldMatch[1]) || 0;
+        }
+        if (formula.includes('teleop_json')) {
+            const fieldMatch = formula.match(/json_extract\(teleop_json,\s*'\$\.([^']+)'\)/);
+            if (fieldMatch) return getNestedValue(teleop, fieldMatch[1]) || 0;
+        }
+        if (formula.includes('endgame_json')) {
+            const fieldMatch = formula.match(/json_extract\(endgame_json,\s*'\$\.([^']+)'\)/);
+            if (fieldMatch) return getNestedValue(endgame, fieldMatch[1]) || 0;
+        }
+        if (formula.includes('misc_json')) {
+            const fieldMatch = formula.match(/json_extract\(misc_json,\s*'\$\.([^']+)'\)/);
+            if (fieldMatch) return getNestedValue(misc, fieldMatch[1]) || 0;
+        }
     }
-    if (formula.includes('auto_json')) {
-      const fieldMatch = formula.match(/json_extract\(auto_json,\s*'\$\.([^']+)'\)/);
-      if (fieldMatch) return getNestedValue(auto, fieldMatch[1]) || 0;
+    if (formula.includes('CASE json_extract(endgame_json') && formula.includes('final_status')) {
+        const finalStatus = getNestedValue(endgame, 'final_status');
+        const statusValues = {
+            'Park': 2,
+            'Failed Climb': 2,
+            'Shallow Climb': 6,
+            'Deep Climb': 12
+        };
+        const value = statusValues[finalStatus] || 0;
+        return value;
     }
-    if (formula.includes('teleop_json')) {
-      const fieldMatch = formula.match(/json_extract\(teleop_json,\s*'\$\.([^']+)'\)/);
-      if (fieldMatch) return getNestedValue(teleop, fieldMatch[1]) || 0;
+    let result = formula;
+    result = result.replace(/config\('([^']+)'\)/g, (match, configPath) => {
+        const value = getNestedValue(config, configPath);
+        return value !== undefined ? value : 0;
+    });
+    result = result.replace(/json_extract\(pre_match_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
+        const value = getNestedValue(preMatch, field);
+        return typeof value === 'string' ? `"${value}"` : (value || 0);
+    });
+    result = result.replace(/json_extract\(auto_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
+        const value = getNestedValue(auto, field) || 0;
+        return value;
+    });
+    result = result.replace(/json_extract\(teleop_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
+        const value = getNestedValue(teleop, field) || 0;
+        return value;
+    });
+    result = result.replace(/json_extract\(endgame_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
+        const value = getNestedValue(endgame, field) || 0;
+        return value;
+    });
+    result = result.replace(/json_extract\(misc_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
+        const value = getNestedValue(misc, field) || 0;
+        return value;
+    });
+    result = result.replace(/json_extract\(auto_json,\s*'\$\.([^.]+)\.Value'\)/g, (match, field) => {
+        let value = 0;
+        if (config.match_form?.auto_period?.[field]?.Value !== undefined) {
+            value = config.match_form.auto_period[field].Value;
+        }
+        return value;
+    });
+    result = result.replace(/json_extract\(teleop_json,\s*'\$\.([^.]+)\.Value'\)/g, (match, field) => {
+        let value = 0;
+        if (config.match_form?.teleop_period?.[field]?.Value !== undefined) {
+            value = config.match_form.teleop_period[field].Value;
+        }
+        return value;
+    });
+    if (processedRow) {
+        for (const key in processedRow) {
+            if (processedRow.hasOwnProperty(key) && result.includes(key)) {
+                result = result.replace(new RegExp(`\\b${key}\\b`, 'g'), processedRow[key]);
+            }
+        }
     }
-    if (formula.includes('endgame_json')) {
-      const fieldMatch = formula.match(/json_extract\(endgame_json,\s*'\$\.([^']+)'\)/);
-      if (fieldMatch) return getNestedValue(endgame, fieldMatch[1]) || 0;
+    const fieldPattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+    const fieldsToReplace = [];
+    let match;
+    while ((match = fieldPattern.exec(result)) !== null) {
+        const fieldRef = match[1];
+        if (computedFields[fieldRef] && fieldRef !== fieldName && 
+            !['CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'ROUND', 'COALESCE', 'sqlFunctions', 'config'].includes(fieldRef)) {
+            fieldsToReplace.push(fieldRef);
+        }
     }
-    if (formula.includes('misc_json')) {
-      const fieldMatch = formula.match(/json_extract\(misc_json,\s*'\$\.([^']+)'\)/);
-      if (fieldMatch) return getNestedValue(misc, fieldMatch[1]) || 0;
+    for (const fieldRef of fieldsToReplace) {
+        const fieldValue = calculateField(row, fieldRef, computedFields, processedRow);
+        result = result.replace(new RegExp(`\\b${fieldRef}\\b`, 'g'), fieldValue);
     }
-  }
-  
-  // Handle CASE statements for endgame scoring
-  if (formula.includes('CASE json_extract(endgame_json') && formula.includes('final_status')) {
-    const finalStatus = getNestedValue(endgame, 'final_status');
-    const statusValues = {
-      'Park': 2,
-      'Failed Climb': 2,
-      'Shallow Climb': 6,
-      'Deep Climb': 12
-    };
-    const value = statusValues[finalStatus] || 0;
-    return value;
-  }
-  
-  // Handle complex formulas with arithmetic
-  let result = formula;
-  
-  // Handle config value references with special marker
-  result = result.replace(/config\('([^']+)'\)/g, (match, configPath) => {
-    const value = getNestedValue(config, configPath);
-    return value !== undefined ? value : 0;
-  });
-  
-  // Replace json_extract patterns with actual values (wrap strings in quotes)
-  result = result.replace(/json_extract\(pre_match_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
-    const value = getNestedValue(preMatch, field);
-    return typeof value === 'string' ? `"${value}"` : (value || 0);
-  });
-  
-  result = result.replace(/json_extract\(auto_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
-    const value = getNestedValue(auto, field) || 0;
-    return value;
-  });
-  
-  result = result.replace(/json_extract\(teleop_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
-    const value = getNestedValue(teleop, field) || 0;
-    return value;
-  });
-  
-  result = result.replace(/json_extract\(endgame_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
-    const value = getNestedValue(endgame, field) || 0;
-    return value;
-  });
-  
-  result = result.replace(/json_extract\(misc_json,\s*'\$\.([^']+)'\)/g, (match, field) => {
-    const value = getNestedValue(misc, field) || 0;
-    return value;
-  });
-  
-  // Replace the section that handles point value references with actual values from config
-  result = result.replace(/json_extract\(auto_json,\s*'\$\.([^.]+)\.Value'\)/g, (match, field) => {
-    let value = 0;
-    // Get the value from config instead of the match data
-    if (config.match_form?.auto_period?.[field]?.Value !== undefined) {
-      value = config.match_form.auto_period[field].Value;
+    result = replaceSqlFunctions(result);
+    if (result.includes('CASE WHEN') && result.includes('THEN') && result.includes('ELSE')) {
+        try {
+            const casePattern = /CASE WHEN\s+(.+?)\s+THEN\s+(.+?)\s+ELSE\s+(.+?)\s+END/;
+            const caseMatch = result.match(casePattern);
+            if (caseMatch) {
+                const conditionExpr = caseMatch[1].trim();
+                const thenExpr = caseMatch[2].trim();
+                const elseExpr = caseMatch[3].trim();
+                const condition = eval(conditionExpr);
+                const finalValue = condition ? eval(thenExpr) : eval(elseExpr);
+                
+                return finalValue;
+            }
+        } catch (e) {
+            console.warn('Failed to evaluate CASE statement:', result, e);
+            return 0;
+        }
     }
-    return value;
-  });
-
-  result = result.replace(/json_extract\(teleop_json,\s*'\$\.([^.]+)\.Value'\)/g, (match, field) => {
-    let value = 0;
-    // Get the value from config instead of the match data
-    if (config.match_form?.teleop_period?.[field]?.Value !== undefined) {
-      value = config.match_form.teleop_period[field].Value;
-    }
-    return value;
-  });
-  
-  // Replace field references with their calculated values
-  // First, check if we have a processed row with pre-calculated values
-  if (processedRow) {
-    for (const key in processedRow) {
-      if (processedRow.hasOwnProperty(key) && result.includes(key)) {
-        result = result.replace(new RegExp(`\\b${key}\\b`, 'g'), processedRow[key]);
-      }
-    }
-  }
-  
-  // Handle field references to other computed fields
-  const fieldPattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
-  const fieldsToReplace = [];
-  let match;
-  while ((match = fieldPattern.exec(result)) !== null) {
-    const fieldRef = match[1];
-    if (computedFields[fieldRef] && fieldRef !== fieldName && 
-        !['CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'ROUND', 'COALESCE', 'sqlFunctions', 'config'].includes(fieldRef)) {
-      fieldsToReplace.push(fieldRef);
-    }
-  }
-  
-  // Replace field references with their calculated values
-  for (const fieldRef of fieldsToReplace) {
-    const fieldValue = calculateField(row, fieldRef, computedFields, processedRow);
-    result = result.replace(new RegExp(`\\b${fieldRef}\\b`, 'g'), fieldValue);
-  }
-  
-  // Replace SQL functions with JavaScript equivalents
-  result = replaceSqlFunctions(result);
-  
-  // Handle CASE statements for accuracy calculations and other complex logic
-  if (result.includes('CASE WHEN') && result.includes('THEN') && result.includes('ELSE')) {
     try {
-      // Parse CASE WHEN condition - more robust parsing
-      const casePattern = /CASE WHEN\s+(.+?)\s+THEN\s+(.+?)\s+ELSE\s+(.+?)\s+END/;
-      const caseMatch = result.match(casePattern);
-      
-      if (caseMatch) {
-        const conditionExpr = caseMatch[1].trim();
-        const thenExpr = caseMatch[2].trim();
-        const elseExpr = caseMatch[3].trim();
-        
-        // Evaluate condition
-        const condition = eval(conditionExpr);
-        const finalValue = condition ? eval(thenExpr) : eval(elseExpr);
-        
-        return finalValue;
-      }
+        const finalValue = eval(result);
+        return finalValue || 0;
     } catch (e) {
-      console.warn('Failed to evaluate CASE statement:', result, e);
-      return 0;
+        console.warn('Failed to evaluate formula:', result, e);
+        return 0;
     }
-  }
-  
-  // Handle simple arithmetic expressions
-  try {
-    const finalValue = eval(result);
-    return finalValue || 0;
-  } catch (e) {
-    console.warn('Failed to evaluate formula:', result, e);
-    return 0;
-  }
 }
 
-// Create a chart based on config
+/**
+ * Creates a Chart.js chart based on configuration and processed data.
+ * Handles both single and multiple dataset configurations.
+ */
 function createChart(chartName, chartConfig, processedData) {
-  // Create a unique canvas element
-  const canvasId = `chart_${chartName.replace(/\s+/g, '_')}_${Date.now()}`;
-  const canvas = document.createElement('canvas');
-  canvas.id = canvasId;
-  canvas.width = 400;
-  canvas.height = 300;
-  
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.innerHTML = `<h3>${chartName}</h3>`;
-  card.appendChild(canvas);
-  
-  const ctx = canvas.getContext('2d');
-  
-  // Prepare data based on chart type
-  const labels = processedData.map(row => row[chartConfig.x] || 'N/A');
-  
-  let datasets = [];
-  
-  if (Array.isArray(chartConfig.y)) {
-    // Multiple datasets
-    const colors = [
-      'rgba(255, 99, 132, 0.7)',
-      'rgba(54, 162, 235, 0.7)',
-      'rgba(255, 205, 86, 0.7)',
-      'rgba(75, 192, 192, 0.7)',
-      'rgba(153, 102, 255, 0.7)',
-      'rgba(255, 159, 64, 0.7)'
-    ];
-    
-    chartConfig.y.forEach((yField, index) => {
-      datasets.push({
-        label: yField.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        data: processedData.map(row => row[yField] || 0),
-        backgroundColor: colors[index % colors.length],
-        borderColor: colors[index % colors.length].replace('0.7', '1'),
-        borderWidth: 2,
-        fill: false
-      });
-    });
-  } else {
-    // Single dataset
-    datasets.push({
-      label: chartConfig.y.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      data: processedData.map(row => row[chartConfig.y] || 0),
-      backgroundColor: chartConfig.backgroundColor || 'rgba(153, 102, 255, 0.2)',
-      borderColor: chartConfig.borderColor || 'rgba(153, 102, 255, 1)',
-      borderWidth: 2,
-      fill: true,
-      tension: 0.1
-    });
-  }
-  
-  const chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: datasets
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        intersect: false,
-        mode: 'index'
-      },
-      plugins: {
-        legend: {
-          display: true,
-          position: 'top'
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: chartConfig.y_label || 'Value'
-          }
+    const canvasId = `chart_${chartName.replace(/\s+/g, '_')}_${Date.now()}`;
+    const canvas = document.createElement('canvas');
+    canvas.id = canvasId;
+    canvas.width = 400;
+    canvas.height = 300;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h3>${chartName}</h3>`;
+    card.appendChild(canvas);
+    const ctx = canvas.getContext('2d')
+    const labels = processedData.map(row => row[chartConfig.x] || 'N/A');
+    let datasets = [];
+    if (Array.isArray(chartConfig.y)) {
+        const colors = [
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 205, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(153, 102, 255, 0.7)',
+            'rgba(255, 159, 64, 0.7)'
+        ];
+        chartConfig.y.forEach((yField, index) => {
+            datasets.push({
+                label: yField.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                data: processedData.map(row => row[yField] || 0),
+                backgroundColor: colors[index % colors.length],
+                borderColor: colors[index % colors.length].replace('0.7', '1'),
+                borderWidth: 2,
+                fill: false
+            });
+        });
+    } else {
+        datasets.push({
+            label: chartConfig.y.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            data: processedData.map(row => row[chartConfig.y] || 0),
+            backgroundColor: chartConfig.backgroundColor || 'rgba(153, 102, 255, 0.2)',
+            borderColor: chartConfig.borderColor || 'rgba(153, 102, 255, 1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.1
+        });
+    }
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets
         },
-        x: {
-          title: {
-            display: true,
-            text: chartConfig.x_label || 'Match'
-          }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: chartConfig.y_label || 'Value'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: chartConfig.x_label || 'Match'
+                    }
+                }
+            },
+            layout: {
+                padding: 10
+            }
         }
-      },
-      layout: {
-        padding: 10
-      }
-    }
-  });
-  
-  // Store the chart reference with a unique key
-  charts[canvasId] = chart;
-  
-  return card;
-}
-
-// Create a table based on config
-function createTable(tableName, tableConfig, processedData) {
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.innerHTML = `<h3>${tableName}</h3>`;
-  
-  const table = document.createElement('table');
-  table.className = 'table';
-  
-  // Create header
-  const thead = document.createElement('tr');
-  tableConfig.columns.forEach(colName => {
-    const th = document.createElement('th');
-    th.textContent = colName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    thead.appendChild(th);
-  });
-  table.appendChild(thead);
-  
-  // Create rows
-  processedData.forEach(row => {
-    const tr = document.createElement('tr');
-    tableConfig.columns.forEach(colName => {
-      const td = document.createElement('td');
-      const value = row[colName];
-      td.textContent = value !== undefined ? value : 'N/A';
-      tr.appendChild(td);
     });
-    table.appendChild(tr);
-  });
-  
-  card.appendChild(table);
-  return card;
+    charts[canvasId] = chart;
+    return card;
 }
 
-// Load team information from the API
+/**
+ * Creates a data table based on configuration and processed data.
+ * Displays specified columns in a tabular format.
+ */
+function createTable(tableName, tableConfig, processedData) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h3>${tableName}</h3>`;
+    const table = document.createElement('table');
+    table.className = 'table';
+    const thead = document.createElement('tr');
+    tableConfig.columns.forEach(colName => {
+        const th = document.createElement('th');
+        th.textContent = colName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        thead.appendChild(th);
+    });
+    table.appendChild(thead);
+    processedData.forEach(row => {
+        const tr = document.createElement('tr');
+        tableConfig.columns.forEach(colName => {
+            const td = document.createElement('td');
+            const value = row[colName];
+            td.textContent = value !== undefined ? value : 'N/A';
+            tr.appendChild(td);
+        });
+        table.appendChild(tr);
+    });
+    card.appendChild(table);
+    return card;
+}
+
+/**
+ * Loads team information from external API and displays it.
+ * Fetches team name, EPA, and ranking data based on configuration.
+ */
 async function loadTeamInfo(team, config) {
-  const teamInfoContainer = document.getElementById('teamInfo');
-  const teamInfoContent = document.getElementById('teamInfoContent');
-  const teamStatsContainer = document.getElementById('teamStats');
-  const teamStatsContent = document.getElementById('teamStatsContent');
-  
-  // Reset containers
-  teamInfoContainer.style.display = 'none';
-  teamStatsContainer.style.display = 'none';
-  teamInfoContent.innerHTML = '';
-  teamStatsContent.innerHTML = '';
-  
-  // Debug: log the entire config to see its structure
-  console.log('Full config:', config);
-  
-  try {
-    // Try different possible locations for team_info config
-    let teamInfoConfig = null;
-    
-    // Check various possible locations
-    if (config?.team_summary?.team_info) {
-      teamInfoConfig = config.team_summary.team_info;
-    } else if (config?.team_info) {
-      teamInfoConfig = config.team_info;
-    } else if (config?.team_summary) {
-      // team_summary might be the team_info config itself
-      teamInfoConfig = config.team_summary;
+    const teamInfoContainer = document.getElementById('teamInfo');
+    const teamInfoContent = document.getElementById('teamInfoContent');
+    const teamStatsContainer = document.getElementById('teamStats');
+    const teamStatsContent = document.getElementById('teamStatsContent');
+    teamInfoContainer.style.display = 'none';
+    teamStatsContainer.style.display = 'none';
+    teamInfoContent.innerHTML = '';
+    teamStatsContent.innerHTML = '';
+    //console.log('Full config:', config);
+    try {
+        let teamInfoConfig = null;
+        if (config?.team_summary?.team_info) {
+            teamInfoConfig = config.team_summary.team_info;
+        } else if (config?.team_info) {
+            teamInfoConfig = config.team_info;
+        } else if (config?.team_summary) {
+            teamInfoConfig = config.team_summary;
+        }
+        console.log('Team info config found:', teamInfoConfig);
+        if (!teamInfoConfig) {
+            console.warn('No team info configuration found in config');
+            return;
+        }
+        const shouldFetch = Object.values(teamInfoConfig).some(val => val === true && 
+            typeof val === 'boolean' && 
+            !['year'].includes(Object.keys(teamInfoConfig)[Object.values(teamInfoConfig).indexOf(val)]));
+        
+        console.log('Should fetch team info:', shouldFetch);
+        if (!shouldFetch) {
+            return;
+        }
+        const year = teamInfoConfig.year || 2025;
+        console.log('Fetching team info for year:', year);
+        const response = await fetch(`/api/team/${team}/info?year=${year}`, {
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        console.log('Team info API response:', data);
+        if (data.error) {
+            console.warn('Team info API error:', data.error);
+            return;
+        }
+        let infoHtml = '<div class="team-info-grid">';
+        let hasInfo = false;
+        if (teamInfoConfig.get_team_name && data.name) {
+            infoHtml += `<div class="info-item"><strong>Team Name:</strong> ${data.name}</div>`;
+            hasInfo = true;
+        }
+        infoHtml += '</div>';
+        if (hasInfo) {
+            teamInfoContent.innerHTML = infoHtml;
+            teamInfoContainer.style.display = 'block';
+        }
+        let statsHtml = '<div class="team-stats-grid">';
+        let hasStats = false;
+        if (teamInfoConfig.get_team_epa && data.epa !== null && data.epa !== undefined) {
+            statsHtml += `
+                <div class="stat-item">
+                    <div class="stat-value">${data.epa.toFixed(1)}</div>
+                    <div class="stat-label">EPA</div>
+                </div>
+            `;
+            hasStats = true;
+        }
+        if (teamInfoConfig.get_team_rank_in_state && data.state_rank !== null && data.state_rank !== undefined) {
+            statsHtml += `
+                <div class="stat-item">
+                    <div class="stat-value">${data.state_rank}/${data.state_total || '?'}</div>
+                    <div class="stat-label">State Rank</div>
+                </div>
+            `;
+            hasStats = true;
+        }
+        if (teamInfoConfig.get_team_rank_in_country && data.country_rank !== null && data.country_rank !== undefined) {
+            statsHtml += `
+                <div class="stat-item">
+                    <div class="stat-value">${data.country_rank}/${data.country_total || '?'}</div>
+                    <div class="stat-label">Country Rank</div>
+                </div>
+            `;
+            hasStats = true;
+        }
+        if (teamInfoConfig.get_team_rank_in_world && data.world_rank !== null && data.world_rank !== undefined) {
+            statsHtml += `
+                <div class="stat-item">
+                    <div class="stat-value">${data.world_rank}/${data.world_total || '?'}</div>
+                    <div class="stat-label">World Rank</div>
+                </div>
+            `;
+            hasStats = true;
+        }
+        if (teamInfoConfig.get_team_rank_in_district && data.district_rank !== null && data.district_rank !== undefined) {
+            statsHtml += `
+                <div class="stat-item">
+                    <div class="stat-value">${data.district_rank}/${data.district_total || '?'}</div>
+                    <div class="stat-label">District Rank</div>
+                </div>
+            `;
+            hasStats = true;
+        }
+        statsHtml += '</div>';
+        if (hasStats) {
+            teamStatsContent.innerHTML = statsHtml;
+            teamStatsContainer.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error loading team info:', error);
     }
-    
-    console.log('Team info config found:', teamInfoConfig);
-    
-    if (!teamInfoConfig) {
-      console.warn('No team info configuration found in config');
-      return;
-    }
-    
-    // Only fetch if at least one option is enabled
-    const shouldFetch = Object.values(teamInfoConfig).some(val => val === true && 
-        typeof val === 'boolean' && 
-        !['year'].includes(Object.keys(teamInfoConfig)[Object.values(teamInfoConfig).indexOf(val)]));
-    
-    console.log('Should fetch team info:', shouldFetch);
-    
-    if (!shouldFetch) {
-      return;
-    }
-    
-    const year = teamInfoConfig.year || 2025;
-    console.log('Fetching team info for year:', year);
-    
-const response = await fetch(`/api/team/${team}/info?year=${year}`, {
-    headers: getAuthHeaders()
-});
-    const data = await response.json();
-    
-    console.log('Team info API response:', data);
-    
-    if (data.error) {
-      console.warn('Team info API error:', data.error);
-      return;
-    }
-    
-    // Display team information
-    let infoHtml = '<div class="team-info-grid">';
-    let hasInfo = false;
-    
-    if (teamInfoConfig.get_team_name && data.name) {
-      infoHtml += `<div class="info-item"><strong>Team Name:</strong> ${data.name}</div>`;
-      hasInfo = true;
-    }
-    
-    infoHtml += '</div>';
-    
-    if (hasInfo) {
-      teamInfoContent.innerHTML = infoHtml;
-      teamInfoContainer.style.display = 'block';
-    }
-    
-    // Display team stats (EPA and rankings)
-    let statsHtml = '<div class="team-stats-grid">';
-    let hasStats = false;
-    
-    if (teamInfoConfig.get_team_epa && data.epa !== null && data.epa !== undefined) {
-      statsHtml += `
-        <div class="stat-item">
-          <div class="stat-value">${data.epa.toFixed(1)}</div>
-          <div class="stat-label">EPA</div>
-        </div>
-      `;
-      hasStats = true;
-    }
-    
-    if (teamInfoConfig.get_team_rank_in_state && data.state_rank !== null && data.state_rank !== undefined) {
-      statsHtml += `
-        <div class="stat-item">
-          <div class="stat-value">${data.state_rank}/${data.state_total || '?'}</div>
-          <div class="stat-label">State Rank</div>
-        </div>
-      `;
-      hasStats = true;
-    }
-    
-    if (teamInfoConfig.get_team_rank_in_country && data.country_rank !== null && data.country_rank !== undefined) {
-      statsHtml += `
-        <div class="stat-item">
-          <div class="stat-value">${data.country_rank}/${data.country_total || '?'}</div>
-          <div class="stat-label">Country Rank</div>
-        </div>
-      `;
-      hasStats = true;
-    }
-    
-    if (teamInfoConfig.get_team_rank_in_world && data.world_rank !== null && data.world_rank !== undefined) {
-      statsHtml += `
-        <div class="stat-item">
-          <div class="stat-value">${data.world_rank}/${data.world_total || '?'}</div>
-          <div class="stat-label">World Rank</div>
-        </div>
-      `;
-      hasStats = true;
-    }
-    
-    if (teamInfoConfig.get_team_rank_in_district && data.district_rank !== null && data.district_rank !== undefined) {
-      statsHtml += `
-        <div class="stat-item">
-          <div class="stat-value">${data.district_rank}/${data.district_total || '?'}</div>
-          <div class="stat-label">District Rank</div>
-        </div>
-      `;
-      hasStats = true;
-    }
-    
-    statsHtml += '</div>';
-    
-    if (hasStats) {
-      teamStatsContent.innerHTML = statsHtml;
-      teamStatsContainer.style.display = 'block';
-    }
-    
-  } catch (error) {
-    console.error('Error loading team info:', error);
-  }
 }
 
+/**
+ * Calculates and displays statistics grouped by match type.
+ * Shows average scores for each match type category.
+ */
+function displayMatchTypeStats(processedData) {
+    const matchTypeStatsContainer = document.getElementById('matchTypeStats');
+    const matchTypeStatsContent = document.getElementById('matchTypeStatsContent');
+    if (!processedData.length) {
+        matchTypeStatsContainer.style.display = 'none';
+        return;
+    }
+    const matchTypes = {};
+    processedData.forEach(match => {
+        const type = match.match_type || 'Unknown';
+        if (!matchTypes[type]) {
+            matchTypes[type] = {
+                count: 0,
+                totalAuto: 0,
+                totalTeleop: 0,
+                totalEndgame: 0,
+                totalPoints: 0
+            };
+        }
+        matchTypes[type].count++;
+        matchTypes[type].totalAuto += match.auto_points || 0;
+        matchTypes[type].totalTeleop += match.teleop_points || 0;
+        matchTypes[type].totalEndgame += match.endgame_points || 0;
+        matchTypes[type].totalPoints += match.total_points || 0;
+    });
+    let statsHtml = '<div class="match-type-stats-grid">';
+    for (const [type, stats] of Object.entries(matchTypes)) {
+        const avgAuto = stats.count > 0 ? stats.totalAuto / stats.count : 0;
+        const avgTeleop = stats.count > 0 ? stats.totalTeleop / stats.count : 0;
+        const avgEndgame = stats.count > 0 ? stats.totalEndgame / stats.count : 0;
+        const avgTotal = stats.count > 0 ? stats.totalPoints / stats.count : 0;
+        statsHtml += `
+            <div class="match-type-stat-item">
+                <div class="match-type-stat-label">${type}</div>
+                <div class="match-type-stat-count">${stats.count} matches</div>
+                <div class="match-type-stat-value">${avgTotal.toFixed(1)}</div>
+                <div>Total Points</div>
+                <div style="font-size: 0.8rem; margin-top: 5px;">
+                    Auto: ${avgAuto.toFixed(1)} | Teleop: ${avgTeleop.toFixed(1)} | Endgame: ${avgEndgame.toFixed(1)}
+                </div>
+            </div>
+        `;
+    }
+    statsHtml += '</div>';
+    matchTypeStatsContent.innerHTML = statsHtml;
+    matchTypeStatsContainer.style.display = 'block';
+}
+
+/**
+ * Main function to load and display team data, charts, and statistics.
+ * Orchestrates the entire data loading and visualization process.
+ */
 async function loadTeam(){
     const isAuthenticated = await checkAuth();
     if (!isAuthenticated) return;
-
-  const team = document.getElementById('team').value;
-  if (!team) return;
-  
-  try {
-    // Load config first
-    const configResp = await fetch('/api/config').then(r => r.json());
-    config = configResp;
-    window.config = configResp;
-    
-    await loadTeamInfo(team, configResp);;
-
-    // Now load team info and other data
-const [avgResp, rowsResp] = await Promise.all([
-    fetch(`/api/team/${team}/averages`, {
-        headers: getAuthHeaders()
-    }).then(r => r.json()),
-    fetch(`/api/team/${team}/matches`, {
-        headers: getAuthHeaders()
-    }).then(r => r.json())
-]);
-    
-    // Load team info after config is available
-    
-    if (avgResp.error) {
-      document.getElementById('summary').innerHTML = `Error: ${avgResp.error}`;
-      return;
-    }
-    
-    // Display basic summary
-    const s = document.getElementById('summary');
-    s.innerHTML = `
-      <h3>Team ${team} Summary</h3>
-      <div class="score-row">
-        <span>Matches: <strong>${avgResp.matches}</strong></span>
-        <span>Avg Auto: <strong>${avgResp.avg_auto.toFixed(2)}</strong></span>
-        <span>Avg Teleop: <strong>${avgResp.avg_teleop.toFixed(2)}</strong></span>
-        <span>Avg Endgame: <strong>${avgResp.avg_endgame.toFixed(2)}</strong></span>
-        <span>Avg Total: <strong>${avgResp.avg_total.toFixed(2)}</strong></span>
-      </div>
-    `;
-
-    // Load pit data and robot image
-    let teamPitData = null;
+    const team = document.getElementById('team').value;
+    if (!team) return;
+    currentMatchTypeFilter = document.getElementById('matchTypeFilter').value;
     try {
-teamPitData = await fetch(`/api/team/${team}/pit`, {
-    headers: getAuthHeaders()
-}).then(r => r.json());
-    } catch (e) {
-      console.log('Could not load pit data:', e);
-    }
-
-    const imageContainer = document.getElementById('robotImageContainer');
-    const robotImageDiv = document.getElementById('robotImage');
-
-    if (teamPitData && teamPitData.pit_json && teamPitData.pit_json.image_upload) {
-      imageContainer.style.display = 'block';
-      robotImageDiv.innerHTML = `<img src="${teamPitData.pit_json.image_upload}" style="max-width: 100%; max-height: 400px;" alt="Robot Image">`;
-    } else {
-      imageContainer.style.display = 'none';
-    }
-
-    // Clear previous charts and tables
-    Object.values(charts).forEach(chart => {
-      if (chart && typeof chart.destroy === 'function') {
-        chart.destroy();
-      }
-    });
-    charts = {};
-    document.getElementById('chartsContainer').innerHTML = '';
-    document.getElementById('tablesContainer').innerHTML = '';
-    
-    // Process all match data using config computed fields
-    const teamSummaryConfig = config.team_summary;
-    const computedFields = teamSummaryConfig.computed_fields || {};
-
-    const processedData = rowsResp.map(row => {
-      const pre = parseMaybeJSON(row.pre_match_json);
-
-      // start with backend-provided scores + a few basics
-      const processed = {
-        match_number: pre.match_number,
-        match_type: pre.match_type,
-        team_color: pre.team_color,
-        auto_points: row.auto_points,
-        teleop_points: row.teleop_points,
-        endgame_points: row.endgame_points,
-        total_points: row.total_points
-      };
-
-      // First pass: calculate simple fields
-      for (const fieldName of Object.keys(computedFields)) {
+        const configResp = await fetch('/api/config').then(r => r.json());
+        config = configResp;
+        window.config = configResp;
+        await loadTeamInfo(team, configResp);
+        const [avgResp, rowsResp] = await Promise.all([
+            fetch(`/api/team/${team}/averages`, {
+                headers: getAuthHeaders()
+            }).then(r => r.json()),
+            fetch(`/api/team/${team}/matches`, {
+                headers: getAuthHeaders()
+            }).then(r => r.json())
+        ]);
+        if (avgResp.error) {
+            document.getElementById('summary').innerHTML = `Error: ${avgResp.error}`;
+            return;
+        }
+        const s = document.getElementById('summary');
+        s.innerHTML = `
+            <h3>Team ${team} Summary</h3>
+            <div class="score-row">
+                <span>Matches: <strong>${avgResp.matches}</strong></span>
+                <span>Avg Auto: <strong>${avgResp.avg_auto.toFixed(2)}</strong></span>
+                <span>Avg Teleop: <strong>${avgResp.avg_teleop.toFixed(2)}</strong></span>
+                <span>Avg Endgame: <strong>${avgResp.avg_endgame.toFixed(2)}</strong></span>
+                <span>Avg Total: <strong>${avgResp.avg_total.toFixed(2)}</strong></span>
+            </div>
+        `;
+        let teamPitData = null;
         try {
-          // Skip complex fields that depend on other computed fields
-          if (!computedFields[fieldName].includes('auto_L') && 
-              !computedFields[fieldName].includes('teleop_L') &&
-              !computedFields[fieldName].includes('CASE WHEN')) {
-            processed[fieldName] = calculateField(row, fieldName, computedFields, processed);
-          }
+            teamPitData = await fetch(`/api/team/${team}/pit`, {
+                headers: getAuthHeaders()
+            }).then(r => r.json());
         } catch (e) {
-          console.warn('compute failed for', fieldName, e);
-          processed[fieldName] = 0;
+            console.log('Could not load pit data:', e);
         }
-      }
-
-      // Second pass: calculate complex fields that depend on other computed fields
-      for (const fieldName of Object.keys(computedFields)) {
-        try {
-          if (computedFields[fieldName].includes('auto_L') || 
-              computedFields[fieldName].includes('teleop_L') ||
-              computedFields[fieldName].includes('CASE WHEN')) {
-            processed[fieldName] = calculateField(row, fieldName, computedFields, processed);
-          }
-        } catch (e) {
-          console.warn('compute failed for', fieldName, e);
-          processed[fieldName] = 0;
+        const imageContainer = document.getElementById('robotImageContainer');
+        const robotImageDiv = document.getElementById('robotImage');
+        if (teamPitData && teamPitData.pit_json && teamPitData.pit_json.image_upload) {
+            imageContainer.style.display = 'block';
+            robotImageDiv.innerHTML = `<img src="${teamPitData.pit_json.image_upload}" style="max-width: 100%; max-height: 400px;" alt="Robot Image">`;
+        } else {
+            imageContainer.style.display = 'none';
         }
-      }
-
-      return processed;
-    });
-
-    // Optional but helpful: keep match order sane
-    processedData.sort((a,b) => (a.match_number ?? 0) - (b.match_number ?? 0));
-
-    // Create charts from config with side-by-side layout
-    if (teamSummaryConfig.body.charts) {
-      const chartEntries = Object.entries(teamSummaryConfig.body.charts);
-      const container = document.getElementById('chartsContainer');
-      
-      // Group charts that should be side by side
-      const chartPairs = [
-        ['Auto Coral Performance', 'Teleop Coral Performance'],
-        ['Auto Coral Accuracy', 'Teleop Coral Accuracy']
-      ];
-      
-      const usedCharts = new Set();
-      
-      // Create paired charts
-      chartPairs.forEach(pair => {
-        const [chart1Name, chart2Name] = pair;
-        const chart1Entry = chartEntries.find(([name]) => name === chart1Name);
-        const chart2Entry = chartEntries.find(([name]) => name === chart2Name);
-        
-        if (chart1Entry && chart2Entry) {
-          const row = document.createElement('div');
-          row.className = 'charts-row';
-          
-          const container1 = document.createElement('div');
-          container1.className = 'chart-container';
-          const card1 = createChart(chart1Entry[0], chart1Entry[1], processedData);
-          container1.appendChild(card1);
-          
-          const container2 = document.createElement('div');
-          container2.className = 'chart-container';
-          const card2 = createChart(chart2Entry[0], chart2Entry[1], processedData);
-          container2.appendChild(card2);
-          
-          row.appendChild(container1);
-          row.appendChild(container2);
-          container.appendChild(row);
-          
-          usedCharts.add(chart1Name);
-          usedCharts.add(chart2Name);
+        Object.values(charts).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
+        });
+        charts = {};
+        document.getElementById('chartsContainer').innerHTML = '';
+        document.getElementById('tablesContainer').innerHTML = '';
+        const teamSummaryConfig = config.team_summary;
+        const computedFields = teamSummaryConfig.computed_fields || {};
+        allProcessedData = rowsResp.map(row => {
+            const pre = parseMaybeJSON(row.pre_match_json);
+            const processed = {
+                match_number: pre.match_number,
+                match_type: pre.match_type || 'Unknown',
+                team_color: pre.team_color,
+                auto_points: row.auto_points,
+                teleop_points: row.teleop_points,
+                endgame_points: row.endgame_points,
+                total_points: row.total_points,
+                created_at: row.created_at
+            };
+            for (const fieldName of Object.keys(computedFields)) {
+                try {
+                    if (!computedFields[fieldName].includes('auto_L') && 
+                        !computedFields[fieldName].includes('teleop_L') &&
+                        !computedFields[fieldName].includes('CASE WHEN')) {
+                        processed[fieldName] = calculateField(row, fieldName, computedFields, processed);
+                    }
+                } catch (e) {
+                    console.warn('compute failed for', fieldName, e);
+                    processed[fieldName] = 0;
+                }
+            }
+            for (const fieldName of Object.keys(computedFields)) {
+                try {
+                    if (computedFields[fieldName].includes('auto_L') || 
+                        computedFields[fieldName].includes('teleop_L') ||
+                        computedFields[fieldName].includes('CASE WHEN')) {
+                        processed[fieldName] = calculateField(row, fieldName, computedFields, processed);
+                    }
+                } catch (e) {
+                    console.warn('compute failed for', fieldName, e);
+                    processed[fieldName] = 0;
+                }
+            }
+            return processed;
+        });
+        const matchTypeOrder = {
+            'Practice': 1,
+            'Qualification': 2,
+            'Semifinal': 3,
+            'Final': 4,
+            'Unknown': 5
+        };
+        allProcessedData.sort((a, b) => {
+            const typeA = a.match_type || 'Unknown';
+            const typeB = b.match_type || 'Unknown';
+            if (matchTypeOrder[typeA] !== matchTypeOrder[typeB]) {
+                return matchTypeOrder[typeA] - matchTypeOrder[typeB];
+            }
+            if (a.match_number && b.match_number) {
+                return a.match_number - b.match_number;
+            }
+            return new Date(a.created_at) - new Date(b.created_at);
+        });
+        const filteredData = currentMatchTypeFilter === 'all' 
+            ? allProcessedData 
+            : allProcessedData.filter(match => match.match_type === currentMatchTypeFilter);
+        displayMatchTypeStats(allProcessedData);
+        if (teamSummaryConfig.body.charts) {
+            const chartEntries = Object.entries(teamSummaryConfig.body.charts);
+            const container = document.getElementById('chartsContainer');
+            const chartPairs = [
+                ['Auto Coral Performance', 'Teleop Coral Performance'],
+                ['Auto Coral Accuracy', 'Teleop Coral Accuracy']
+            ];
+            const usedCharts = new Set();
+            chartPairs.forEach(pair => {
+                const [chart1Name, chart2Name] = pair;
+                const chart1Entry = chartEntries.find(([name]) => name === chart1Name);
+                const chart2Entry = chartEntries.find(([name]) => name === chart2Name);
+                if (chart1Entry && chart2Entry) {
+                    const row = document.createElement('div');
+                    row.className = 'charts-row';
+                    const container1 = document.createElement('div');
+                    container1.className = 'chart-container';
+                    const card1 = createChart(chart1Entry[0], chart1Entry[1], filteredData);
+                    container1.appendChild(card1);
+                    const container2 = document.createElement('div');
+                    container2.className = 'chart-container';
+                    const card2 = createChart(chart2Entry[0], chart2Entry[1], filteredData);
+                    container2.appendChild(card2);
+                    row.appendChild(container1);
+                    row.appendChild(container2);
+                    container.appendChild(row);
+                    usedCharts.add(chart1Name);
+                    usedCharts.add(chart2Name);
+                }
+            });
+            chartEntries.forEach(([chartName, chartConfig]) => {
+                if (!usedCharts.has(chartName)) {
+                    const row = document.createElement('div');
+                    row.className = 'charts-row';
+                    const container1 = document.createElement('div');
+                    container1.className = 'chart-container';
+                    const card = createChart(chartName, chartConfig, filteredData);
+                    container1.appendChild(card);
+                    row.appendChild(container1);
+                    container.appendChild(row);
+                }
+            });
         }
-      });
-      
-      // Create remaining single charts
-      chartEntries.forEach(([chartName, chartConfig]) => {
-        if (!usedCharts.has(chartName)) {
-          const row = document.createElement('div');
-          row.className = 'charts-row';
-          
-          const container1 = document.createElement('div');
-          container1.className = 'chart-container';
-          const card = createChart(chartName, chartConfig, processedData);
-          container1.appendChild(card);
-          
-          row.appendChild(container1);
-          container.appendChild(row);
+        if (teamSummaryConfig.body.tables && teamSummaryConfig.body.tables.table) {
+            const tablesContainer = document.getElementById('tablesContainer');
+            Object.entries(teamSummaryConfig.body.tables.table).forEach(([tableName, tableConfig]) => {
+                const displayName = tableName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                const tableCard = createTable(displayName, tableConfig, filteredData);
+                tablesContainer.appendChild(tableCard);
+            });
         }
-      });
+    } catch (error) {
+        console.error('Error loading team data:', error);
+        document.getElementById('summary').innerHTML = 'Error loading team data. Please try again.';
     }
-    
-    // Create tables from config
-    if (teamSummaryConfig.body.tables && teamSummaryConfig.body.tables.table) {
-      const tablesContainer = document.getElementById('tablesContainer');
-      Object.entries(teamSummaryConfig.body.tables.table).forEach(([tableName, tableConfig]) => {
-        const displayName = tableName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        const tableCard = createTable(displayName, tableConfig, processedData);
-        tablesContainer.appendChild(tableCard);
-      });
-    }
-    
-  } catch (error) {
-    console.error('Error loading team data:', error);
-    document.getElementById('summary').innerHTML = 'Error loading team data. Please try again.';
-  }
 }
 
+// Event listeners
 document.getElementById('go').addEventListener('click', loadTeam);
+
 // Load on Enter key in team input
 document.getElementById('team').addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') loadTeam();
+    if (e.key === 'Enter') loadTeam();
 });
+
+// Add event listener for the match type filter
+document.getElementById('matchTypeFilter').addEventListener('change', function() {
+    if (document.getElementById('team').value) {
+        loadTeam();
+    }
+});
+
 // Check authentication when page loads
 document.addEventListener('DOMContentLoaded', async () => {
     await checkAuth();
