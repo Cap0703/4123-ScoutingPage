@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-<!-- Mobile navigation -->
+<!-- Mobile Navigation -->
 <div class="mobile-nav">
   <button class="hamburger" onclick="toggleMenu()">☰</button>
   <div class="mobile-menu" id="mobileMenu">
@@ -28,52 +28,8 @@
   <a href="/pages/logout.html">Logout</a>
   </div>
 </div>
-<script>
-// Mobile menu functionality
-function toggleMenu() {
-  const menu = document.getElementById('mobileMenu');
-  const isOpening = !menu.classList.contains('open');
-  menu.classList.toggle('open');
-  document.body.classList.toggle('menu-open', isOpening);
-  if (isOpening) {
-    setTimeout(() => {
-      menu.scrollTop = 0;
-    }, 50);
-  }
-}
 
-// Close menu when clicking outside
-document.addEventListener('click', function(event) {
-  const menu = document.getElementById('mobileMenu');
-  const hamburger = document.querySelector('.hamburger');
-  if (menu.classList.contains('open') && 
-      !menu.contains(event.target) && 
-      event.target !== hamburger) {
-    toggleMenu();
-  }
-});
-
-// Close menu on escape key
-document.addEventListener('keydown', function(event) {
-  if (event.key === 'Escape') {
-    const menu = document.getElementById('mobileMenu');
-    if (menu.classList.contains('open')) {
-      toggleMenu();
-    }
-  }
-});
-
-// Prevent background scrolling when menu is open
-document.addEventListener('touchmove', function(event) {
-  const menu = document.getElementById('mobileMenu');
-  if (menu.classList.contains('open')) {
-    if (!menu.contains(event.target)) {
-      event.preventDefault();
-    }
-  }
-}, { passive: false });
-</script>
-
+<!-- Desktop Navigation -->
 <nav class="navbar">
   <a href="/">Home</a>
   <a href="/pages/match_scouting.html">Match Scouting</a>
@@ -90,31 +46,81 @@ document.addEventListener('touchmove', function(event) {
   <a href="/pages/admin.html" class="admin-only">User Management</a>
   <a href="/pages/logout.html">Logout</a>
 </nav>
-<div class="container">
 
+<!-- Mobile Navigation Functions -->
+<script>
+  // Mobile menu functionality
+  function toggleMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const isOpening = !menu.classList.contains('open');
+    menu.classList.toggle('open');
+    document.body.classList.toggle('menu-open', isOpening);
+    if (isOpening) {
+      setTimeout(() => {
+        menu.scrollTop = 0;
+      }, 50);
+    }
+  }
+
+  // Close menu when clicking outside
+  document.addEventListener('click', function(event) {
+    const menu = document.getElementById('mobileMenu');
+    const hamburger = document.querySelector('.hamburger');
+    if (menu.classList.contains('open') && 
+        !menu.contains(event.target) && 
+        event.target !== hamburger) {
+      toggleMenu();
+    }
+  });
+
+  // Close menu on escape key
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+      const menu = document.getElementById('mobileMenu');
+      if (menu.classList.contains('open')) {
+        toggleMenu();
+      }
+    }
+  });
+
+  // Prevent background scrolling when menu is open
+  document.addEventListener('touchmove', function(event) {
+    const menu = document.getElementById('mobileMenu');
+    if (menu.classList.contains('open')) {
+      if (!menu.contains(event.target)) {
+        event.preventDefault();
+      }
+    }
+  }, { passive: false });
+</script>
+
+<!-- Main Navigation -->
+<div class="container">
   <div class = "header-container">
     <h1>Match Scouting</h1>
     <div class="logo-container">
       <img src="/photos/logo/4123.png">
     </div>
   </div>
-
   <div class="badge">Totals update live & Creates a queue if offline and syncs when reconnected</div>
   <div id="totals" class="card"></div>
   <div id="form-root"></div>
-  
   <!-- Sticky submit button for mobile -->
   <div class="sticky-submit">
     <button id="submit" class="btn btn-large">Submit Match</button>
     <div id="result" class="badge"></div>
   </div>
 </div>
-<footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
-
+<footer>FRC 4123 Scouting</footer>
+<!-- Form Building and Submission Logic -->
 <script type="module">
   import { buildMatchForm } from "/js/dynamic_form.js";
+  
+  // Build the match scouting form and get the app instance
   const totals = document.getElementById('totals');
   const app = await buildMatchForm(document.getElementById('form-root'), totals);
+  
+  // Handle form submission when the submit button is clicked
   document.getElementById('submit').addEventListener('click', async ()=>{
     console.log("Scouting");
     const res = await app.submit();

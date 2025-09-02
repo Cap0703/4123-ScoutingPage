@@ -1,3 +1,7 @@
+/**
+ * Main authentication manager class that handles user authentication state,
+ * token management, and page protection
+ */
 class AuthManager {
     constructor() {
         this.currentUser = null;
@@ -5,13 +9,21 @@ class AuthManager {
         this.isInitialized = false;
         this.init();
     }
-    
+
+  /**
+   * Initializes the authentication system by loading user data
+   * and running page protection
+   */
     async init() {
         await this.loadUser();
         this.isInitialized = true;
         this.runPageProtection();
     }
     
+  /**
+   * Loads user data from the server using the stored authentication token
+   * Clears authentication if the token is invalid
+   */
     async loadUser() {
         if (this.authToken) {
             try {
@@ -30,6 +42,12 @@ class AuthManager {
         }
     }
     
+  /**
+   * Attempts to log in a user with provided credentials
+   * @param {string} username - The username to authenticate
+   * @param {string} password - The password to authenticate
+   * @returns {Object} Result object with success status and user data or error message
+   */
     async login(username, password) {
         try {
             const response = await fetch('/api/login', {
@@ -52,6 +70,10 @@ class AuthManager {
         }
     }
     
+  /**
+   * Logs out the current user by calling the server logout endpoint
+   * and clearing local authentication data
+   */
     async logout() {
         console.log('Logout initiated');
         try {
@@ -70,24 +92,43 @@ class AuthManager {
         }
     }
     
+  /**
+   * Clears all authentication data from memory and localStorage
+   */
     clearAuth() {
         this.currentUser = null;
         this.authToken = null;
         localStorage.removeItem('authToken');
     }
     
+  /**
+   * Checks if a user is currently logged in
+   * @returns {boolean} True if a user is logged in, false otherwise
+   */
     isLoggedIn() {
         return this.currentUser !== null;
     }
     
+  /**
+   * Checks if the current user has admin privileges
+   * @returns {boolean} True if user is an admin, false otherwise
+   */
     isAdmin() {
         return this.currentUser && this.currentUser.role === 'admin';
     }
     
+  /**
+   * Generates authentication headers for API requests
+   * @returns {Object} Headers object with authorization token if available
+   */
     getAuthHeader() {
         return this.authToken ? { 'Authorization': this.authToken } : {};
     }
     
+  /**
+   * Applies page protection based on authentication status and user role
+   * Redirects to login if accessing protected pages while not authenticated
+   */
     runPageProtection() {
         if (window.location.pathname.includes('login.html')) {
             return;
@@ -101,6 +142,10 @@ class AuthManager {
         this.updateUIForAuth();
     }
     
+  /**
+   * Protects admin-only pages by checking authentication and admin status
+   * Redirects to login or shows access denied message as appropriate
+   */
     protectAdminPages() {
         if (!this.isLoggedIn()) {
             const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
@@ -124,6 +169,10 @@ class AuthManager {
         }
     }
     
+  /**
+   * Updates the UI based on authentication status
+   * Shows/hides admin navigation items and adds logout buttons
+   */
     updateUIForAuth() {
         const adminNavItems = document.querySelectorAll('a[href*="edit"], a[href*="admin"]');
         if (this.isLoggedIn()) {
@@ -144,6 +193,10 @@ class AuthManager {
         }
     }
     
+  /**
+   * Adds logout buttons to both mobile and desktop navigation
+   * Includes the username in the button text
+   */
     addLogoutButton() {
         const existingButtons = document.querySelectorAll('#logout-btn, #logout-btn-mobile, #logout-btn-desktop');
         existingButtons.forEach(btn => btn.remove());
@@ -167,6 +220,10 @@ class AuthManager {
         this.setupLogoutEventListener();
     }
     
+  /**
+   * Sets up event listener for logout button clicks
+   * Prevents multiple listeners from being attached
+   */
     setupLogoutEventListener() {
         document.removeEventListener('click', this.logoutEventHandler);
         this.logoutEventHandler = (event) => {
@@ -180,6 +237,7 @@ class AuthManager {
     }
 }
 
+// Global authentication instance initialization
 if (!window.auth) {
     window.auth = new AuthManager();
 } else {

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href="/css/style.css"/>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FRC 4123 Scouting - Login</title>
+    <link rel="stylesheet" href="/css/style.css"/>
     <style>
         * {
             box-sizing: border-box;
@@ -79,7 +79,7 @@
         }
         
         .btn:hover {
-            background-color: #c19b2c;
+            background-color: #997c24;
         }
         
         .error {
@@ -107,75 +107,98 @@
             text-align: center;
             opacity: 0.7;
         }
+
+        .navbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+        }
+        
+        .mobile-nav {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+        }
     </style>
     <script src="/js/auth.js"></script>
-
 </head>
 <body>
     <div class="mobile-nav">
-  <button class="hamburger" onclick="toggleMenu()">☰</button>
-  <div class="mobile-menu" id="mobileMenu">
-    <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
-  <a href="/">Home</a>
-  <a href="/pages/match_scouting.html">Match Scouting</a>
-  <a href="/pages/pit_scouting.html">Pit Scouting</a>
-  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
-  <a href="/pages/match_simulator.html">Match Simulator</a>
-  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
-  <a href="/pages/raw_match.html">Raw Match Data</a>
-  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
-  <a href="/pages/raw_pit.html">Raw Pit Data</a>
-  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
-  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
-  <a href="/pages/config_creator.html">Config Creator</a>
-  <a href="/pages/admin.html" class="admin-only">User Management</a>
-  <a href="/pages/logout.html">Logout</a>
-  </div>
-</div>
+        <button class="hamburger" onclick="toggleMenu()">☰</button>
+            <div class="mobile-menu" id="mobileMenu">
+                <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+                <a href="/">Home</a>
+                <a href="/pages/match_scouting.html">Match Scouting</a>
+                <a href="/pages/pit_scouting.html">Pit Scouting</a>
+                <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+                <a href="/pages/match_simulator.html">Match Simulator</a>
+                <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+                <a href="/pages/raw_match.html">Raw Match Data</a>
+                <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+                <a href="/pages/raw_pit.html">Raw Pit Data</a>
+                <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+                <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+                <a href="/pages/config_creator.html">Config Creator</a>
+                <a href="/pages/admin.html" class="admin-only">User Management</a>
+                <a href="/pages/logout.html">Logout</a>
+            </div>
+    </div>
 <script>
-// Mobile menu functionality
-function toggleMenu() {
-  const menu = document.getElementById('mobileMenu');
-  const isOpening = !menu.classList.contains('open');
-  menu.classList.toggle('open');
-  document.body.classList.toggle('menu-open', isOpening);
-  if (isOpening) {
-    setTimeout(() => {
-      menu.scrollTop = 0;
-    }, 50);
-  }
-}
+    <!-- ==================== MOBILE MENU FUNCTIONS ==================== -->
 
-// Close menu when clicking outside
-document.addEventListener('click', function(event) {
-  const menu = document.getElementById('mobileMenu');
-  const hamburger = document.querySelector('.hamburger');
-  if (menu.classList.contains('open') && 
-      !menu.contains(event.target) && 
-      event.target !== hamburger) {
-    toggleMenu();
-  }
-});
+    /**
+     * Toggles the mobile navigation menu open/closed state and manages body scroll lock
+     */
+    function toggleMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const isOpening = !menu.classList.contains('open');
+    menu.classList.toggle('open');
+    document.body.classList.toggle('menu-open', isOpening);
+    if (isOpening) {
+        setTimeout(() => {
+        menu.scrollTop = 0;
+        }, 50);
+    }
+    }
 
-// Close menu on escape key
-document.addEventListener('keydown', function(event) {
-  if (event.key === 'Escape') {
+    /**
+     * Closes the mobile menu when clicking outside of it
+     */
+    document.addEventListener('click', function(event) {
+    const menu = document.getElementById('mobileMenu');
+    const hamburger = document.querySelector('.hamburger');
+    if (menu.classList.contains('open') && 
+        !menu.contains(event.target) && 
+        event.target !== hamburger) {
+        toggleMenu();
+    }
+    });
+
+    /**
+     * Closes the mobile menu when the Escape key is pressed
+     */
+    document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const menu = document.getElementById('mobileMenu');
+        if (menu.classList.contains('open')) {
+        toggleMenu();
+        }
+    }
+    });
+
+    /**
+     * Prevents background scrolling when the mobile menu is open on touch devices
+     */
+    document.addEventListener('touchmove', function(event) {
     const menu = document.getElementById('mobileMenu');
     if (menu.classList.contains('open')) {
-      toggleMenu();
+        if (!menu.contains(event.target)) {
+        event.preventDefault();
+        }
     }
-  }
-});
-
-// Prevent background scrolling when menu is open
-document.addEventListener('touchmove', function(event) {
-  const menu = document.getElementById('mobileMenu');
-  if (menu.classList.contains('open')) {
-    if (!menu.contains(event.target)) {
-      event.preventDefault();
-    }
-  }
-}, { passive: false });
+    }, { passive: false });
 </script>
 
 <nav class="navbar">
@@ -194,6 +217,7 @@ document.addEventListener('touchmove', function(event) {
   <a href="/pages/admin.html" class="admin-only">User Management</a>
   <a href="/pages/logout.html">Logout</a>
 </nav>
+<!-- Login form container -->
     <div class="login-container">
         <h1>FRC 4123 Scouting</h1>
         <form id="loginForm">
@@ -201,12 +225,10 @@ document.addEventListener('touchmove', function(event) {
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required>
             </div>
-            
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            
             <div class="form-group">
                 <label for="role">Role</label>
                 <select id="role" name="role" required>
@@ -215,79 +237,72 @@ document.addEventListener('touchmove', function(event) {
                     <option value="admin">Admin</option>
                 </select>
             </div>
-            
             <button type="submit" class="btn">Login</button>
         </form>
-        
         <div id="errorMessage" class="error"></div>
         <div id="successMessage" class="success"></div>
     </div>
-    
     <div class="footer">
-        <p>FRC 4123 Scouting • Role-Based Access</p>
+        <p>FRC 4123 Scouting</p>
     </div>
 
-
 <script>
+    // ==================== LOGIN FORM FUNCTIONS ====================
+
+    /**
+     * Handles the login form submission, validates inputs, and processes authentication
+     */
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
         const role = document.getElementById('role').value;
-        
-        // Clear previous messages
         document.getElementById('errorMessage').style.display = 'none';
         document.getElementById('successMessage').style.display = 'none';
-        
-        // Validate inputs
         if (!username || !password || !role) {
             showError('Please fill in all fields');
             return;
         }
-        
         try {
-            // Use the auth.js login method
             const result = await auth.login(username, password);
-            
             if (result.success) {
-                // Check if the user role matches
                 if (result.user.role !== role) {
                     showError('Invalid role for this user');
                     return;
                 }
-                
-                // Successful login
                 showSuccess('Login successful! Redirecting...');
-                
-                // Get the original destination from URL parameters or default to home
                 const urlParams = new URLSearchParams(window.location.search);
                 const redirectTo = urlParams.get('redirect') || '/';
-                
-                // Redirect to the original page after a brief delay
                 setTimeout(() => {
                     window.location.href = redirectTo;
                 }, 1000);
             } else {
-                // Failed login
                 showError(result.error || 'Login failed');
             }
         } catch (error) {
             showError('Login error: ' + error.message);
         }
     });
-    
+
+    /**
+     * Displays an error message to the user in the error message container
+     * @param {string} message - The error message to display
+     */
     function showError(message) {
         const errorDiv = document.getElementById('errorMessage');
         errorDiv.textContent = message;
         errorDiv.style.display = 'block';
     }
     
+    /**
+     * Displays a success message to the user in the success message container
+     * @param {string} message - The success message to display
+     */
     function showSuccess(message) {
         const successDiv = document.getElementById('successMessage');
         successDiv.textContent = message;
         successDiv.style.display = 'block';
     }
-</script>
+    </script>
 </body>
 </html>
