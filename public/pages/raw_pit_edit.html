@@ -4,24 +4,27 @@
 <title>Raw Pit Data Edit</title>
 <link rel="stylesheet" href="/css/style.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/js/auth.js"></script>
 </head>
 <body>
 <div class="mobile-nav">
   <button class="hamburger" onclick="toggleMenu()">☰</button>
   <div class="mobile-menu" id="mobileMenu">
     <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
-    <a href="/" onclick="toggleMenu()">Home</a>
-    <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
-    <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
-    <a href="/pages/team_summary.html" onclick="toggleMenu()">Team Summary</a>
-    <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
-    <a href="/pages/rankings.html" onclick="toggleMenu()">Rankings</a>
-    <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
-    <a href="/pages/raw_match_edit.html" onclick="toggleMenu()">Raw Match Data Edit</a>
-    <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
-    <a href="/pages/raw_pit_edit.html" onclick="toggleMenu()">Raw Pit Data Edit</a>
-    <a href="/pages/csv_upload.html" onclick="toggleMenu()">CSV Upload</a>
-    <a href="/pages/config_cretor.html" onclick="toggleMenu()">Config Creator</a>
+  <a href="/">Home</a>
+  <a href="/pages/match_scouting.html">Match Scouting</a>
+  <a href="/pages/pit_scouting.html">Pit Scouting</a>
+  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+  <a href="/pages/match_simulator.html">Match Simulator</a>
+  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+  <a href="/pages/raw_match.html">Raw Match Data</a>
+  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+  <a href="/pages/raw_pit.html">Raw Pit Data</a>
+  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+  <a href="/pages/config_creator.html">Config Creator</a>
+  <a href="/pages/admin.html" class="admin-only">User Management</a>
+  <a href="/pages/logout.html">Logout</a>
   </div>
 </div>
 <script>
@@ -69,94 +72,115 @@ document.addEventListener('touchmove', function(event) {
   }
 }, { passive: false });
 </script>
+
 <nav class="navbar">
   <a href="/">Home</a>
   <a href="/pages/match_scouting.html">Match Scouting</a>
   <a href="/pages/pit_scouting.html">Pit Scouting</a>
-  <a href="/pages/team_summary.html">Team Summary</a>
+  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
   <a href="/pages/match_simulator.html">Match Simulator</a>
-  <a href="/pages/rankings.html">Rankings</a>
+  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
   <a href="/pages/raw_match.html">Raw Match Data</a>
-  <a href="/pages/raw_match_edit.html">Raw Match Data Edit</a>
+  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
   <a href="/pages/raw_pit.html">Raw Pit Data</a>
-  <a href="/pages/raw_pit_edit.html">Raw Pit Data Edit</a>
-  <a href="/pages/csv_upload.html">CSV Upload</a>
+  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
   <a href="/pages/config_creator.html">Config Creator</a>
+  <a href="/pages/admin.html" class="admin-only">User Management</a>
+  <a href="/pages/logout.html">Logout</a>
 </nav>
+<div class="container admin-only"></div>
 <div class="container">
   <h1>Raw Pit Data Edit</h1>
   <div class="form-row"><label>Show</label><div class="form-controls"><input id="limit" type="number" value="50"/><button id="load" class="btn">Load</button></div></div>
   <div class="form-row"><a class="btn" href="/api/export/pits.csv">Export CSV</a></div>
   <table id="tbl" class="table"></table>
   <div class="center"><button id="more" class="btn">Load More</button></div>
+  </div>
 </div>
 <footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
 
 <script>
 let offset = 0;
 function jsonArea(obj){ const ta=document.createElement('textarea'); ta.value=JSON.stringify(obj,null,2); ta.style.width='100%'; ta.rows=8; return ta; }
+
+// Get auth token from localStorage and create headers
+function getAuthHeaders() {
+    const token = localStorage.getItem('authToken');
+    return token ? { 'Authorization': token } : {};
+}
+
 async function load(reset){
   const limit = Number(document.getElementById('limit').value||50);
   if (reset){ offset = 0; document.getElementById('tbl').innerHTML=''; }
   
-  try {
-    const response = await fetch(`/api/pits?limit=${limit}&offset=${offset}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const rows = await response.json();
-    
-    const tbl = document.getElementById('tbl');
-    if (!tbl.querySelector('th')){
-      const head = document.createElement('tr');
-      ['ID','Created','Pit (edit)','Image Path','Ops'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; head.appendChild(th); });
-      tbl.appendChild(head);
-    }
-    rows.forEach(r=>{
-      const tr=document.createElement('tr');
-      const pit = jsonArea(r.pit_json);
-      const img = document.createElement('input'); img.value = r.image_path||''; img.style.width='100%';
-      const save = document.createElement('button'); save.className='btn'; save.textContent='Save';
-      save.onclick = async ()=>{
-        try {
-          const response = await fetch(`/api/pits/${r.id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pit_json: JSON.parse(pit.value), image_path: img.value })});
-          if (response.ok) {
-            save.textContent='Saved'; 
-            setTimeout(()=>save.textContent='Save',1000);
-          } else {
-            throw new Error('Save failed');
-          }
-        } catch (error) {
-          console.error('Error saving:', error);
-          alert('Error saving data. Please check the console for details.');
-        }
-      };
-      const del = document.createElement('button'); del.className='btn btn-red'; del.textContent='Delete';
-      del.onclick = async ()=>{ 
-        try {
-          await fetch(`/api/pits/${r.id}`, {method:'DELETE'}); 
-          tr.remove(); 
-        } catch (error) {
-          console.error('Error deleting:', error);
-          alert('Error deleting data. Please check the console for details.');
-        }
-      };
-      tr.innerHTML = `<td>${r.id}</td><td>${r.created_at||''}</td>`;
-      const tdPit=document.createElement('td'); tdPit.appendChild(pit);
-      const tdImg=document.createElement('td'); tdImg.appendChild(img);
-      const tdOps=document.createElement('td'); tdOps.appendChild(save); tdOps.appendChild(del);
-      tr.appendChild(tdPit); tr.appendChild(tdImg); tr.appendChild(tdOps);
-      tbl.appendChild(tr);
-    });
-    offset += rows.length;
-  } catch (error) {
-    console.error('Error loading pit data:', error);
-    alert('Error loading pit data. Please check the console for details.');
+  // Add Authorization header to the request
+  const rows = await fetch(`/api/pits?limit=${limit}&offset=${offset}`, {
+    headers: getAuthHeaders()
+  }).then(r=>r.json());
+  
+  const tbl = document.getElementById('tbl');
+  if (!tbl.querySelector('th')){
+    const head = document.createElement('tr');
+    ['ID','Created','Pit Data (edit)','Image Path','Ops'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; head.appendChild(th); });
+    tbl.appendChild(head);
   }
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    const pit = jsonArea(r.pit_json);
+    const imagePath = document.createElement('input');
+    imagePath.type = 'text';
+    imagePath.value = r.image_path || '';
+    imagePath.style.width = '100%';
+    
+    const ops = document.createElement('div');
+    const save = document.createElement('button'); save.className='btn'; save.textContent='Save';
+    save.onclick = async ()=>{
+      const body = { 
+        pit_json: JSON.parse(pit.value), 
+        image_path: imagePath.value 
+      };
+      await fetch(`/api/pits/${r.id}`, {
+        method:'PUT', 
+        headers: {
+          'Content-Type':'application/json',
+          ...getAuthHeaders()  // Add auth header
+        }, 
+        body: JSON.stringify(body)
+      });
+      save.textContent='Saved';
+      setTimeout(()=>save.textContent='Save',1000);
+    };
+    const del = document.createElement('button'); del.className='btn btn-red'; del.textContent='Delete';
+    del.onclick = async ()=>{ 
+      await fetch(`/api/pits/${r.id}`, {
+        method:'DELETE',
+        headers: getAuthHeaders()  // Add auth header
+      }); 
+      tr.remove(); 
+    };
+    ops.append(save, del);
+    tr.innerHTML = `<td>${r.id}</td><td>${r.created_at||''}</td>`;
+    
+    const tdPit = document.createElement('td');
+    tdPit.appendChild(pit);
+    tr.appendChild(tdPit);
+    
+    const tdImage = document.createElement('td');
+    tdImage.appendChild(imagePath);
+    tr.appendChild(tdImage);
+    
+    const tdOps = document.createElement('td'); 
+    tdOps.appendChild(ops); 
+    tr.appendChild(tdOps);
+    
+    tbl.appendChild(tr);
+  });
+  offset += rows.length;
 }
 document.getElementById('load').addEventListener('click', ()=>load(true));
 document.getElementById('more').addEventListener('click', ()=>load(false));
 load(true);
 </script>
-
+</div>
 </body></html>

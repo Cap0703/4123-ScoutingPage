@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Logout</title>
+    <script>
+        // Clear authentication and redirect to login
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+    </script>
+</head>
+<body>
+    <p>Logging out...</p>
+</body>
+</html>

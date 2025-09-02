@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="/css/style.css"/>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FRC Scouting Config Creator</title>
@@ -200,24 +201,93 @@
     </style>
 </head>
 <body>
+<div class="mobile-nav">
+  <button class="hamburger" onclick="toggleMenu()">☰</button>
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+  <a href="/">Home</a>
+  <a href="/pages/match_scouting.html">Match Scouting</a>
+  <a href="/pages/pit_scouting.html">Pit Scouting</a>
+  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+  <a href="/pages/match_simulator.html">Match Simulator</a>
+  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+  <a href="/pages/raw_match.html">Raw Match Data</a>
+  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+  <a href="/pages/raw_pit.html">Raw Pit Data</a>
+  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+  <a href="/pages/config_creator.html">Config Creator</a>
+  <a href="/pages/admin.html" class="admin-only">User Management</a>
+  <a href="/pages/logout.html">Logout</a>
+  </div>
+</div>
+<script>
+// Mobile menu functionality
+function toggleMenu() {
+  const menu = document.getElementById('mobileMenu');
+  const isOpening = !menu.classList.contains('open');
+  menu.classList.toggle('open');
+  document.body.classList.toggle('menu-open', isOpening);
+  if (isOpening) {
+    setTimeout(() => {
+      menu.scrollTop = 0;
+    }, 50);
+  }
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', function(event) {
+  const menu = document.getElementById('mobileMenu');
+  const hamburger = document.querySelector('.hamburger');
+  if (menu.classList.contains('open') && 
+      !menu.contains(event.target) && 
+      event.target !== hamburger) {
+    toggleMenu();
+  }
+});
+
+// Close menu on escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    const menu = document.getElementById('mobileMenu');
+    if (menu.classList.contains('open')) {
+      toggleMenu();
+    }
+  }
+});
+
+// Prevent background scrolling when menu is open
+document.addEventListener('touchmove', function(event) {
+  const menu = document.getElementById('mobileMenu');
+  if (menu.classList.contains('open')) {
+    if (!menu.contains(event.target)) {
+      event.preventDefault();
+    }
+  }
+}, { passive: false });
+</script>
+
+<nav class="navbar">
+  <a href="/">Home</a>
+  <a href="/pages/match_scouting.html">Match Scouting</a>
+  <a href="/pages/pit_scouting.html">Pit Scouting</a>
+  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+  <a href="/pages/match_simulator.html">Match Simulator</a>
+  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+  <a href="/pages/raw_match.html">Raw Match Data</a>
+  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+  <a href="/pages/raw_pit.html">Raw Pit Data</a>
+  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+  <a href="/pages/config_creator.html">Config Creator</a>
+  <a href="/pages/admin.html" class="admin-only">User Management</a>
+  <a href="/pages/logout.html">Logout</a>
+</nav>
     <div class="container">
         <header>
             <h1>FRC Scouting Config Creator</h1>
             <p>Easily create and customize the configuration for your FRC scouting system</p>
         </header>
-        <nav class="navbar">
-            <a href="/">Home</a>
-            <a href="/pages/match_scouting.html">Match Scouting</a>
-            <a href="/pages/pit_scouting.html">Pit Scouting</a>
-            <a href="/pages/team_summary.html">Team Summary</a>
-            <a href="/pages/match_simulator.html">Match Simulator</a>
-            <a href="/pages/rankings.html">Rankings</a>
-            <a href="/pages/raw_match.html">Raw Match Data</a>
-            <a href="/pages/raw_match_edit.html">Raw Match Data Edit</a>
-            <a href="/pages/raw_pit.html">Raw Pit Data</a>
-            <a href="/pages/raw_pit_edit.html">Raw Pit Data Edit</a>
-            <a href="/pages/config_creator.html">Config Creator</a>
-        </nav>
         <div class="tabs">
             <div class="tab active" data-tab="theme">Theme</div>
             <div class="tab" data-tab="limits">Limits</div>
