@@ -90,26 +90,248 @@ document.addEventListener('touchmove', function(event) {
 </nav>
 <div class="container">
   <h1>Raw Match Data</h1>
+  <div class="search-section">
+    <div class="form-row">
+      <label for="globalSearch">Global Search:</label>
+      <div class="form-controls">
+        <input type="text" id="globalSearch" placeholder="Search across all fields...">
+        <button id="searchBtn" class="btn">Search</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Filters:</label>
+      <div class="form-controls">
+        <select id="filterSelect">
+          <option value="">Select a filter...</option>
+        </select>
+        <button id="addFilterBtn" class="btn">Add Filter</button>
+      </div>
+    </div>
+    <div id="activeFilters"></div>
+  <div class="form-row">
+    <div class="filter-stats">
+      Showing <span id="visibleCount">0</span> of <span id="totalCount">0</span> entries
+      <span id="filteredCountInfo" style="display: none;">
+        (<span id="filteredCount">0</span> match current filters)
+      </span>
+    </div>
+  </div>
+  </div>
   <div class="form-row"><label>Show</label><div class="form-controls"><input id="limit" type="number" value="50"/><button id="load" class="btn">Load</button></div></div>
   <div class="form-row"><a class="btn" href="/api/export/matches.csv">Export CSV</a></div>
   <table id="tbl" class="table"></table>
   <div class="center"><button id="more" class="btn">Load More</button></div>
 </div>
-<footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
+<footer>FRC 4123 Scouting</footer>
 
 <script>
 let offset = 0;
-async function load(reset){
-  const limit = Number(document.getElementById('limit').value||50);
-  if (reset){ offset = 0; document.getElementById('tbl').innerHTML=''; }
-  const rows = await fetch(`/api/matches?limit=${limit}&offset=${offset}`).then(r=>r.json());
-  const tbl = document.getElementById('tbl');
-  if (!tbl.querySelector('th')){
-    const head = document.createElement('tr');
-    ['ID','Created','Pre','Auto','Teleop','Endgame','Misc'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; head.appendChild(th); });
-    tbl.appendChild(head);
+let allMatches = [];
+let currentFilters = [];
+let configData = null;
+let totalMatchesCount = 0;
+let allFilteredMatches = [];
+
+async function loadConfig() {
+  try {
+    const response = await fetch('/api/config');
+    configData = await response.json();
+    populateFilterOptions();
+  } catch (error) {
+    console.error('Error loading config:', error);
   }
-  rows.forEach(r=>{
+}
+
+function populateFilterOptions() {
+  const filterSelect = document.getElementById('filterSelect');
+  filterSelect.innerHTML = '<option value="">Select a filter...</option>';
+  if (configData.match_form && configData.match_form.pre_match) {
+    Object.keys(configData.match_form.pre_match).forEach(field => {
+      if (field !== 'title') {
+        const option = document.createElement('option');
+        option.value = `pre_match.${field}`;
+        option.textContent = `Pre-Match: ${field.replace(/_/g, ' ')}`;
+        filterSelect.appendChild(option);
+      }
+    });
+  }
+  if (configData.match_form && configData.match_form.auto_period) {
+    Object.keys(configData.match_form.auto_period).forEach(field => {
+      if (field !== 'title') {
+        const option = document.createElement('option');
+        option.value = `auto.${field}`;
+        option.textContent = `Auto: ${field.replace(/_/g, ' ')}`;
+        filterSelect.appendChild(option);
+      }
+    });
+  }
+  if (configData.match_form && configData.match_form.teleop_period) {
+    Object.keys(configData.match_form.teleop_period).forEach(field => {
+      if (field !== 'title') {
+        const option = document.createElement('option');
+        option.value = `teleop.${field}`;
+        option.textContent = `Teleop: ${field.replace(/_/g, ' ')}`;
+        filterSelect.appendChild(option);
+      }
+    });
+  }
+  if (configData.match_form && configData.match_form.endgame) {
+    Object.keys(configData.match_form.endgame).forEach(field => {
+      if (field !== 'title') {
+        const option = document.createElement('option');
+        option.value = `endgame.${field}`;
+        option.textContent = `Endgame: ${field.replace(/_/g, ' ')}`;
+        filterSelect.appendChild(option);
+      }
+    });
+  }
+  if (configData.match_form && configData.match_form.misc) {
+    Object.keys(configData.match_form.misc).forEach(field => {
+      if (field !== 'title') {
+        const option = document.createElement('option');
+        option.value = `misc.${field}`;
+        option.textContent = `Misc: ${field.replace(/_/g, ' ')}`;
+        filterSelect.appendChild(option);
+      }
+    });
+  }
+}
+
+function addFilter() {
+  const filterSelect = document.getElementById('filterSelect');
+  const selectedFilter = filterSelect.value;
+  if (!selectedFilter) return;
+  if (currentFilters.some(filter => filter.field === selectedFilter)) return;
+  const newFilter = {
+    field: selectedFilter,
+    value: ''
+  };
+  currentFilters.push(newFilter);
+  renderActiveFilters();
+}
+
+function renderActiveFilters() {
+  const activeFiltersContainer = document.getElementById('activeFilters');
+  activeFiltersContainer.innerHTML = '';
+  currentFilters.forEach((filter, index) => {
+    const filterElement = document.createElement('div');
+    filterElement.className = 'form-row filter-item';
+    const [section, field] = filter.field.split('.');
+    const displayName = `${section.replace(/_/g, ' ')}: ${field.replace(/_/g, ' ')}`;
+    filterElement.innerHTML = `
+      <label>${displayName}:</label>
+      <div class="form-controls">
+        <input type="text" class="filter-value" data-index="${index}" 
+               placeholder="Enter value..." value="${filter.value}">
+        <button class="btn btn-red remove-filter" data-index="${index}">Remove</button>
+      </div>
+    `;
+    activeFiltersContainer.appendChild(filterElement);
+  });
+  document.querySelectorAll('.filter-value').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const index = parseInt(e.target.dataset.index);
+      currentFilters[index].value = e.target.value;
+      applyFilters();
+    });
+  });
+  document.querySelectorAll('.remove-filter').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const index = parseInt(e.target.dataset.index);
+      currentFilters.splice(index, 1);
+      renderActiveFilters();
+      applyFilters();
+    });
+  });
+}
+
+function applyFilters() {
+  const globalSearch = document.getElementById('globalSearch').value.toLowerCase();
+  totalMatchesCount = allMatches.length;
+  allFilteredMatches = allMatches.filter(match => {
+    // Apply global search
+    if (globalSearch) {
+      const matchString = JSON.stringify(match).toLowerCase();
+      if (!matchString.includes(globalSearch)) return false;
+    }
+    for (const filter of currentFilters) {
+      if (!filter.value) continue;
+      const [section, field] = filter.field.split('.');
+      let value;
+      try {
+        switch(section) {
+          case 'pre_match':
+            value = match.pre_match_json[field];
+            break;
+          case 'auto':
+            value = match.auto_json[field];
+            break;
+          case 'teleop':
+            value = match.teleop_json[field];
+            break;
+          case 'endgame':
+            value = match.endgame_json[field];
+            break;
+          case 'misc':
+            value = match.misc_json[field];
+            break;
+        }
+      } catch (e) {
+        console.error('Error accessing field:', e);
+        return false;
+      }
+      if (typeof value === 'object' && value !== null) {
+        const valueStr = JSON.stringify(value).toLowerCase();
+        if (!valueStr.includes(filter.value.toLowerCase())) return false;
+      } else if (value !== null && value !== undefined) {
+        if (value.toString().toLowerCase() !== filter.value.toLowerCase()) return false;
+      } else {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+  const limit = Number(document.getElementById('limit').value || 50);
+  const visibleMatches = allFilteredMatches.slice(0, offset + limit);
+  const visibleCount = visibleMatches.length;
+  const totalCount = allMatches.length;
+  const filteredCount = allFilteredMatches.length;
+  document.getElementById('visibleCount').textContent = visibleCount;
+  document.getElementById('totalCount').textContent = totalCount;
+  const hasActiveFilters = globalSearch || currentFilters.some(filter => filter.value);
+  const filteredCountInfo = document.getElementById('filteredCountInfo');
+  const filteredCountElement = document.getElementById('filteredCount');
+  if (hasActiveFilters) {
+    filteredCountInfo.style.display = 'inline';
+    filteredCountElement.textContent = filteredCount;
+  } else {
+    filteredCountInfo.style.display = 'none';
+  }
+  const moreButton = document.getElementById('more');
+  if (visibleMatches.length < allFilteredMatches.length) {
+    moreButton.style.display = 'block';
+  } else {
+    moreButton.style.display = 'none';
+  }
+  renderMatches(visibleMatches);
+}
+
+function renderMatches(matches) {
+  const tbl = document.getElementById('tbl');
+  tbl.innerHTML = '';
+  if (matches.length === 0) {
+    tbl.innerHTML = '<tr><td colspan="7" style="text-align: center;">No matches found</td></tr>';
+    return;
+  }
+  const head = document.createElement('tr');
+  ['ID','Created','Pre','Auto','Teleop','Endgame','Misc'].forEach(h=>{ 
+    const th=document.createElement('th'); 
+    th.textContent=h; 
+    head.appendChild(th); 
+  });
+  tbl.appendChild(head);
+  matches.forEach(r => {
     const tr=document.createElement('tr');
     tr.innerHTML = `<td>${r.id}</td><td>${r.created_at||''}</td>
     <td><pre>${JSON.stringify(r.pre_match_json,null,2)}</pre></td>
@@ -119,10 +341,31 @@ async function load(reset){
     <td><pre>${JSON.stringify(r.misc_json,null,2)}</pre></td>`;
     tbl.appendChild(tr);
   });
-  offset += rows.length;
 }
+
+async function load(reset){
+  const limit = Number(document.getElementById('limit').value||50);
+  if (reset){ 
+    offset = 0; 
+    document.getElementById('tbl').innerHTML=''; 
+    allMatches = [];
+  }
+  const rows = await fetch(`/api/matches?limit=${limit}&offset=${allMatches.length}`).then(r=>r.json());
+  if (rows.length === 0) {
+    document.getElementById('more').style.display = 'none';
+    return;
+  }
+  allMatches = allMatches.concat(rows);
+  applyFilters();
+}
+
 document.getElementById('load').addEventListener('click', ()=>load(true));
 document.getElementById('more').addEventListener('click', ()=>load(false));
+document.getElementById('addFilterBtn').addEventListener('click', addFilter);
+document.getElementById('searchBtn').addEventListener('click', () => applyFilters());
+document.getElementById('globalSearch').addEventListener('input', () => applyFilters());
+
+loadConfig();
 load(true);
 </script>
 

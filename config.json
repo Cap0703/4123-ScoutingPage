@@ -111,7 +111,8 @@
     },
     "auto_period": {
       "left_starting_zone": {
-        "type": "Boolean with Value"
+        "type": "Boolean with Value",
+        "value": 3
       },
       "L1": {
         "type": "Scoring Object",

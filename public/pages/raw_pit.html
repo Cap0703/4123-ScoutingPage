@@ -90,6 +90,33 @@ document.addEventListener('touchmove', function(event) {
 </nav>
 <div class="container">
   <h1>Raw Pit Data</h1>
+  <div class="search-section">
+    <div class="form-row">
+      <label for="globalSearch">Global Search:</label>
+      <div class="form-controls">
+        <input type="text" id="globalSearch" placeholder="Search across all fields...">
+        <button id="searchBtn" class="btn">Search</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Filters:</label>
+      <div class="form-controls">
+        <select id="filterSelect">
+          <option value="">Select a filter...</option>
+        </select>
+        <button id="addFilterBtn" class="btn">Add Filter</button>
+      </div>
+    </div>
+    <div id="activeFilters"></div>
+    <div class="form-row">
+      <div class="filter-stats">
+        Showing <span id="visibleCount">0</span> of <span id="totalCount">0</span> entries
+        <span id="filteredCountInfo" style="display: none;">
+          (<span id="filteredCount">0</span> match current filters)
+        </span>
+      </div>
+    </div>
+  </div>
   <div class="form-row"><label>Show</label><div class="form-controls"><input id="limit" type="number" value="50"/><button id="load" class="btn">Load</button></div></div>
   <div class="form-row"><a class="btn" href="/api/export/pits.csv">Export CSV</a></div>
   <table id="tbl" class="table"></table>
@@ -132,6 +159,224 @@ async function load(reset){
 document.getElementById('load').addEventListener('click', ()=>load(true));
 document.getElementById('more').addEventListener('click', ()=>load(false));
 load(true);
+
+let allPits = [];
+let currentFilters = [];
+let configData = null;
+let totalPitsCount = 0;
+let allFilteredPits = [];
+
+async function loadConfig() {
+  try {
+    const response = await fetch('/api/config');
+    configData = await response.json();
+    populateFilterOptions();
+  } catch (error) {
+    console.error('Error loading config:', error);
+  }
+}
+
+function populateFilterOptions() {
+  const filterSelect = document.getElementById('filterSelect');
+  filterSelect.innerHTML = '<option value="">Select a filter...</option>';
+  if (configData.pit_form) {
+    Object.keys(configData.pit_form).forEach(field => {
+      if (field !== 'title') {
+        const option = document.createElement('option');
+        option.value = field;
+        option.textContent = `Pit: ${field.replace(/_/g, ' ')}`;
+        filterSelect.appendChild(option);
+      }
+    });
+  }
+}
+
+function addFilter() {
+  const filterSelect = document.getElementById('filterSelect');
+  const selectedFilter = filterSelect.value;
+  if (!selectedFilter) return;
+  if (currentFilters.some(filter => filter.field === selectedFilter)) return;
+  const newFilter = {
+    field: selectedFilter,
+    value: ''
+  };
+  currentFilters.push(newFilter);
+  renderActiveFilters();
+}
+
+function renderActiveFilters() {
+  const activeFiltersContainer = document.getElementById('activeFilters');
+  activeFiltersContainer.innerHTML = '';
+  currentFilters.forEach((filter, index) => {
+    const filterElement = document.createElement('div');
+    filterElement.className = 'form-row filter-item';
+    const displayName = `Pit: ${filter.field.replace(/_/g, ' ')}`;
+    filterElement.innerHTML = `
+      <label>${displayName}:</label>
+      <div class="form-controls">
+        <input type="text" class="filter-value" data-index="${index}" 
+               placeholder="Enter value..." value="${filter.value}">
+        <button class="btn btn-red remove-filter" data-index="${index}">Remove</button>
+      </div>
+    `;
+    activeFiltersContainer.appendChild(filterElement);
+  });
+  document.querySelectorAll('.filter-value').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const index = parseInt(e.target.dataset.index);
+      currentFilters[index].value = e.target.value;
+      applyFilters();
+    });
+  });
+  document.querySelectorAll('.remove-filter').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const index = parseInt(e.target.dataset.index);
+      currentFilters.splice(index, 1);
+      renderActiveFilters();
+      applyFilters();
+    });
+  });
+}
+
+function applyFilters() {
+  const globalSearch = document.getElementById('globalSearch').value.toLowerCase();
+  totalPitsCount = allPits.length;
+  allFilteredPits = allPits.filter(pit => {
+    if (globalSearch) {
+      const pitString = JSON.stringify(pit).toLowerCase();
+      if (!pitString.includes(globalSearch)) return false;
+    }
+    for (const filter of currentFilters) {
+      if (!filter.value) continue;
+      let value;
+      try {
+        value = pit.pit_json[filter.field];
+      } catch (e) {
+        console.error('Error accessing field:', e);
+        return false;
+      }
+      if (typeof value === 'object' && value !== null) {
+        const valueStr = JSON.stringify(value).toLowerCase();
+        if (!valueStr.includes(filter.value.toLowerCase())) return false;
+      } else if (value !== null && value !== undefined) {
+        if (value.toString().toLowerCase() !== filter.value.toLowerCase()) return false;
+      } else {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Get the limit to determine how many pits to show
+  const limit = Number(document.getElementById('limit').value || 50);
+  
+  // Only show up to the limit of filtered pits
+  const visiblePits = allFilteredPits.slice(0, limit);
+  
+  const visibleCount = visiblePits.length;
+  const totalCount = allPits.length;
+  const filteredCount = allFilteredPits.length;
+  
+  document.getElementById('visibleCount').textContent = visibleCount;
+  document.getElementById('totalCount').textContent = totalCount;
+  
+  const hasActiveFilters = globalSearch || currentFilters.some(filter => filter.value);
+  const filteredCountInfo = document.getElementById('filteredCountInfo');
+  const filteredCountElement = document.getElementById('filteredCount');
+  
+  if (hasActiveFilters) {
+    filteredCountInfo.style.display = 'inline';
+    filteredCountElement.textContent = filteredCount;
+  } else {
+    filteredCountInfo.style.display = 'none';
+  }
+  renderPits(visiblePits);
+}
+
+function renderPits(pits) {
+  const tbl = document.getElementById('tbl');
+  tbl.innerHTML = '';
+  if (pits.length === 0) {
+    tbl.innerHTML = '<tr><td colspan="5" style="text-align: center;">No pit data found</td></tr>';
+    return;
+  }
+  const head = document.createElement('tr');
+  ['ID','Created','Pit Data (edit)','Image Path','Ops'].forEach(h=>{ 
+    const th=document.createElement('th'); 
+    th.textContent=h; 
+    head.appendChild(th); 
+  });
+  tbl.appendChild(head);
+  pits.forEach(r=>{
+    const tr=document.createElement('tr');
+    const pit = jsonArea(r.pit_json);
+    const imagePath = document.createElement('input');
+    imagePath.type = 'text';
+    imagePath.value = r.image_path || '';
+    imagePath.style.width = '100%';
+    const ops = document.createElement('div');
+    const save = document.createElement('button'); save.className='btn'; save.textContent='Save';
+    save.onclick = async ()=>{
+      const body = { 
+        pit_json: JSON.parse(pit.value), 
+        image_path: imagePath.value 
+      };
+      await fetch(`/api/pits/${r.id}`, {
+        method:'PUT', 
+        headers: {
+          'Content-Type':'application/json',
+          ...getAuthHeaders()
+        }, 
+        body: JSON.stringify(body)
+      });
+      save.textContent='Saved';
+      setTimeout(()=>save.textContent='Save',1000);
+    };
+    const del = document.createElement('button'); del.className='btn btn-red'; del.textContent='Delete';
+    del.onclick = async ()=>{ 
+      await fetch(`/api/pits/${r.id}`, {
+        method:'DELETE',
+        headers: getAuthHeaders()
+      }); 
+      tr.remove(); 
+    };
+    ops.append(save, del);
+    tr.innerHTML = `<td>${r.id}</td><td>${r.created_at||''}</td>`;
+    const tdPit = document.createElement('td');
+    tdPit.appendChild(pit);
+    tr.appendChild(tdPit);
+    const tdImage = document.createElement('td');
+    tdImage.appendChild(imagePath);
+    tr.appendChild(tdImage);
+    const tdOps = document.createElement('td'); 
+    tdOps.appendChild(ops); 
+    tr.appendChild(tdOps);
+    tbl.appendChild(tr);
+  });
+}
+
+// Update the load function to store all pits
+async function load(reset){
+  const limit = Number(document.getElementById('limit').value||50);
+  if (reset){ 
+    offset = 0; 
+    document.getElementById('tbl').innerHTML=''; 
+  }
+  const rows = await fetch(`/api/pits?limit=${limit}&offset=${offset}`, {
+    headers: getAuthHeaders()
+  }).then(r=>r.json());
+  allPits = allPits.concat(rows);
+  applyFilters();
+  offset += rows.length;
+}
+
+// Add event listeners
+document.getElementById('addFilterBtn').addEventListener('click', addFilter);
+document.getElementById('searchBtn').addEventListener('click', () => applyFilters());
+document.getElementById('globalSearch').addEventListener('input', () => applyFilters());
+
+// Initialize
+loadConfig();
 </script>
 
 </body></html>

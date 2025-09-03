@@ -773,3 +773,47 @@ h1 {
 .navbar .btn-red:hover, .mobile-menu .btn-red:hover {
     background-color: #ff5252;
 }
+
+.search-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #0b0b0b;
+  border: 1px solid #1f2b3a;
+  border-radius: 8px;
+}
+
+.filter-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.filter-stats {
+  font-weight: bold;
+  color: var(--gold);
+  padding: 10px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 6px;
+  text-align: center;
+}
+
+/* Add to style.css */
+.filter-stats {
+  font-weight: bold;
+  padding: 10px;
+  background: rgba(13, 110, 253, 0.1);
+  border-radius: 6px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.filter-stats span {
+  color: var(--gold);
+}
+
+#filteredCountInfo {
+  color: #6c757d;
+  font-size: 0.9em;
+  margin-left: 8px;
+}
