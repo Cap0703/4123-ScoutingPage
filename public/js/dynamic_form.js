@@ -29,27 +29,37 @@ function set(obj, path, val){
 // Renders a Boolean checkbox input field
 function renderBoolean(name, path, state, spec){
   const id = `bool_${name}_${Math.random().toString(36).slice(2,7)}`;
-  const cb = el('input',{type:'checkbox', class:'checkbox',
-    onchange:e=> set(state, path, e.target.checked)});
+  const cb = el('input',{type:'checkbox', id, class:'checkbox'});
+  const initial = Boolean(get(state, path));
+  cb.checked = initial;
+  set(state, path, cb.checked);
+  cb.addEventListener('change', e => {
+    set(state, path, e.target.checked);
+  });
   return el('div',{class:'form-row'}, 
     el('label',{for:id}, name), 
     el('div',{class:'form-controls'}, cb)
   );
 }
 
+
 // Renders a Boolean checkbox input field that applies a value
 function renderBooleanWithValue(name, path, state, spec){
   const id = `boolwv_${name}_${Math.random().toString(36).slice(2,7)}`;
-  const cb = el('input',{
-    type:'checkbox', 
-    class:'checkbox',
-    onchange:e=> set(state, path, e.target.checked)
+  const value = Number(spec.Value || spec.value || 0);
+  const currentValue = Number(get(state, path) ?? 0);
+  const cb = el('input',{type:'checkbox', id, class:'checkbox'});
+  cb.checked = currentValue !== 0;
+  set(state, path, cb.checked ? value : 0);
+  cb.addEventListener('change', e => {
+    set(state, path, e.target.checked ? value : 0);
   });
   return el('div',{class:'form-row'}, 
-    el('label',{for:id}, name), 
+    el('label',{for:id}, `${name} (${value} pts)`), 
     el('div',{class:'form-controls'}, cb)
   );
-} 
+}
+
 
 // Renders a Text input field for String values
 function renderString(name, path, state, spec){
@@ -346,7 +356,10 @@ function sectionScore(stateSection, configSection){
   for (const k of Object.keys(stateSection)){
     const v = stateSection[k];
     const c = configSection[k];
-    if (typeof v === 'boolean' && c && typeof c.Value === 'number'){
+    if (typeof v === 'number' && c && (c.type === 'Boolean with Value' || c.Type === 'Boolean with Value')) {
+      sum += Number(v || 0);
+    }
+    else if (typeof v === 'boolean' && c && typeof c.Value === 'number'){
       sum += v ? Number(c.Value||0) : 0;
     }
     else if (v && typeof v==='object' && 'Made' in v && c && typeof c.Value==='number'){
@@ -359,6 +372,9 @@ function sectionScore(stateSection, configSection){
           sum += Number(c.Values[index]) || 0;
         }
       });
+    }
+    else if (typeof v === 'number') {
+      sum += Number(v || 0);
     }
   }
   return sum;
@@ -420,8 +436,6 @@ async function processOfflineQueue() {
     const newQueue = queue.filter(item => !successful.includes(item.id));
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(newQueue));
     console.log(`Successfully synced ${successful.length} items`);
-    
-    // Show notification
     showNotification(`Synced ${successful.length} offline items`);
   }
 }

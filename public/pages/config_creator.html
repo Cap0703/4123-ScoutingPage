@@ -195,76 +195,97 @@
             padding-left: 15px;
             margin-top: 10px;
         }
-        .navbar{display:flex;gap:10px;justify-content:center;align-items:center;padding:14px;background:linear-gradient(90deg,var(--navy),#07182b);border-bottom:2px solid var(--gold);position:sticky;top:0;z-index:9}
-        .navbar a{color:var(--text);text-decoration:none;padding:8px 12px;border-radius:12px;border:1px solid transparent}
-        .navbar a:hover{border-color:var(--gold)}
+
+        .navbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+        }
+        
+        .mobile-nav {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
-<div class="mobile-nav">
-  <button class="hamburger" onclick="toggleMenu()">☰</button>
-  <div class="mobile-menu" id="mobileMenu">
-    <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
-  <a href="/">Home</a>
-  <a href="/pages/match_scouting.html">Match Scouting</a>
-  <a href="/pages/pit_scouting.html">Pit Scouting</a>
-  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
-  <a href="/pages/match_simulator.html">Match Simulator</a>
-  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
-  <a href="/pages/raw_match.html">Raw Match Data</a>
-  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
-  <a href="/pages/raw_pit.html">Raw Pit Data</a>
-  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
-  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
-  <a href="/pages/config_creator.html">Config Creator</a>
-  <a href="/pages/admin.html" class="admin-only">User Management</a>
-  <a href="/pages/logout.html">Logout</a>
-  </div>
-</div>
+    <div class="mobile-nav">
+        <button class="hamburger" onclick="toggleMenu()">☰</button>
+            <div class="mobile-menu" id="mobileMenu">
+                <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+                <a href="/">Home</a>
+                <a href="/pages/match_scouting.html">Match Scouting</a>
+                <a href="/pages/pit_scouting.html">Pit Scouting</a>
+                <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+                <a href="/pages/match_simulator.html">Match Simulator</a>
+                <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+                <a href="/pages/raw_match.html">Raw Match Data</a>
+                <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+                <a href="/pages/raw_pit.html">Raw Pit Data</a>
+                <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+                <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+                <a href="/pages/config_creator.html">Config Creator</a>
+                <a href="/pages/admin.html" class="admin-only">User Management</a>
+                <a href="/pages/logout.html">Logout</a>
+            </div>
+    </div>
 <script>
-// Mobile menu functionality
-function toggleMenu() {
-  const menu = document.getElementById('mobileMenu');
-  const isOpening = !menu.classList.contains('open');
-  menu.classList.toggle('open');
-  document.body.classList.toggle('menu-open', isOpening);
-  if (isOpening) {
-    setTimeout(() => {
-      menu.scrollTop = 0;
-    }, 50);
-  }
-}
+    <!-- ==================== MOBILE MENU FUNCTIONS ==================== -->
 
-// Close menu when clicking outside
-document.addEventListener('click', function(event) {
-  const menu = document.getElementById('mobileMenu');
-  const hamburger = document.querySelector('.hamburger');
-  if (menu.classList.contains('open') && 
-      !menu.contains(event.target) && 
-      event.target !== hamburger) {
-    toggleMenu();
-  }
-});
+    /**
+     * Toggles the mobile navigation menu open/closed state and manages body scroll lock
+     */
+    function toggleMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const isOpening = !menu.classList.contains('open');
+    menu.classList.toggle('open');
+    document.body.classList.toggle('menu-open', isOpening);
+    if (isOpening) {
+        setTimeout(() => {
+        menu.scrollTop = 0;
+        }, 50);
+    }
+    }
 
-// Close menu on escape key
-document.addEventListener('keydown', function(event) {
-  if (event.key === 'Escape') {
+    /**
+     * Closes the mobile menu when clicking outside of it
+     */
+    document.addEventListener('click', function(event) {
+    const menu = document.getElementById('mobileMenu');
+    const hamburger = document.querySelector('.hamburger');
+    if (menu.classList.contains('open') && 
+        !menu.contains(event.target) && 
+        event.target !== hamburger) {
+        toggleMenu();
+    }
+    });
+
+    /**
+     * Closes the mobile menu when the Escape key is pressed
+     */
+    document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const menu = document.getElementById('mobileMenu');
+        if (menu.classList.contains('open')) {
+        toggleMenu();
+        }
+    }
+    });
+
+    /**
+     * Prevents background scrolling when the mobile menu is open on touch devices
+     */
+    document.addEventListener('touchmove', function(event) {
     const menu = document.getElementById('mobileMenu');
     if (menu.classList.contains('open')) {
-      toggleMenu();
+        if (!menu.contains(event.target)) {
+        event.preventDefault();
+        }
     }
-  }
-});
-
-// Prevent background scrolling when menu is open
-document.addEventListener('touchmove', function(event) {
-  const menu = document.getElementById('mobileMenu');
-  if (menu.classList.contains('open')) {
-    if (!menu.contains(event.target)) {
-      event.preventDefault();
-    }
-  }
-}, { passive: false });
+    }, { passive: false });
 </script>
 
 <nav class="navbar">

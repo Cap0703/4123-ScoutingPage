@@ -211,7 +211,7 @@ document.addEventListener('touchmove', function(event) {
       <input id="team" type="number" placeholder="e.g., 4123"/>
       <button id="go" class="btn">Load</button>
     </div>
-    <div class="form-row">
+<div class="form-row">
   <label>Match Type Filter</label>
   <div class="form-controls">
     <select id="matchTypeFilter">
@@ -222,6 +222,14 @@ document.addEventListener('touchmove', function(event) {
       <option value="Final">Final</option>
     </select>
   </div>
+  <div class="form-row">
+  <label>Event Code Filter</label>
+  <div class="form-controls">
+    <select id="eventCodeFilter">
+      <option value="all">All Events</option>
+    </select>
+  </div>
+</div>
 </div>
   </div>
   <div id="teamInfo" class="card" style="display: none;">
@@ -249,6 +257,8 @@ document.addEventListener('touchmove', function(event) {
 <footer>FRC 4123 Scouting • Conrad Oldoerp</footer>
 
 <script>
+let currentEventCodeFilter = 'all';
+let uniqueEventCodes = [];
 /**
  * Waits for the authentication module to be fully initialized before proceeding.
  * This ensures auth checks don't run before the auth system is ready.
@@ -509,6 +519,54 @@ function calculateField(row, fieldName, computedFields, processedRow = null) {
         console.warn('Failed to evaluate formula:', result, e);
         return 0;
     }
+}
+
+/**
+ * Extracts unique event codes from processed data
+ */
+function extractUniqueEventCodes(processedData) {
+    const eventCodes = new Set();
+    processedData.forEach(match => {
+        const eventCode = match.event_code || (match.pre_match_json && match.pre_match_json.event_code) || 'Unknown';
+        if (eventCode && eventCode !== 'Unknown') {
+            eventCodes.add(eventCode);
+        }
+    });
+    return Array.from(eventCodes).sort();
+}
+
+/**
+ * Populates the event code filter dropdown
+ */
+function populateEventCodeFilter(eventCodes) {
+    const filter = document.getElementById('eventCodeFilter');
+    // Keep the "All Events" option
+    const allOption = filter.querySelector('option[value="all"]');
+    filter.innerHTML = '';
+    filter.appendChild(allOption);
+    
+    eventCodes.forEach(code => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = code;
+        filter.appendChild(option);
+    });
+}
+
+/**
+ * Filters data based on both match type and event code
+ */
+function filterData(processedData, matchTypeFilter, eventCodeFilter) {
+    return processedData.filter(match => {
+        // Match type filter
+        const matchTypeMatch = matchTypeFilter === 'all' || match.match_type === matchTypeFilter;
+        
+        // Event code filter
+        const eventCode = match.event_code || (match.pre_match_json && match.pre_match_json.event_code) || 'Unknown';
+        const eventCodeMatch = eventCodeFilter === 'all' || eventCode === eventCodeFilter;
+        
+        return matchTypeMatch && eventCodeMatch;
+    });
 }
 
 /**
@@ -809,6 +867,7 @@ async function loadTeam(){
     const team = document.getElementById('team').value;
     if (!team) return;
     currentMatchTypeFilter = document.getElementById('matchTypeFilter').value;
+    currentEventCodeFilter = document.getElementById('eventCodeFilter').value;
     try {
         const configResp = await fetch('/api/config').then(r => r.json());
         config = configResp;
@@ -868,6 +927,7 @@ async function loadTeam(){
             const processed = {
                 match_number: pre.match_number,
                 match_type: pre.match_type || 'Unknown',
+                event_code: pre.event_code || 'Unknown',
                 team_color: pre.team_color,
                 auto_points: row.auto_points,
                 teleop_points: row.teleop_points,
@@ -901,6 +961,8 @@ async function loadTeam(){
             }
             return processed;
         });
+        uniqueEventCodes = extractUniqueEventCodes(allProcessedData);
+        populateEventCodeFilter(uniqueEventCodes);
         const matchTypeOrder = {
             'Practice': 1,
             'Qualification': 2,
@@ -919,9 +981,11 @@ async function loadTeam(){
             }
             return new Date(a.created_at) - new Date(b.created_at);
         });
-        const filteredData = currentMatchTypeFilter === 'all' 
-            ? allProcessedData 
-            : allProcessedData.filter(match => match.match_type === currentMatchTypeFilter);
+        const filteredData = filterData(
+            allProcessedData, 
+            currentMatchTypeFilter, 
+            currentEventCodeFilter
+        );
         displayMatchTypeStats(allProcessedData);
         if (teamSummaryConfig.body.charts) {
             const chartEntries = Object.entries(teamSummaryConfig.body.charts);
@@ -990,6 +1054,13 @@ document.getElementById('team').addEventListener('keypress', function(e) {
 
 // Add event listener for the match type filter
 document.getElementById('matchTypeFilter').addEventListener('change', function() {
+    if (document.getElementById('team').value) {
+        loadTeam();
+    }
+});
+
+// Add event listener for the event code filter
+document.getElementById('eventCodeFilter').addEventListener('change', function() {
     if (document.getElementById('team').value) {
         loadTeam();
     }

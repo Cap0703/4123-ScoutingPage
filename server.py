@@ -152,7 +152,11 @@ def score_obj(section, conf_section):
         if k not in conf_section:
             continue
         c = conf_section[k]
-        if isinstance(v, dict) and 'Made' in v:
+        
+        # Handle Boolean with Value fields (stored as numbers)
+        if isinstance(v, (int, float)) and isinstance(c, dict) and (c.get('type') == 'Boolean with Value' or c.get('Type') == 'Boolean with Value'):
+            total += int(v)
+        elif isinstance(v, dict) and 'Made' in v:
             if 'Value' in c and isinstance(c['Value'], (int, float)):
                 total += (int(v.get('Made', 0)) * int(c['Value']))
         elif isinstance(v, bool):
@@ -160,6 +164,9 @@ def score_obj(section, conf_section):
                 total += int(c['Value']) if v else 0
             elif isinstance(c, (int, float)):
                 total += int(c) if v else 0
+        # Handle regular numeric values
+        elif isinstance(v, (int, float)):
+            total += int(v)
     return total
 
 """Calculates autonomous period score using the score_obj function with auto configuration."""
