@@ -1,21 +1,21 @@
-2025-09-02T07:48:19Z INF Thank you for trying Cloudflare Tunnel. Doing so, without a Cloudflare account, is a quick way to experiment and try it out. However, be aware that these account-less Tunnels have no uptime guarantee, are subject to the Cloudflare Online Services Terms of Use (https://www.cloudflare.com/website-terms/), and Cloudflare reserves the right to investigate your use of Tunnels for violations of such terms. If you intend to use Tunnels in production you should use a pre-created named tunnel by following: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
-2025-09-02T07:48:19Z INF Requesting new quick Tunnel on trycloudflare.com...
-2025-09-02T07:48:22Z INF +--------------------------------------------------------------------------------------------+
-2025-09-02T07:48:22Z INF |  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
-2025-09-02T07:48:22Z INF |  https://opposition-being-relationships-robin.trycloudflare.com                            |
-2025-09-02T07:48:22Z INF +--------------------------------------------------------------------------------------------+
-2025-09-02T07:48:22Z INF Cannot determine default configuration path. No file [config.yml config.yaml] in [~/.cloudflared ~/.cloudflare-warp ~/cloudflare-warp]
-2025-09-02T07:48:22Z INF Version 2025.1.1 (Checksum 894330fcd32f0aaacd96407922f0f6329a1d4496dcbcb97019042d369f2a8136)
-2025-09-02T07:48:22Z INF GOOS: windows, GOVersion: go1.22.5-devel-cf, GoArch: amd64
-2025-09-02T07:48:22Z INF Settings: map[ha-connections:1 protocol:quic url:http://localhost:3000]
-2025-09-02T07:48:22Z INF cloudflared will not automatically update on Windows systems.
-2025-09-02T07:48:22Z INF Generated Connector ID: f3d18b67-8618-4b3f-8dda-e94917d82d38
-2025-09-02T07:48:22Z INF Initial protocol quic
-2025-09-02T07:48:22Z INF ICMP proxy will use 192.168.1.144 as source for IPv4
-2025-09-02T07:48:22Z INF ICMP proxy will use 2603:8000:7e01:91b::8149 in zone Ethernet as source for IPv6
-2025-09-02T07:48:22Z INF cloudflared does not support loading the system root certificate pool on Windows. Please use --origin-ca-pool <PATH> to specify the path to the certificate pool
-2025-09-02T07:48:22Z INF ICMP proxy will use 192.168.1.144 as source for IPv4
-2025-09-02T07:48:22Z INF Using [CurveID(4588) CurveID(25497) CurveP256] as curve preferences connIndex=0 event=0 ip=198.41.200.233
-2025-09-02T07:48:22Z INF ICMP proxy will use 2603:8000:7e01:91b::8149 in zone Ethernet as source for IPv6
-2025-09-02T07:48:22Z INF Starting metrics server on 127.0.0.1:20241/metrics
-2025-09-02T07:48:23Z INF Registered tunnel connection connIndex=0 connection=451b062d-9c82-4214-aed1-86a05bca913c event=0 ip=198.41.200.233 location=lax06 protocol=quic
+2025-09-03T06:57:32Z INF Thank you for trying Cloudflare Tunnel. Doing so, without a Cloudflare account, is a quick way to experiment and try it out. However, be aware that these account-less Tunnels have no uptime guarantee, are subject to the Cloudflare Online Services Terms of Use (https://www.cloudflare.com/website-terms/), and Cloudflare reserves the right to investigate your use of Tunnels for violations of such terms. If you intend to use Tunnels in production you should use a pre-created named tunnel by following: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
+2025-09-03T06:57:32Z INF Requesting new quick Tunnel on trycloudflare.com...
+2025-09-03T06:57:35Z INF +--------------------------------------------------------------------------------------------+
+2025-09-03T06:57:35Z INF |  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
+2025-09-03T06:57:35Z INF |  https://physicians-committees-answers-rapidly.trycloudflare.com                           |
+2025-09-03T06:57:35Z INF +--------------------------------------------------------------------------------------------+
+2025-09-03T06:57:35Z INF Cannot determine default configuration path. No file [config.yml config.yaml] in [~/.cloudflared ~/.cloudflare-warp ~/cloudflare-warp]
+2025-09-03T06:57:35Z INF Version 2025.1.1 (Checksum 894330fcd32f0aaacd96407922f0f6329a1d4496dcbcb97019042d369f2a8136)
+2025-09-03T06:57:35Z INF GOOS: windows, GOVersion: go1.22.5-devel-cf, GoArch: amd64
+2025-09-03T06:57:35Z INF Settings: map[ha-connections:1 protocol:quic url:http://localhost:3000]
+2025-09-03T06:57:35Z INF Generated Connector ID: d16e0340-d144-4227-bb2c-c1db6fde715b
+2025-09-03T06:57:35Z INF cloudflared will not automatically update on Windows systems.
+2025-09-03T06:57:35Z INF Initial protocol quic
+2025-09-03T06:57:35Z INF ICMP proxy will use 192.168.1.144 as source for IPv4
+2025-09-03T06:57:35Z INF ICMP proxy will use 2603:8000:7e01:91b::8149 in zone Ethernet as source for IPv6
+2025-09-03T06:57:35Z INF cloudflared does not support loading the system root certificate pool on Windows. Please use --origin-ca-pool <PATH> to specify the path to the certificate pool
+2025-09-03T06:57:35Z INF ICMP proxy will use 192.168.1.144 as source for IPv4
+2025-09-03T06:57:35Z INF Using [CurveID(4588) CurveID(25497) CurveP256] as curve preferences connIndex=0 event=0 ip=198.41.192.57
+2025-09-03T06:57:35Z INF ICMP proxy will use 2603:8000:7e01:91b::8149 in zone Ethernet as source for IPv6
+2025-09-03T06:57:35Z INF Starting metrics server on 127.0.0.1:20241/metrics
+2025-09-03T06:57:36Z INF Registered tunnel connection connIndex=0 connection=a4e87fea-69b5-4765-abc0-f26a13aa5029 event=0 ip=198.41.192.57 location=lax07 protocol=quic
