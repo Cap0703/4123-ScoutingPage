@@ -1,1 +1,893 @@
-<!-- Page Used for pulling data from TBA. Gives matches coming up and statistics of those teams and the score predictions of the match -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRC Match Ondeck - TBA API</title>
+    <!-- Corrected path to CSS file -->
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* Fallback styles in case external CSS doesn't load */
+        :root {
+            --bg: #111;
+            --navy: #0b233f;
+            --gold: #d4af37;
+            --gray: #6b6b6b;
+            --text: #fff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+            background-color: var(--bg);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: rgb(65, 65, 65);
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #000000, #031a42);
+            color: rgb(255, 202, 104);
+            padding: 20px;
+            text-align: center;
+        }
+        
+        header h1 {
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+            font-family: Starjedi;
+        }
+        
+        header p {
+            opacity: 0.9;
+        }
+        
+        .search-section {
+            padding: 20px;
+            background-color: #a1a1a1;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 250px;
+        }
+        
+        .input-group label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input, select {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            align-self: flex-end;
+            height: fit-content;
+            margin-top: 22px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .results {
+            padding: 20px;
+            display: none;
+        }
+        
+        .match-info {
+            background-color: #727272;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        
+        .match-info h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .alliance-section {
+            margin-bottom: 30px;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .alliance-section.red {
+            background-color: #ffebee;
+            border-top: 4px solid #e74c3c;
+        }
+        
+        .alliance-section.blue {
+            background-color: #e3f2fd;
+            border-top: 4px solid #3498db;
+        }
+        
+        .alliance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .alliance-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .red-title {
+            color: #e74c3c;
+        }
+        
+        .blue-title {
+            color: #3498db;
+        }
+        
+        .alliance-score {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .teams-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .team-card {
+            background-color: rgb(75, 75, 75);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .team-card h3 {
+            color: #56779a;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .info-item {
+            margin-bottom: 10px;
+            display: flex;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            min-width: 120px;
+            color: #9c9c9c;
+        }
+        
+        .info-value {
+            flex: 1;
+        }
+        
+        .matches-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .matches-section {
+            margin-bottom: 30px;
+        }
+        
+        .matches-section h2 {
+            color: #4c7196;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .match-card {
+            background-color: rgb(149, 149, 149);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+            border-left: 4px solid #ccc;
+        }
+        
+        .match-card.win {
+            border-left-color: #2ecc71;
+        }
+        
+        .match-card.loss {
+            border-left-color: #e74c3c;
+        }
+        
+        .match-card.tie {
+            border-left-color: #f39c12;
+        }
+        
+        .match-card h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .score {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .red-score {
+            color: #e74c3c;
+        }
+        
+        .blue-score {
+            color: #3498db;
+        }
+        
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            border-top: 1px solid #eee;
+            margin-top: 20px;
+        }
+        
+        /* Navigation styles */
+        .navbar {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            padding: 14px;
+            background: linear-gradient(90deg, var(--navy), #07182b);
+            border-bottom: 2px solid var(--gold);
+            position: sticky;
+            top: 0;
+            z-index: 9;
+        }
+        
+        .navbar a {
+            color: var(--text);
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid transparent;
+        }
+        
+        .navbar a:hover {
+            border-color: var(--gold);
+        }
+        
+        /* Mobile navigation */
+        .mobile-nav {
+            display: none;
+        }
+        
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 10px;
+        }
+        
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--navy);
+            z-index: 1000;
+            padding: 20px;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+        
+        .mobile-menu.open {
+            transform: translateX(0);
+        }
+        
+        .mobile-menu a {
+            display: block;
+            color: white;
+            padding: 15px;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .mobile-menu-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            body.menu-open {
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+                height: 100%;
+            }
+            
+            .mobile-nav {
+                display: block;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background: linear-gradient(90deg, var(--navy), #07182b);
+                padding: 10px;
+            }
+            
+            .hamburger {
+                display: block;
+            }
+            
+            .navbar {
+                display: none;
+            }
+            
+            .container {
+                margin: 10px;
+                padding: 12px;
+                border-radius: 12px;
+            }
+            
+            .search-section {
+                flex-direction: column;
+            }
+            
+            .input-group {
+                width: 100%;
+            }
+            
+            button {
+                width: 100%;
+                margin-top: 10px;
+            }
+            
+            .teams-container, .matches-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .alliance-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .team-card {
+                padding: 15px;
+            }
+            
+            .info-item {
+                flex-direction: column;
+            }
+            
+            .info-label {
+                min-width: auto;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile navigation -->
+    <div class="mobile-nav">
+        <button class="hamburger" onclick="toggleMenu()">☰</button>
+        <div class="mobile-menu" id="mobileMenu">
+            <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+            <a href="/" onclick="toggleMenu()">Home</a>
+            <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
+            <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
+            <a href="/pages/team_summary.html" class="admin-only" onclick="toggleMenu()">Team Summary</a>
+            <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
+            <a href="/pages/rankings.html" class="admin-only" onclick="toggleMenu()">Rankings</a>
+            <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
+            <a href="/pages/raw_match_edit.html" class="admin-only" onclick="toggleMenu()">Raw Match Data Edit</a>
+            <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
+            <a href="/pages/raw_pit_edit.html" class="admin-only" onclick="toggleMenu()">Raw Pit Data Edit</a>
+            <a href="/pages/csv_upload.html" class="admin-only" onclick="toggleMenu()">CSV Upload</a>
+            <a href="/pages/config_creator.html" onclick="toggleMenu()">Config Creator</a>
+            <a href="/pages/admin.html" class="admin-only" onclick="toggleMenu()">User Management</a>
+            <a href="/pages/logout.html" onclick="toggleMenu()">Logout</a>
+        </div>
+    </div>
+
+    <!-- Original navbar (hidden on mobile) -->
+    <nav class="navbar">
+        <a href="/">Home</a>
+        <a href="/pages/ondeck.html">Ondeck</a>
+        <a href="/pages/match_scouting.html">Match Scouting</a>
+        <a href="/pages/pit_scouting.html">Pit Scouting</a>
+        <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+        <a href="/pages/match_simulator.html">Match Simulator</a>
+        <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+        <a href="/pages/raw_match.html">Raw Match Data</a>
+        <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+        <a href="/pages/raw_pit.html">Raw Pit Data</a>
+        <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+        <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+        <a href="/pages/config_creator.html">Config Creator</a>
+        <a href="/pages/admin.html" class="admin-only">User Management</a>
+        <a href="/pages/logout.html">Logout</a>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>FRC Match Ondeck Information</h1>
+            <p>Get detailed information about matches and teams at FRC events</p>
+        </header>
+        
+        <section class="search-section">
+            <div class="input-group">
+                <label for="eventKey">Event Key</label>
+                <input type="text" id="eventKey" placeholder="e.g., 2025caav" value="2025caav">
+            </div>
+            
+            <div class="input-group">
+                <label for="matchType">Match Type</label>
+                <select id="matchType">
+                    <option value="qm">Qualification</option>
+                    <option value="qf">Quarterfinal</option>
+                    <option value="sf">Semifinal</option>
+                    <option value="f">Final</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label for="matchNumber">Match Number</label>
+                <input type="number" id="matchNumber" placeholder="e.g., 1" value="2" min="1">
+            </div>
+            
+            <button onclick="loadMatchData()">Load Match Data</button>
+        </section>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Loading match data...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <section class="results" id="results">
+            <div class="match-info" id="matchInfo"></div>
+            
+            <!-- Red Alliance Section -->
+            <div class="alliance-section red" id="redAllianceSection">
+                <div class="alliance-header">
+                    <div class="alliance-title red-title">Red Alliance</div>
+                    <div class="alliance-score red-score" id="redScore"></div>
+                </div>
+                <div class="teams-container" id="redTeamsContainer"></div>
+            </div>
+            
+            <!-- Blue Alliance Section -->
+            <div class="alliance-section blue" id="blueAllianceSection">
+                <div class="alliance-header">
+                    <div class="alliance-title blue-title">Blue Alliance</div>
+                    <div class="alliance-score blue-score" id="blueScore"></div>
+                </div>
+                <div class="teams-container" id="blueTeamsContainer"></div>
+            </div>
+            
+            <div class="matches-sections-container">
+                <div class="matches-section">
+                    <h2>Previous Matches</h2>
+                    <div class="matches-container" id="previousMatches"></div>
+                </div>
+                
+                <div class="matches-section">
+                    <h2>Upcoming Matches</h2>
+                    <div class="matches-container" id="upcomingMatches"></div>
+                </div>
+            </div>
+        </section>
+        
+        <footer>
+            <p>Data provided by The Blue Alliance API | Not affiliated with FIRST®</p>
+        </footer>
+    </div>
+
+    <script>
+        // Your TBA API key
+        const TBA_KEY = "I6XNIQ0p8VtiUdy0u5oIVjmj7d4mGqteLwQczb91wyBCmd7439BPLxvqf6poH1wA";
+        
+        // Global variables to store data
+        let currentEventKey = "";
+        let currentMatchType = "";
+        let currentMatchNumber = 0;
+        let allMatches = [];
+        
+        // Function to load match data
+        function loadMatchData() {
+            currentEventKey = document.getElementById("eventKey").value.trim();
+            currentMatchType = document.getElementById("matchType").value;
+            currentMatchNumber = parseInt(document.getElementById("matchNumber").value);
+            
+            // Validate input
+            if (!currentEventKey) {
+                showError("Please enter a valid event key");
+                return;
+            }
+            
+            if (isNaN(currentMatchNumber) || currentMatchNumber <= 0) {
+                showError("Please enter a valid match number");
+                return;
+            }
+            
+            // Show loading, hide results and error
+            document.getElementById("loading").style.display = "block";
+            document.getElementById("results").style.display = "none";
+            document.getElementById("error").style.display = "none";
+            
+            // Fetch all match data
+            fetchEventMatches(currentEventKey)
+                .then(() => {
+                    // Process the data
+                    processMatchData();
+                    
+                    // Hide loading and show results
+                    document.getElementById("loading").style.display = "none";
+                    document.getElementById("results").style.display = "block";
+                })
+                .catch(error => {
+                    document.getElementById("loading").style.display = "none";
+                    showError("Error fetching match data: " + error.message);
+                });
+        }
+        
+        // Function to fetch all matches for an event
+        function fetchEventMatches(eventKey) {
+            return fetchTBA(`event/${eventKey}/matches/simple`)
+                .then(matches => {
+                    if (matches && matches.length > 0) {
+                        allMatches = matches;
+                        return true;
+                    } else {
+                        throw new Error("No matches found for this event");
+                    }
+                });
+        }
+        
+        // Process the match data to display
+        function processMatchData() {
+            // Find the current match
+            const currentMatch = allMatches.find(match => 
+                match.comp_level === currentMatchType && 
+                match.match_number === currentMatchNumber
+            );
+            
+            if (!currentMatch) {
+                showError(`Match ${currentMatchType}${currentMatchNumber} not found in event ${currentEventKey}`);
+                return;
+            }
+            
+            // Display current match info
+            displayMatchInfo(currentMatch);
+            
+            // Display team information for each alliance
+            displayAllianceInfo(currentMatch.alliances.red, "red");
+            displayAllianceInfo(currentMatch.alliances.blue, "blue");
+            
+            // Find previous and upcoming matches
+            findRelatedMatches(currentMatch);
+        }
+        
+        // Display current match information
+        function displayMatchInfo(match) {
+            const matchInfoDiv = document.getElementById("matchInfo");
+            const matchTime = new Date(match.time * 1000);
+            const now = new Date();
+            
+            let timeStatus = "";
+            if (match.time && match.time > 0) {
+                if (matchTime > now) {
+                    const timeDiff = Math.floor((matchTime - now) / 60000); // Difference in minutes
+                    if (timeDiff > 60) {
+                        timeStatus = `Starts in ${Math.floor(timeDiff / 60)} hours and ${timeDiff % 60} minutes`;
+                    } else {
+                        timeStatus = `Starts in ${timeDiff} minutes`;
+                    }
+                } else {
+                    timeStatus = "Match already played";
+                }
+            } else {
+                timeStatus = "Time not scheduled";
+            }
+            
+            matchInfoDiv.innerHTML = `
+                <h2>${match.comp_level.toUpperCase()} Match ${match.match_number}</h2>
+                <p><strong>Time:</strong> ${matchTime.toLocaleString()}</p>
+                <p><strong>Status:</strong> ${timeStatus}</p>
+            `;
+            
+            // Set alliance scores
+            document.getElementById("redScore").textContent = `Score: ${match.alliances.red.score}`;
+            document.getElementById("blueScore").textContent = `Score: ${match.alliances.blue.score}`;
+        }
+        
+        // Display information for an alliance
+        function displayAllianceInfo(alliance, allianceColor) {
+            const teamsContainer = document.getElementById(allianceColor + "TeamsContainer");
+            teamsContainer.innerHTML = "";
+            
+            // Fetch data for each team
+            const teamPromises = alliance.team_keys.map(teamKey => 
+                fetchTBA(`team/${teamKey}`)
+                    .then(teamData => {
+                        if (teamData) {
+                            // Create team card
+                            const teamCard = document.createElement("div");
+                            teamCard.className = "team-card";
+                            teamCard.innerHTML = `
+                                <h3>Team ${teamData.team_number}: ${teamData.nickname}</h3>
+                                <div class="info-item">
+                                    <span class="info-label">Location:</span>
+                                    <span class="info-value">${teamData.city}, ${teamData.state_prov}, ${teamData.country}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Rookie Year:</span>
+                                    <span class="info-value">${teamData.rookie_year}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Website:</span>
+                                    <span class="info-value">${teamData.website ? `<a href="${teamData.website}" target="_blank">${teamData.website}</a>` : "Not available"}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">TBA Page:</span>
+                                    <span class="info-value"><a href="https://www.thebluealliance.com/team/${teamData.team_number}" target="_blank">View on The Blue Alliance</a></span>
+                                </div>
+                            `;
+                            teamsContainer.appendChild(teamCard);
+                        }
+                    })
+            );
+            
+            // Wait for all team data to load
+            Promise.all(teamPromises).catch(error => {
+                console.error("Error loading team data:", error);
+            });
+        }
+        
+        // Find related matches (previous and upcoming)
+        function findRelatedMatches(currentMatch) {
+            // Filter matches by type
+            const sameTypeMatches = allMatches.filter(match => 
+                match.comp_level === currentMatch.comp_level
+            );
+            
+            // Sort matches by number
+            sameTypeMatches.sort((a, b) => a.match_number - b.match_number);
+            
+            // Find current match index
+            const currentIndex = sameTypeMatches.findIndex(match => 
+                match.match_number === currentMatch.match_number
+            );
+            
+            // Get previous matches (up to 3)
+            const previousMatches = sameTypeMatches.slice(
+                Math.max(0, currentIndex - 3), 
+                currentIndex
+            );
+            
+            // Get upcoming matches (up to 3)
+            const upcomingMatches = sameTypeMatches.slice(
+                currentIndex + 1, 
+                currentIndex + 4
+            );
+            
+            // Display the matches
+            displayMatches(previousMatches, "previousMatches");
+            displayMatches(upcomingMatches, "upcomingMatches");
+        }
+        
+        // Display matches in the specified container
+        function displayMatches(matches, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+            
+            if (matches.length === 0) {
+                container.innerHTML = "<p>No matches found</p>";
+                return;
+            }
+            
+            matches.forEach(match => {
+                const matchTime = new Date(match.time * 1000);
+                const matchCard = document.createElement("div");
+                matchCard.className = "match-card";
+                
+                // Add win/loss/tie class if match has been played
+                if (match.alliances.red.score !== null && match.alliances.blue.score !== null) {
+                    if (match.alliances.red.score > match.alliances.blue.score) {
+                        matchCard.classList.add("win", "red-win");
+                    } else if (match.alliances.red.score < match.alliances.blue.score) {
+                        matchCard.classList.add("win", "blue-win");
+                    } else {
+                        matchCard.classList.add("tie");
+                    }
+                }
+                
+                matchCard.innerHTML = `
+                    <h4>${match.comp_level.toUpperCase()} Match ${match.match_number}</h4>
+                    <p><strong>Red:</strong> ${match.alliances.red.team_keys.map(t => t.substring(3)).join(", ")} 
+                    | <span class="score red-score">${match.alliances.red.score !== null ? match.alliances.red.score : 'TBD'}</span></p>
+                    <p><strong>Blue:</strong> ${match.alliances.blue.team_keys.map(t => t.substring(3)).join(", ")} 
+                    | <span class="score blue-score">${match.alliances.blue.score !== null ? match.alliances.blue.score : 'TBD'}</span></p>
+                    <p><strong>Time:</strong> ${matchTime.toLocaleString()}</p>
+                `;
+                
+                container.appendChild(matchCard);
+            });
+        }
+        
+        // Generic function to fetch data from TBA API
+        function fetchTBA(endpoint) {
+            const url = `https://www.thebluealliance.com/api/v3/${endpoint}`;
+            
+            return fetch(url, {
+                headers: {
+                    "X-TBA-Auth-Key": TBA_KEY
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .catch(error => {
+                console.error("Error fetching from TBA API:", error);
+                showError("Failed to fetch data: " + error.message);
+                throw error;
+            });
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById("error");
+            errorDiv.textContent = message;
+            errorDiv.style.display = "block";
+            document.getElementById("results").style.display = "none";
+            document.getElementById("loading").style.display = "none";
+        }
+        
+        // Allow pressing Enter to submit
+        document.getElementById("matchNumber").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                loadMatchData();
+            }
+        });
+        
+        document.getElementById("eventKey").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                loadMatchData();
+            }
+        });
+        
+        // Mobile menu functionality
+        function toggleMenu() {
+            const menu = document.getElementById("mobileMenu");
+            const isOpening = !menu.classList.contains("open");
+            menu.classList.toggle("open");
+            document.body.classList.toggle("menu-open", isOpening);
+            if (isOpening) {
+                setTimeout(() => {
+                    menu.scrollTop = 0;
+                }, 50);
+            }
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener("click", function(event) {
+            const menu = document.getElementById("mobileMenu");
+            const hamburger = document.querySelector(".hamburger");
+            if (menu.classList.contains("open") && 
+                !menu.contains(event.target) && 
+                event.target !== hamburger) {
+                toggleMenu();
+            }
+        });
+
+        // Close menu on escape key
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "Escape") {
+                const menu = document.getElementById("mobileMenu");
+                if (menu.classList.contains("open")) {
+                    toggleMenu();
+                }
+            }
+        });
+
+        // Prevent background scrolling when menu is open
+        document.addEventListener("touchmove", function(event) {
+            const menu = document.getElementById("mobileMenu");
+            if (menu.classList.contains("open")) {
+                if (!menu.contains(event.target)) {
+                    event.preventDefault();
+                }
+            }
+        }, { passive: false });
+        
+        // Load data for a default match on page load
+        window.onload = function() {
+            // Load data for a default match
+            loadMatchData();
+        };
+    </script>
+</body>
+</html>
