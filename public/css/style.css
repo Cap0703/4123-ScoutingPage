@@ -538,7 +538,7 @@ select {
     font-family: 'Starjedi';
     font-style: normal;
     font-weight: 400;
-    src: url('/fonts/Starjedi.ttf') format('truetype');
+    src: url('../fonts/Starjedi.ttf') format('truetype');
   }
 h1 {
   font-family:Starjedi;
