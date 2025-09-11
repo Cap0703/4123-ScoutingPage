@@ -167,7 +167,7 @@ function createRankingsChart(data, title) {
   if (currentChart) currentChart.destroy();
   
   // Prepare data for chart (top 10 teams)
-  const topTeams = data.slice(0, 40);
+  const topTeams = data.slice(0, 10);
   const teamNumbers = topTeams.map(item => item.team_number);
   const metricValues = topTeams.map(item => parseFloat(item.metric_value) || 0);
   

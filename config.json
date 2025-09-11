@@ -57,13 +57,13 @@
           "4419 | Team Rewind - Yul Lee",
           "4470 | Tigears - Yul Lee",
           "4501 | HUMANS - Yul Lee",
-          "4999 | Momentum - Xavier Marques",
+          "4999 | Momentum - Terry Owens",
           "5199 | Robot Dolphins From Outer Space - Conrad Oldoerp",
-          "5285 | Sea Kings Robotics - Xavier Marques",
+          "5285 | Sea Kings Robotics - Conrad Oldoerp",
           "5669 | Techmen - Victor SantaMaria",
-          "5805 | SMbly Required - Xavier Marques",
-          "6072 | Triton Tech 6072 - Xavier Marques",
-          "6220 | Golden Griffins - Xavier Marques ",
+          "5805 | SMbly Required - Terry Owens",
+          "6072 | Triton Tech 6072 - Colin Prieto",
+          "6220 | Golden Griffins - Davin Somsanith",
           "6658 | Rockbotics - Victor SantaMaria",
           "6904 | TeraWatts - Victor SantaMaria",
           "7042 | Poly Rabbotics - Victor SantaMaria",
@@ -616,6 +616,7 @@
       "teleop_net_made": "json_extract(teleop_json, '$.Net.Made')",
       "teleop_net_missed": "json_extract(teleop_json, '$.Net.Missed')",
       "final_status": "CASE json_extract(endgame_json, '$.final_status') WHEN 'Park' THEN 2 WHEN 'Failed Climb' THEN 2 WHEN 'Shallow Climb' THEN 6 WHEN 'Deep Climb' THEN 12 ELSE 0 END",
+      "comments": "json_extract(misc_json, '$.comments')",
       "auto_points": "left_starting_zone + (json_extract(auto_json, '$.L1.Made') * config('match_form.auto_period.L1.Value')) + (json_extract(auto_json, '$.L2.Made') * config('match_form.auto_period.L2.Value')) + (json_extract(auto_json, '$.L3.Made') * config('match_form.auto_period.L3.Value')) + (json_extract(auto_json, '$.L4.Made') * config('match_form.auto_period.L4.Value')) + (json_extract(auto_json, '$.Net.Made') * config('match_form.auto_period.Net.Value')) + (json_extract(auto_json, '$.Processor.Made') * config('match_form.auto_period.Processor.Value'))",
       "teleop_points": "(json_extract(teleop_json, '$.L1.Made') * config('match_form.teleop_period.L1.Value')) + (json_extract(teleop_json, '$.L2.Made') * config('match_form.teleop_period.L2.Value')) + (json_extract(teleop_json, '$.L3.Made') * config('match_form.teleop_period.L3.Value')) + (json_extract(teleop_json, '$.L4.Made') * config('match_form.teleop_period.L4.Value')) + (json_extract(teleop_json, '$.Net.Made') * config('match_form.teleop_period.Net.Value')) + (json_extract(teleop_json, '$.Processor.Made') * config('match_form.auto_period.Processor.Value'))",
       "endgame_points": "CASE json_extract(endgame_json, '$.final_status') WHEN 'Park' THEN 2 WHEN 'Failed Climb' THEN 2 WHEN 'Shallow Climb' THEN 6 WHEN 'Deep Climb' THEN 12 ELSE 0 END",
@@ -692,7 +693,7 @@
         }
       },
       "tables":{
-        "title":["Match Point Breakdown", "All Match Data"],
+        "title":["Match Point Breakdown", "All Match Data", "Comments"],
         "table":{
           "match_point_breakdown_table":{
             "columns": [
@@ -732,7 +733,13 @@
               "auto_coral_accuracy",
               "teleop_coral_accuracy"
             ]
-          }
+          },
+	  "comments_table": {
+	    "columns": [
+	      "match_number",
+	      "comments"
+	    ]	    
+	  }
         }
       }
     }
