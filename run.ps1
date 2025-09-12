@@ -19,19 +19,39 @@ $cloudflared = Start-Process "cloudflared" -ArgumentList "tunnel", "--url", "htt
 Start-Sleep -Seconds 5
 
 # Read the tunnel URL from stderr (where cloudflared logs it)
-$tunnelUrl = $null
-for ($i = 0; $i -lt 10; $i++) {
-    if (Test-Path $stderrPath) {
-        $lines = Get-Content $stderrPath
-        foreach ($line in $lines) {
-            if ($line -match "https://[a-zA-Z0-9\-]+\.trycloudflare\.com") {
-                $tunnelUrl = $Matches[0]
-                break
+for ($i = 0; $i -lt 30; $i++) {
+    foreach ($logFile in @($stdoutPath, $stderrPath)) {
+        if (Test-Path $logFile) {
+            $lines = Get-Content $logFile
+            foreach ($line in $lines) {
+                if ($line -match "https://[a-zA-Z0-9\-]+\.trycloudflare\.com") {
+                    $tunnelUrl = $Matches[0]
+                    break
+                }
+                elseif ($line -match "429 Too Many Requests") {
+                    Write-Warning "Cloudflare rate limited tunnel creation (429). Try again later or use a named tunnel."
+                }
             }
         }
+        if ($tunnelUrl) { break }
     }
     if ($tunnelUrl) { break }
     Start-Sleep -Seconds 1
+}
+
+# Fallback: use LAN URL if no tunnel found
+if (-not $tunnelUrl) {
+    try {
+        $localIp = (Get-NetIPAddress -AddressFamily IPv4 `
+                    | Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.*' } `
+                    | Select-Object -First 1 -ExpandProperty IPAddress)
+        if ($localIp) {
+            $tunnelUrl = "http://$localIp:3000"
+            Write-Warning "Using fallback LAN URL: $tunnelUrl"
+        }
+    } catch {
+        Write-Error "Could not determine LAN IP: $($_.Exception.Message)"
+    }
 }
 
 # Show result and write URL to tunnel.txt only if it's new
