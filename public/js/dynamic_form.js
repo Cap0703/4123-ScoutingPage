@@ -533,20 +533,21 @@ export async function buildMatchForm(root, totalsEl){
           spec[field].options, 
           spec[field].values
         ));
-      }
-      else if (spec[field] && typeof spec[field] === 'object' && 
-              (spec[field].type === 'Boolean with Value' || spec[field].Type === 'Boolean with Value')) {
-        card.appendChild(renderBooleanWithValue(field, [key, field], state, spec[field]));
-      }
-      else if (spec[field] && typeof spec[field] === 'object' && 
-              ('Made' in spec[field] || ('Value' in spec[field] && 
-              spec[field].type !== 'Boolean with Value' && spec[field].Type !== 'Boolean with Value'))) {
-        card.appendChild(renderScoring(field, [key, field], state));
-      }
-      else {
-        card.appendChild(renderField(field, spec[field], [key, field], state));
-      }
-    });
+  }
+  else if (spec[field] && typeof spec[field] === 'object' &&
+           (spec[field].type === 'Boolean with Value' || spec[field].Type === 'Boolean with Value')) {
+    card.appendChild(renderBooleanWithValue(field, [key, field], state, spec[field]));
+  }
+  else if (spec[field] && typeof spec[field] === 'object' &&
+           ('Made' in spec[field] || ('Value' in spec[field] &&
+           spec[field].type !== 'Boolean with Value' && spec[field].Type !== 'Boolean with Value'))) {
+    card.appendChild(renderScoring(field, [key, field], state));
+  }
+  else {
+    card.appendChild(renderField(field, spec[field], [key, field], state));
+  }
+});
+
     if (isMobile) {
       makeSectionCollapsible(card, true);
     }
@@ -640,11 +641,15 @@ export async function buildPitForm(root){
   const spec = conf.pit_form.fields || {};
   const card = el('div',{class:'card'}); 
   card.appendChild(el('h2',{}, 'Pit Scouting'));
-  const fieldKeys = Object.keys(spec);
-  fieldKeys.forEach(field=>{
-    if (field.toLowerCase().includes('picture') || (spec[field].Type||'').toLowerCase()==='image file'){
+  const orderedFields = conf.pit_scouting_data?.body?.table?.sections
+    ?.flatMap(section => section.fields)
+    .filter(f => spec[f]); // only include fields that exist in spec
+  const remainingFields = Object.keys(spec).filter(f => !orderedFields.includes(f));
+
+  [...orderedFields, ...remainingFields].forEach(field => {
+    if (field.toLowerCase().includes('picture') || (spec[field].Type||'').toLowerCase()==='image file') {
       card.appendChild(renderImage(field, ['image_path'], state));
-    }else{
+    } else {
       card.appendChild(renderField(field, spec[field], ['pit_json', field], state));
     }
   });

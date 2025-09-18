@@ -132,8 +132,8 @@ document.addEventListener('touchmove', function(event) {
 
 <script>
 let offset = 0;
-function jsonArea(obj){ const ta=document.createElement('textarea'); ta.value=JSON.stringify(obj,null,2); ta.style.width='100%'; ta.rows=8; return ta; }
 
+function jsonArea(obj){ const ta=document.createElement('textarea'); ta.value=JSON.stringify(obj,null,2); ta.style.width='100%'; ta.rows=8; return ta; }
 // Get auth token from localStorage and create headers
 function getAuthHeaders() {
     const token = localStorage.getItem('authToken');

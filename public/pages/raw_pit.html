@@ -129,40 +129,6 @@ document.addEventListener('touchmove', function(event) {
 
 <script>
 let offset = 0;
-async function load(reset){
-  const limit = Number(document.getElementById('limit').value||50);
-  if (reset){ offset = 0; document.getElementById('tbl').innerHTML=''; }
-  
-  try {
-    const response = await fetch(`/api/pits?limit=${limit}&offset=${offset}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const rows = await response.json();
-    
-    const tbl = document.getElementById('tbl');
-    if (!tbl.querySelector('th')){
-      const head = document.createElement('tr');
-      ['ID','Created','Pit JSON','Image'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; head.appendChild(th); });
-      tbl.appendChild(head);
-    }
-    rows.forEach(r=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML = `<td>${r.id}</td><td>${r.created_at||''}</td>
-        <td><pre>${JSON.stringify(r.pit_json,null,2)}</pre></td>
-        <td>${r.image_path? `<img src="${r.image_path}" width="140"/>` : ''}</td>`;
-      tbl.appendChild(tr);
-    });
-    offset += rows.length;
-  } catch (error) {
-    console.error('Error loading pit data:', error);
-    alert('Error loading pit data. Please check the console for details.');
-  }
-}
-document.getElementById('load').addEventListener('click', ()=>load(true));
-document.getElementById('more').addEventListener('click', ()=>load(false));
-load(true);
-
 let allPits = [];
 let currentFilters = [];
 let configData = null;
@@ -270,12 +236,8 @@ function applyFilters() {
     return true;
   });
 
-  // Get the limit to determine how many pits to show
   const limit = Number(document.getElementById('limit').value || 50);
-  
-  // Only show up to the limit of filtered pits
-  const visiblePits = allFilteredPits.slice(0, limit);
-  
+  const visiblePits = allFilteredPits.slice(0, offset + limit);
   const visibleCount = visiblePits.length;
   const totalCount = allPits.length;
   const filteredCount = allFilteredPits.length;
@@ -293,6 +255,14 @@ function applyFilters() {
   } else {
     filteredCountInfo.style.display = 'none';
   }
+  
+  const moreButton = document.getElementById('more');
+  if (visiblePits.length < allFilteredPits.length) {
+    moreButton.style.display = 'block';
+  } else {
+    moreButton.style.display = 'none';
+  }
+  
   renderPits(visiblePits);
 }
 
@@ -300,86 +270,49 @@ function renderPits(pits) {
   const tbl = document.getElementById('tbl');
   tbl.innerHTML = '';
   if (pits.length === 0) {
-    tbl.innerHTML = '<tr><td colspan="5" style="text-align: center;">No pit data found</td></tr>';
+    tbl.innerHTML = '<tr><td colspan="4" style="text-align: center;">No pit data found</td></tr>';
     return;
   }
   const head = document.createElement('tr');
-  ['ID','Created','Pit Data (edit)','Image Path','Ops'].forEach(h=>{ 
+  ['ID','Created','Pit JSON','Image'].forEach(h=>{ 
     const th=document.createElement('th'); 
     th.textContent=h; 
     head.appendChild(th); 
   });
   tbl.appendChild(head);
-  pits.forEach(r=>{
+  pits.forEach(r => {
     const tr=document.createElement('tr');
-    const pit = jsonArea(r.pit_json);
-    const imagePath = document.createElement('input');
-    imagePath.type = 'text';
-    imagePath.value = r.image_path || '';
-    imagePath.style.width = '100%';
-    const ops = document.createElement('div');
-    const save = document.createElement('button'); save.className='btn'; save.textContent='Save';
-    save.onclick = async ()=>{
-      const body = { 
-        pit_json: JSON.parse(pit.value), 
-        image_path: imagePath.value 
-      };
-      await fetch(`/api/pits/${r.id}`, {
-        method:'PUT', 
-        headers: {
-          'Content-Type':'application/json',
-          ...getAuthHeaders()
-        }, 
-        body: JSON.stringify(body)
-      });
-      save.textContent='Saved';
-      setTimeout(()=>save.textContent='Save',1000);
-    };
-    const del = document.createElement('button'); del.className='btn btn-red'; del.textContent='Delete';
-    del.onclick = async ()=>{ 
-      await fetch(`/api/pits/${r.id}`, {
-        method:'DELETE',
-        headers: getAuthHeaders()
-      }); 
-      tr.remove(); 
-    };
-    ops.append(save, del);
-    tr.innerHTML = `<td>${r.id}</td><td>${r.created_at||''}</td>`;
-    const tdPit = document.createElement('td');
-    tdPit.appendChild(pit);
-    tr.appendChild(tdPit);
-    const tdImage = document.createElement('td');
-    tdImage.appendChild(imagePath);
-    tr.appendChild(tdImage);
-    const tdOps = document.createElement('td'); 
-    tdOps.appendChild(ops); 
-    tr.appendChild(tdOps);
+    tr.innerHTML = `<td>${r.id}</td><td>${r.created_at||''}</td>
+      <td><pre>${JSON.stringify(r.pit_json,null,2)}</pre></td>
+      <td>${r.image_path? `<img src="${r.image_path}" width="140"/>` : ''}</td>`;
     tbl.appendChild(tr);
   });
 }
 
-// Update the load function to store all pits
 async function load(reset){
   const limit = Number(document.getElementById('limit').value||50);
   if (reset){ 
     offset = 0; 
     document.getElementById('tbl').innerHTML=''; 
+    allPits = [];
   }
-  const rows = await fetch(`/api/pits?limit=${limit}&offset=${offset}`, {
-    headers: getAuthHeaders()
-  }).then(r=>r.json());
+  const rows = await fetch(`/api/pits?limit=${limit}&offset=${allPits.length}`).then(r=>r.json());
+  if (rows.length === 0) {
+    document.getElementById('more').style.display = 'none';
+    return;
+  }
   allPits = allPits.concat(rows);
   applyFilters();
-  offset += rows.length;
 }
 
-// Add event listeners
+document.getElementById('load').addEventListener('click', ()=>load(true));
+document.getElementById('more').addEventListener('click', ()=>load(false));
 document.getElementById('addFilterBtn').addEventListener('click', addFilter);
 document.getElementById('searchBtn').addEventListener('click', () => applyFilters());
 document.getElementById('globalSearch').addEventListener('input', () => applyFilters());
 
-// Initialize
 loadConfig();
+load(true);
 </script>
 
 </body></html>
