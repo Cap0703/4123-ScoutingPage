@@ -116,6 +116,45 @@
   font-size: 0.8rem;
   opacity: 0.7;
 }
+
+.trendline-options {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.trendline-options label {
+  margin-right: 15px;
+}
+
+.trendline-checkbox {
+  margin-right: 5px;
+}
+
+.trendline-type {
+  margin-left: 15px;
+  display: none;
+}
+
+.trendline-options.active .trendline-type {
+  display: inline-block;
+}
+
+.chart-with-trendline {
+  position: relative;
+}
+
+.trendline-equation {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: white;
+}
 </style>
 <script src="/js/auth.js"></script>
 </head>
@@ -232,6 +271,20 @@ document.addEventListener('touchmove', function(event) {
       <option value="all">All Events</option>
     </select>
   </div>
+  <div class="trendline-options" id="trendlineOptions">
+    <label>
+      <input type="checkbox" id="showTrendlines" class="trendline-checkbox">
+      Show Trendlines
+    </label>
+    <div class="trendline-type">
+      <label>Type:</label>
+      <select id="trendlineType">
+        <option value="linear">Linear</option>
+        <option value="polynomial">Polynomial</option>
+        <option value="exponential">Exponential</option>
+      </select>
+    </div>
+  </div>
 </div>
 </div>
   </div>
@@ -262,6 +315,111 @@ document.addEventListener('touchmove', function(event) {
 <script>
 let currentEventCodeFilter = 'all';
 let uniqueEventCodes = [];
+
+function linearRegression(x, y) {
+  const n = x.length;
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  
+  for (let i = 0; i < n; i++) {
+    sumX += x[i];
+    sumY += y[i];
+    sumXY += x[i] * y[i];
+    sumXX += x[i] * x[i];
+  }
+  
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  
+  return { slope, intercept };
+}
+
+function polynomialRegression(x, y, degree = 2) {
+  // Simple implementation for quadratic regression
+  if (degree !== 2) {
+    console.warn("Only quadratic polynomial regression is implemented");
+    return null;
+  }
+  
+  const n = x.length;
+  let sumX = 0, sumY = 0, sumXX = 0, sumXXX = 0, sumXXXX = 0, sumXY = 0, sumXXY = 0;
+  
+  for (let i = 0; i < n; i++) {
+    const xi = x[i];
+    const yi = y[i];
+    const xx = xi * xi;
+    const xxx = xx * xi;
+    const xxxx = xxx * xi;
+    
+    sumX += xi;
+    sumY += yi;
+    sumXX += xx;
+    sumXXX += xxx;
+    sumXXXX += xxxx;
+    sumXY += xi * yi;
+    sumXXY += xx * yi;
+  }
+  
+  // Solve the system of equations for quadratic regression
+  // Using matrix inversion for 3x3 system
+  const matrix = [
+    [n, sumX, sumXX],
+    [sumX, sumXX, sumXXX],
+    [sumXX, sumXXX, sumXXXX]
+  ];
+  
+  const vector = [sumY, sumXY, sumXXY];
+  
+  // Calculate determinant
+  const det = matrix[0][0] * (matrix[1][1]*matrix[2][2] - matrix[1][2]*matrix[2][1]) -
+              matrix[0][1] * (matrix[1][0]*matrix[2][2] - matrix[1][2]*matrix[2][0]) +
+              matrix[0][2] * (matrix[1][0]*matrix[2][1] - matrix[1][1]*matrix[2][0]);
+  
+  if (Math.abs(det) < 1e-10) {
+    console.warn("Matrix is singular, cannot solve polynomial regression");
+    return null;
+  }
+  
+  // Calculate inverse matrix
+  const invMatrix = [
+    [
+      matrix[1][1]*matrix[2][2] - matrix[1][2]*matrix[2][1],
+      matrix[0][2]*matrix[2][1] - matrix[0][1]*matrix[2][2],
+      matrix[0][1]*matrix[1][2] - matrix[0][2]*matrix[1][1]
+    ],
+    [
+      matrix[1][2]*matrix[2][0] - matrix[1][0]*matrix[2][2],
+      matrix[0][0]*matrix[2][2] - matrix[0][2]*matrix[2][0],
+      matrix[0][2]*matrix[1][0] - matrix[0][0]*matrix[1][2]
+    ],
+    [
+      matrix[1][0]*matrix[2][1] - matrix[1][1]*matrix[2][0],
+      matrix[0][1]*matrix[2][0] - matrix[0][0]*matrix[2][1],
+      matrix[0][0]*matrix[1][1] - matrix[0][1]*matrix[1][0]
+    ]
+  ].map(row => row.map(val => val / det));
+  
+  // Multiply inverse matrix by vector
+  const a = invMatrix[0][0]*vector[0] + invMatrix[0][1]*vector[1] + invMatrix[0][2]*vector[2];
+  const b = invMatrix[1][0]*vector[0] + invMatrix[1][1]*vector[1] + invMatrix[1][2]*vector[2];
+  const c = invMatrix[2][0]*vector[0] + invMatrix[2][1]*vector[1] + invMatrix[2][2]*vector[2];
+  
+  return { a, b, c };
+}
+
+function exponentialRegression(x, y) {
+  // Transform y values to log space for linear regression
+  const logY = y.map(val => Math.log(val));
+  const linear = linearRegression(x, logY);
+  
+  if (!linear) return null;
+  
+  // Convert back to exponential form: y = a * e^(b*x)
+  const a = Math.exp(linear.intercept);
+  const b = linear.slope;
+  
+  return { a, b };
+}  
+
 /**
  * Waits for the authentication module to be fully initialized before proceeding.
  * This ensures auth checks don't run before the auth system is ready.
@@ -577,90 +735,214 @@ function filterData(processedData, matchTypeFilter, eventCodeFilter) {
  * Handles both single and multiple dataset configurations.
  */
 function createChart(chartName, chartConfig, processedData) {
-    const canvasId = `chart_${chartName.replace(/\s+/g, '_')}_${Date.now()}`;
-    const canvas = document.createElement('canvas');
-    canvas.id = canvasId;
-    canvas.width = 400;
-    canvas.height = 300;
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `<h3>${chartName}</h3>`;
-    card.appendChild(canvas);
-    const ctx = canvas.getContext('2d')
-    const labels = processedData.map(row => row[chartConfig.x] || 'N/A');
-    let datasets = [];
-    if (Array.isArray(chartConfig.y)) {
-        const colors = [
-            'rgba(255, 99, 132, 0.7)',
-            'rgba(54, 162, 235, 0.7)',
-            'rgba(255, 205, 86, 0.7)',
-            'rgba(75, 192, 192, 0.7)',
-            'rgba(153, 102, 255, 0.7)',
-            'rgba(255, 159, 64, 0.7)'
-        ];
-        chartConfig.y.forEach((yField, index) => {
-            datasets.push({
-                label: yField.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                data: processedData.map(row => row[yField] || 0),
-                backgroundColor: colors[index % colors.length],
-                borderColor: colors[index % colors.length].replace('0.7', '1'),
-                borderWidth: 2,
-                fill: false
-            });
-        });
-    } else {
-        datasets.push({
-            label: chartConfig.y.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            data: processedData.map(row => row[chartConfig.y] || 0),
-            backgroundColor: chartConfig.backgroundColor || 'rgba(153, 102, 255, 0.2)',
-            borderColor: chartConfig.borderColor || 'rgba(153, 102, 255, 1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.1
-        });
-    }
-    const chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: datasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: chartConfig.y_label || 'Value'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: chartConfig.x_label || 'Match'
-                    }
-                }
-            },
-            layout: {
-                padding: 10
-            }
-        }
+  const canvasId = `chart_${chartName.replace(/\s+/g, '_')}_${Date.now()}`;
+  const canvas = document.createElement('canvas');
+  canvas.id = canvasId;
+  canvas.width = 400;
+  canvas.height = 300;
+  
+  const card = document.createElement('div');
+  card.className = 'card chart-with-trendline';
+  card.innerHTML = `<h3>${chartName}</h3>`;
+  card.appendChild(canvas);
+  
+  const equationDiv = document.createElement('div');
+  equationDiv.className = 'trendline-equation';
+  equationDiv.style.display = 'none';
+  card.appendChild(equationDiv);
+  
+  const ctx = canvas.getContext('2d');
+  const labels = processedData.map(row => row[chartConfig.x] || 'N/A');
+  
+  let datasets = [];
+  if (Array.isArray(chartConfig.y)) {
+    const colors = [
+      'rgba(255, 99, 132, 0.7)',
+      'rgba(54, 162, 235, 0.7)',
+      'rgba(255, 205, 86, 0.7)',
+      'rgba(75, 192, 192, 0.7)',
+      'rgba(153, 102, 255, 0.7)',
+      'rgba(255, 159, 64, 0.7)'
+    ];
+    
+    chartConfig.y.forEach((yField, index) => {
+      datasets.push({
+        label: yField.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        data: processedData.map(row => row[yField] || 0),
+        backgroundColor: colors[index % colors.length],
+        borderColor: colors[index % colors.length].replace('0.7', '1'),
+        borderWidth: 2,
+        fill: false
+      });
     });
-    charts[canvasId] = chart;
-    return card;
+  } else {
+    datasets.push({
+      label: chartConfig.y.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      data: processedData.map(row => row[chartConfig.y] || 0),
+      backgroundColor: chartConfig.backgroundColor || 'rgba(153, 102, 255, 0.2)',
+      borderColor: chartConfig.borderColor || 'rgba(153, 102, 255, 1)',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.1
+    });
+  }
+  
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: chartConfig.y_label || 'Value'
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: chartConfig.x_label || 'Match'
+          }
+        }
+      },
+      layout: {
+        padding: 10
+      }
+    }
+  });
+  
+  // Store reference to add trendline later
+  chart.trendlineData = {
+    chartConfig,
+    processedData,
+    equationDiv
+  };
+  
+  charts[canvasId] = chart;
+  return card;
 }
+
+
+function addTrendlineToChart(chart, trendlineType) {
+  // Remove existing trendline datasets if any
+  chart.data.datasets = chart.data.datasets.filter(ds => !ds.isTrendline);
+  
+  // For simplicity, we'll add trendlines only to the first dataset
+  if (chart.data.datasets.length === 0) return;
+  
+  const mainDataset = chart.data.datasets[0];
+  const dataPoints = mainDataset.data;
+  const labels = chart.data.labels;
+  
+  // Convert labels to numeric values for regression
+  const xValues = labels.map((label, index) => {
+    // Try to parse as number, otherwise use index
+    const num = Number(label);
+    return isNaN(num) ? index + 1 : num;
+  });
+  
+  const yValues = dataPoints.map(point => point);
+  
+  let trendlineData = [];
+  let equation = '';
+  
+  switch(trendlineType) {
+    case 'linear':
+      const linear = linearRegression(xValues, yValues);
+      if (linear) {
+        trendlineData = xValues.map(x => linear.slope * x + linear.intercept);
+        equation = `y = ${linear.slope.toFixed(2)}x + ${linear.intercept.toFixed(2)}`;
+      }
+      break;
+      
+    case 'polynomial':
+      const poly = polynomialRegression(xValues, yValues, 2);
+      if (poly) {
+        trendlineData = xValues.map(x => poly.a + poly.b * x + poly.c * x * x);
+        equation = `y = ${poly.a.toFixed(2)} + ${poly.b.toFixed(2)}x + ${poly.c.toFixed(2)}x²`;
+      }
+      break;
+      
+    case 'exponential':
+      // Check if all y values are positive for exponential regression
+      if (yValues.every(y => y > 0)) {
+        const exp = exponentialRegression(xValues, yValues);
+        if (exp) {
+          trendlineData = xValues.map(x => exp.a * Math.exp(exp.b * x));
+          equation = `y = ${exp.a.toFixed(2)}e^(${exp.b.toFixed(2)}x)`;
+        }
+      } else {
+        console.warn("Cannot compute exponential regression with non-positive values");
+      }
+      break;
+  }
+  
+  if (trendlineData.length > 0) {
+    // Add trendline dataset
+    chart.data.datasets.push({
+      label: `${trendlineType} trendline`,
+      data: trendlineData,
+      borderColor: 'rgba(255, 0, 0, 0.8)',
+      backgroundColor: 'rgba(255, 0, 0, 0.1)',
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: false,
+      tension: 0,
+      isTrendline: true
+    });
+    
+    // Show equation
+    chart.trendlineData.equationDiv.textContent = equation;
+    chart.trendlineData.equationDiv.style.display = 'block';
+    
+    chart.update();
+  }
+}
+
+
+function updateAllTrendlines() {
+  const showTrendlines = document.getElementById('showTrendlines').checked;
+  const trendlineType = document.getElementById('trendlineType').value;
+  
+  // Update trendline options UI
+  const optionsDiv = document.getElementById('trendlineOptions');
+  if (showTrendlines) {
+    optionsDiv.classList.add('active');
+  } else {
+    optionsDiv.classList.remove('active');
+  }
+  
+  // Update all charts
+  Object.values(charts).forEach(chart => {
+    // Remove existing trendlines
+    chart.data.datasets = chart.data.datasets.filter(ds => !ds.isTrendline);
+    chart.trendlineData.equationDiv.style.display = 'none';
+    
+    // Add new trendlines if enabled
+    if (showTrendlines) {
+      addTrendlineToChart(chart, trendlineType);
+    } else {
+      chart.update();
+    }
+  });
+}
+
 
 /**
  * Creates a data table based on configuration and processed data.
@@ -888,16 +1170,27 @@ async function loadTeam(){
             document.getElementById('summary').innerHTML = `Error: ${avgResp.error}`;
             return;
         }
-        const s = document.getElementById('summary');
-        s.innerHTML = `
-            <h3>Team ${team} Summary</h3>
-            <div class="score-row">
-                <span>Matches: <strong>${avgResp.matches}</strong></span>
-                <span>Avg Auto: <strong>${avgResp.avg_auto.toFixed(2)}</strong></span>
-                <span>Avg Teleop: <strong>${avgResp.avg_teleop.toFixed(2)}</strong></span>
-                <span>Avg Endgame: <strong>${avgResp.avg_endgame.toFixed(2)}</strong></span>
-                <span>Avg Total: <strong>${avgResp.avg_total.toFixed(2)}</strong></span>
-            </div>
+        const response = await fetch(
+            `/api/team/${team}/averages?match_type=${currentMatchTypeFilter}&event_code=${currentEventCodeFilter}`, 
+            { headers: getAuthHeaders() }
+        );
+
+        const data = await response.json();
+
+        if (data.error) {
+            console.warn("Error from API:", data.error);
+            return;
+        }
+        const summaryDiv = document.getElementById('summary');
+        summaryDiv.innerHTML = `
+        <h3>Team Summary</h3>
+        <div class="score-row">
+            <span>Matches: <strong>${data.matches}</strong></span>
+            <span>Avg Auto: <strong>${data.avg_auto.toFixed(2)}</strong></span>
+            <span>Avg Teleop: <strong>${data.avg_teleop.toFixed(2)}</strong></span>
+            <span>Avg Endgame: <strong>${data.avg_endgame.toFixed(2)}</strong></span>
+            <span>Avg Total: <strong>${data.avg_total.toFixed(2)}</strong></span>
+        </div>
         `;
         let teamPitData = null;
         try {
@@ -989,6 +1282,9 @@ async function loadTeam(){
             currentMatchTypeFilter, 
             currentEventCodeFilter
         );
+
+
+        
         displayMatchTypeStats(allProcessedData);
         if (teamSummaryConfig.body.charts) {
             const chartEntries = Object.entries(teamSummaryConfig.body.charts);
@@ -1045,6 +1341,9 @@ async function loadTeam(){
         console.error('Error loading team data:', error);
         document.getElementById('summary').innerHTML = 'Error loading team data. Please try again.';
     }
+      setTimeout(() => {
+    updateAllTrendlines();
+  }, 100);
 }
 
 // Event listeners
@@ -1073,6 +1372,9 @@ document.getElementById('eventCodeFilter').addEventListener('change', function()
 document.addEventListener('DOMContentLoaded', async () => {
     await checkAuth();
 });
+
+document.getElementById('showTrendlines').addEventListener('change', updateAllTrendlines);
+document.getElementById('trendlineType').addEventListener('change', updateAllTrendlines);   
 </script>
 
 </body></html>

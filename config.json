@@ -641,7 +641,8 @@
             "auto_L3_made",
             "auto_L4_made"
           ],
-          "graph": "line graph"
+          "graph": "line graph",
+          "trend_line": "linear"
         },
         "Teleop Coral Performance": {
           "x_label": "Match #",
@@ -656,7 +657,8 @@
             "teleop_L3_made",
             "teleop_L4_made"
           ],
-          "graph": "line graph"
+          "graph": "line graph",
+          "trend_line": "linear"
         },
         "Total Points": {
           "x_label": "Match #",
@@ -667,7 +669,8 @@
           "y": [
             "total_points"
           ],
-          "graph": "line graph"
+          "graph": "line graph",
+          "trend_line": "linear"
         },
         "Auto Coral Accuracy": {
           "x_label": "Match #",
