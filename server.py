@@ -866,33 +866,44 @@ def delete_pit(pit_id):
 def get_team_averages(team):
     try:
         conf = read_config()
+        match_type_filter = request.args.get('match_type', 'all')
+        event_code_filter = request.args.get('event_code', 'all')
+
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM matches ORDER BY id')
         all_matches = cursor.fetchall()
         conn.close()
+
         team_matches = []
         for row in all_matches:
             pre_match_data = json.loads(row['pre_match_json'])
-            if str(pre_match_data.get('team_number')) == str(team):
-                team_matches.append(row)
+            if str(pre_match_data.get('team_number')) != str(team):
+                continue
+
+            match_type = pre_match_data.get('match_type', 'Unknown')
+            event_code = pre_match_data.get('event_code', 'Unknown')
+
+            if match_type_filter != 'all' and match_type != match_type_filter:
+                continue
+            if event_code_filter != 'all' and event_code != event_code_filter:
+                continue
+
+            team_matches.append(row)
+
         if not team_matches:
             return jsonify({
-                'team': team, 
-                'matches': 0, 
-                'avg_auto': 0, 
-                'avg_teleop': 0, 
-                'avg_endgame': 0, 
-                'avg_total': 0
+                'team': team, 'matches': 0,
+                'avg_auto': 0, 'avg_teleop': 0,
+                'avg_endgame': 0, 'avg_total': 0
             })
-        auto_total, tele_total, end_total = 0, 0, 0
+
+        auto_total = tele_total = end_total = 0
         for row in team_matches:
-            auto_data = json.loads(row['auto_json'])
-            tele_data = json.loads(row['teleop_json'])
-            end_data = json.loads(row['endgame_json'])
-            auto_total += auto_score(auto_data, conf)
-            tele_total += tele_score(tele_data, conf)
-            end_total += endgame_score(end_data, conf)
+            auto_total += auto_score(json.loads(row['auto_json']), conf)
+            tele_total += tele_score(json.loads(row['teleop_json']), conf)
+            end_total += endgame_score(json.loads(row['endgame_json']), conf)
+
         n = len(team_matches)
         return jsonify({
             'team': team,
@@ -904,6 +915,7 @@ def get_team_averages(team):
         })
     except Exception as e:
         return jsonify({'error': 'db', 'details': str(e)}), 500
+
 
 """Retrieves all match data for a specific team with calculated scoring."""
 @app.route('/api/team/<team>/matches', methods=['GET'])
