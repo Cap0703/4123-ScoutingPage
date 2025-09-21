@@ -123,7 +123,11 @@ document.addEventListener('touchmove', function(event) {
     </div>
   </div>
   <div class="form-row"><label>Show</label><div class="form-controls"><input id="limit" type="number" value="50"/><button id="load" class="btn">Load</button></div></div>
-  <div class="form-row"><a class="btn" href="/api/export/matches.csv">Export CSV</a></div>
+  <div class="form-row">
+    <a class="btn" href="/api/export/matches.csv">Export CSV</a>
+    <button id="reindexBtn" class="btn btn-red" style="margin-left: 10px;">Reindex Matches</button>
+  </div>
+  
   <table id="tbl" class="table"></table>
   <div class="center"><button id="more" class="btn">Load More</button></div>
   </div>
@@ -466,6 +470,38 @@ async function load(reset){
   allMatches = allMatches.concat(rows);
   applyFilters();
 }
+
+// Reindex functionality
+document.getElementById('reindexBtn').addEventListener('click', async () => {
+    if (!confirm('WARNING: This will reindex all match IDs sequentially. This operation cannot be undone. Continue?')) {
+        return;
+    }
+    const reindexBtn = document.getElementById('reindexBtn');
+    const originalText = reindexBtn.textContent;
+    reindexBtn.textContent = 'Reindexing...';
+    reindexBtn.disabled = true;
+    try {
+        const response = await fetch('/api/matches/reindex', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            }
+        });
+        const result = await response.json();
+        if (response.ok) {
+            alert(`Reindex successful! ${result.reindexed_count} matches reindexed.`);
+            load(true);
+        } else {
+            alert(`Reindex failed: ${result.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        alert('Reindex failed: ' + error.message);
+    } finally {
+        reindexBtn.textContent = originalText;
+        reindexBtn.disabled = false;
+    }
+});
 
 // Add event listeners
 document.getElementById('addFilterBtn').addEventListener('click', addFilter);

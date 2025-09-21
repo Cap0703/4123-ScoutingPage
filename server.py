@@ -705,7 +705,7 @@ def get_matches():
     try:
         conf = read_config()
         cap = conf.get('limits', {}).get('raw_table_cap', 50)
-        limit = min(int(request.args.get('limit', cap)), 200)
+        limit = int(request.args.get('limit', cap))
         offset = max(0, int(request.args.get('offset', 0)))
         
         conn = get_db_connection()
@@ -774,6 +774,70 @@ def delete_match(match_id):
 
 
 
+# ==================== REINDEX ENDPOINT ====================
+
+"""Reindexes the matches table to fix ID gaps and maintain sequential ordering"""
+@app.route('/api/matches/reindex', methods=['POST'])
+@login_required(role="admin")
+def reindex_matches():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM matches ORDER BY id ASC')
+        matches = cursor.fetchall()
+        cursor.execute('''
+            CREATE TEMPORARY TABLE matches_temp (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT,
+                pre_match_json TEXT,
+                auto_json TEXT,
+                teleop_json TEXT,
+                endgame_json TEXT,
+                misc_json TEXT
+            )
+        ''')
+        for match in matches:
+            cursor.execute('''
+                INSERT INTO matches_temp (created_at, pre_match_json, auto_json, teleop_json, endgame_json, misc_json)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (match['created_at'], match['pre_match_json'], match['auto_json'], 
+                  match['teleop_json'], match['endgame_json'], match['misc_json']))
+        cursor.execute('DROP TABLE matches')
+        cursor.execute('''
+            CREATE TABLE matches(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                pre_match_json TEXT NOT NULL,
+                auto_json TEXT NOT NULL,
+                teleop_json TEXT NOT NULL,
+                endgame_json TEXT NOT NULL,
+                misc_json TEXT NOT NULL
+            )
+        ''')
+        cursor.execute('''
+            INSERT INTO matches (id, created_at, pre_match_json, auto_json, teleop_json, endgame_json, misc_json)
+            SELECT id, created_at, pre_match_json, auto_json, teleop_json, endgame_json, misc_json 
+            FROM matches_temp 
+            ORDER BY id
+        ''')
+        cursor.execute('DROP TABLE matches_temp')
+        conn.commit()
+        conn.close()
+        return jsonify({
+            'message': 'Matches reindexed successfully',
+            'reindexed_count': len(matches)
+        })
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': 'reindex failed', 'details': str(e)}), 500
+    
+    
+    
+    
+    
+    
+    
 # ==================== PIT SCOUTING ENDPOINTS ====================
 
 """Creates a new pit scouting record with optional image path."""
