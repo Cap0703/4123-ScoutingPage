@@ -74,7 +74,7 @@
     }
   },
   "match_form": {
-    "pre-match_info": {
+    "pre_match": {
       "scouter_initials": {
         "type": "String"
       },

@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Event Scouting Lookup</title>
+    <link rel="stylesheet" href="../css/style.css">
+        <style>
+        :root {
+            --bg: #111;
+            --navy: #0b233f;
+            --gold: #d4af37;
+            --gray: #6b6b6b;
+            --text: #fff;
+            --red: #e74c3c;
+            --blue: #3498db;
+            --green: #2ecc71;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: rgb(65, 65, 65);
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #000000, #031a42);
+            color: rgb(255, 202, 104);
+            padding: 20px;
+            text-align: center;
+        }
+        
+        header h1 {
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+            font-family: Starjedi;
+        }
+        
+        header p {
+            opacity: 0.9;
+        }
+        
+        .search-section {
+            padding: 20px;
+            background-color: #a1a1a1;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 250px;
+        }
+        
+        .input-group label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input, select {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            align-self: flex-end;
+            height: fit-content;
+            margin-top: 22px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .results {
+            padding: 20px;
+            display: none;
+        }
+        
+        .team-info {
+            background-color: #727272;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        
+        .team-info h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .record-display {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0;
+        }
+        
+        .record-item {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .record-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--gold);
+        }
+        
+        .record-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .schedule-section {
+            margin-bottom: 30px;
+        }
+        
+        .schedule-section h3 {
+            color: #4c7196;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .matches-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .match-card {
+            background-color: rgb(149, 149, 149);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 4px solid #ccc;
+            transition: transform 0.2s;
+        }
+        
+        .match-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .match-card.win {
+            border-left-color: var(--green);
+        }
+        
+        .match-card.loss {
+            border-left-color: var(--red);
+        }
+        
+        .match-card.tie {
+            border-left-color: var(--gold);
+        }
+        
+        .match-card.upcoming {
+            border-left-color: var(--blue);
+        }
+        
+        .match-card h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .match-time {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .alliance-teams {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        
+        .alliance {
+            flex: 1;
+            padding: 5px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .alliance.red {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--red);
+        }
+        
+        .alliance.blue {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--blue);
+        }
+        
+        .team-highlight {
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        
+        .score {
+            font-weight: bold;
+            font-size: 1.2em;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .red-score {
+            color: var(--red);
+        }
+        
+        .blue-score {
+            color: var(--blue);
+        }
+        
+        .scouting-data {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        .scouting-data h4 {
+            color: var(--gold);
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .scouting-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .stat-item {
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--gold);
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        
+        .error {
+            color: var(--red);
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            border-top: 1px solid #eee;
+            margin-top: 20px;
+        }
+        
+        /* Navigation styles */
+        .navbar {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            padding: 14px;
+            background: linear-gradient(90deg, var(--navy), #07182b);
+            border-bottom: 2px solid var(--gold);
+            position: sticky;
+            top: 0;
+            z-index: 9;
+        }
+        
+        .navbar a {
+            color: var(--text);
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid transparent;
+        }
+        
+        .navbar a:hover {
+            border-color: var(--gold);
+        }
+        
+        /* Mobile navigation */
+        .mobile-nav {
+            display: none;
+        }
+        
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 10px;
+        }
+        
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--navy);
+            z-index: 1000;
+            padding: 20px;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+        
+        .mobile-menu.open {
+            transform: translateX(0);
+        }
+        
+        .mobile-menu a {
+            display: block;
+            color: white;
+            padding: 15px;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .mobile-menu-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+        }
+        
+        /* New styles for points breakdown */
+        .points-breakdown {
+            margin-top: 10px;
+            padding: 8px;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .points-breakdown div {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+        
+        .points-breakdown .label {
+            font-weight: bold;
+        }
+        
+        .points-breakdown .value {
+            color: var(--gold);
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            body.menu-open {
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+                height: 100%;
+            }
+            
+            .mobile-nav {
+                display: block;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background: linear-gradient(90deg, var(--navy), #07182b);
+                padding: 10px;
+            }
+            
+            .hamburger {
+                display: block;
+            }
+            
+            .navbar {
+                display: none;
+            }
+            
+            .container {
+                margin: 10px;
+                padding: 12px;
+                border-radius: 12px;
+            }
+            
+            .search-section {
+                flex-direction: column;
+            }
+            
+            .input-group {
+                width: 100%;
+            }
+            
+            button {
+                width: 100%;
+                margin-top: 10px;
+            }
+            
+            .matches-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .record-display {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .scouting-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .accuracy-breakdown {
+    margin-top: 10px;
+    padding: 8px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.accuracy-breakdown h5 {
+    margin: 0 0 8px 0;
+    color: var(--gold);
+    font-size: 0.9rem;
+}
+
+.accuracy-breakdown div {
+    display: flex;
+    justify-content: space-between;
+    margin: 3px 0;
+}
+
+.points-breakdown h5 {
+    margin: 0 0 8px 0;
+    color: var(--gold);
+    font-size: 0.9rem;
+}
+
+
+    </style>
+    <style>
+  .card {
+    background-color: #727272; /* Match the team-info background */
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border-left: 4px solid #ccc;
+  }
+  
+  .card h3 {
+    color: #4c7196; /* Match schedule section heading color */
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
+    font-size: 1.4rem;
+  }
+  
+  /* Team stats grid update */
+  .team-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px; /* Increased gap for better spacing */
+  }
+  
+  .stat-item {
+    padding: 12px;
+    background-color: rgba(255, 255, 255, 0.1); /* Lighter background */
+    border-radius: 6px;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+  
+  .stat-item:hover {
+    transform: translateY(-3px); /* Add hover effect like match cards */
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--gold); /* Use the gold color variable */
+  }
+  
+  .stat-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    color: var(--text); /* Use text color variable */
+  }
+  
+  /* Match type stats grid update */
+  .match-type-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+  }
+  
+  .match-type-stat-item {
+    padding: 12px;
+    background-color: rgba(255, 255, 255, 0.1); /* Lighter background */
+    border-radius: 6px;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+  
+  .match-type-stat-item:hover {
+    transform: translateY(-3px); /* Add hover effect */
+  }
+  
+  .match-type-stat-value {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--gold); /* Use gold color instead of teal */
+  }
+  
+  .match-type-stat-label {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin-bottom: 5px;
+    color: var(--text); /* Use text color variable */
+  }
+  
+  .match-type-stat-count {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    color: var(--text); /* Use text color variable */
+  }
+  
+  /* Team info grid update */
+  .team-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px; /* Increased gap */
+  }
+  
+  .info-item {
+    padding: 12px;
+    background-color: rgba(255, 255, 255, 0.1); /* Lighter background */
+    border-radius: 6px;
+    transition: transform 0.2s;
+  }
+  
+  .info-item:hover {
+    transform: translateY(-3px); /* Add hover effect */
+  }
+  
+  /* Chart container styling */
+  .chart-container .card {
+    margin: 0;
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+    background-color: #727272; /* Match card background */
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  }
+  
+  /* Table styling */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  
+  .table th {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    text-align: left;
+    color: var(--gold);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .table td {
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text);
+  }
+  
+  .table tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Form controls styling */
+  .form-row {
+    margin-bottom: 15px;
+  }
+  
+  .form-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  .form-controls input, .form-controls select {
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    background-color: #fff;
+    color: #333;
+  }
+  
+  .btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+  }
+  
+  .btn:hover {
+    background-color: #2980b9;
+  }
+  
+  /* Event history toggle button */
+  #toggleEventHistory {
+    background-color: var(--navy);
+    color: var(--text);
+    border: 1px solid var(--gold);
+  }
+  
+  #toggleEventHistory:hover {
+    background-color: var(--gold);
+    color: var(--navy);
+  }
+    </style>
+</head>
+<body>
+    <!-- Mobile navigation -->
+    <div class="mobile-nav">
+        <button class="hamburger" onclick="toggleMenu()">☰</button>
+        <div class="mobile-menu" id="mobileMenu">
+            <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+            <a href="/" onclick="toggleMenu()">Home</a>
+            <a href="/pages/team_event_lookup.html" onclick="toggleMenu()">Team Event Lookup</a>
+            <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
+            <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
+            <a href="/pages/team_summary.html" class="admin-only" onclick="toggleMenu()">Team Summary</a>
+            <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
+            <a href="/pages/rankings.html" class="admin-only" onclick="toggleMenu()">Rankings</a>
+            <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
+            <a href="/pages/raw_match_edit.html" class="admin-only" onclick="toggleMenu()">Raw Match Data Edit</a>
+            <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
+            <a href="/pages/raw_pit_edit.html" class="admin-only" onclick="toggleMenu()">Raw Pit Data Edit</a>
+            <a href="/pages/csv_upload.html" class="admin-only" onclick="toggleMenu()">CSV Upload</a>
+            <a href="/pages/config_creator.html" onclick="toggleMenu()">Config Creator</a>
+            <a href="/pages/admin.html" class="admin-only" onclick="toggleMenu()">User Management</a>
+            <a href="/pages/logout.html" onclick="toggleMenu()">Logout</a>
+        </div>
+    </div>
+
+    <!-- Original navbar (hidden on mobile) -->
+    <nav class="navbar">
+        <a href="/">Home</a>
+        <a href="/pages/ondeck.html">Ondeck</a>
+        <a href="/pages/team_event_lookup.html" class="active">Team Event Lookup</a>
+        <a href="/pages/match_scouting.html">Match Scouting</a>
+        <a href="/pages/pit_scouting.html">Pit Scouting</a>
+        <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+        <a href="/pages/match_simulator.html">Match Simulator</a>
+        <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+        <a href="/pages/raw_match.html">Raw Match Data</a>
+        <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+        <a href="/pages/raw_pit.html">Raw Pit Data</a>
+        <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+        <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+        <a href="/pages/config_creator.html">Config Creator</a>
+        <a href="/pages/admin.html" class="admin-only">User Management</a>
+        <a href="/pages/logout.html">Logout</a>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>Team Event Scouting Lookup</h1>
+            <p>View a team's schedule, record, and scouting data for any event</p>
+        </header>
+        
+        <section class="search-section">
+            <div class="input-group">
+                <label for="teamNumber">Team Number</label>
+                <input type="number" id="teamNumber" placeholder="e.g., 4123" min="1" value="4123">
+            </div>
+            
+            <div class="input-group">
+                <label for="eventKey">Event Code</label>
+                <input type="text" id="eventKey" placeholder="e.g., 2025caav" value="2025caav">
+            </div>
+            
+            <div class="input-group">
+                <label for="matchType">Match Type</label>
+                <select id="matchType">
+                    <option value="all">All Matches</option>
+                    <option value="qm">Qualification</option>
+                    <option value="qf">Quarterfinal</option>
+                    <option value="sf">Semifinal</option>
+                    <option value="f">Final</option>
+                </select>
+            </div>
+            
+            <button onclick="loadTeamEventData()">Load Team Data</button>
+        </section>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Loading team event data...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <section class="results" id="results">
+            <div class="team-info" id="teamInfo">
+                <h2 id="teamName">Team Information</h2>
+                <div class="record-display" id="recordDisplay"></div>
+                <p id="eventInfo"></p>
+            </div>
+            
+            <div class="schedule-section">
+                <h3>Match Schedule</h3>
+                <div class="matches-container" id="matchesContainer"></div>
+            </div>
+            
+            <div class="scouting-data" id="scoutingData" style="display: none;">
+                <h4>Scouting Data Summary</h4>
+                <div class="scouting-stats" id="scoutingStats"></div>
+            </div>
+        </section>
+        
+        <footer>
+            <p>Data provided by The Blue Alliance API and local scouting database | Not affiliated with FIRST®</p>
+        </footer>
+    </div>
+
+    <script>
+        // Your TBA API key
+        const TBA_KEY = "I6XNIQ0p8VtiUdy0u5oIVjmj7d4mGqteLwQczb91wyBCmd7439BPLxvqf6poH1wA";
+        
+        // Global variables to store data
+        let currentTeamNumber = 0;
+        let currentEventKey = "";
+        let currentMatchType = "all";
+        let allEventMatches = [];
+        let teamMatches = [];
+        let teamScoutingData = [];
+        
+        // Function to load team event data
+        function loadTeamEventData() {
+            currentTeamNumber = parseInt(document.getElementById("teamNumber").value);
+            currentEventKey = document.getElementById("eventKey").value.trim();
+            currentMatchType = document.getElementById("matchType").value;
+            
+            // Validate input
+            if (isNaN(currentTeamNumber) || currentTeamNumber <= 0) {
+                showError("Please enter a valid team number");
+                return;
+            }
+            
+            if (!currentEventKey) {
+                showError("Please enter a valid event key");
+                return;
+            }
+            
+            // Show loading, hide results and error
+            document.getElementById("loading").style.display = "block";
+            document.getElementById("results").style.display = "none";
+            document.getElementById("error").style.display = "none";
+            
+            // Fetch all data
+            Promise.all([
+                fetchEventMatches(currentEventKey),
+                fetchTeamInfo(currentTeamNumber),
+                fetchTeamScoutingData(currentTeamNumber, currentEventKey)
+            ])
+            .then(() => {
+                // Process the data
+                processTeamEventData();
+                
+                // Hide loading and show results
+                document.getElementById("loading").style.display = "none";
+                document.getElementById("results").style.display = "block";
+            })
+            .catch(error => {
+                document.getElementById("loading").style.display = "none";
+                showError("Error fetching team data: " + error.message);
+            });
+        }
+        
+        // Function to fetch all matches for an event
+        function fetchEventMatches(eventKey) {
+            return fetchTBA(`event/${eventKey}/matches/simple`)
+                .then(matches => {
+                    if (matches && matches.length > 0) {
+                        allEventMatches = matches;
+                        return true;
+                    } else {
+                        throw new Error("No matches found for this event");
+                    }
+                });
+        }
+        
+        // Function to fetch team information
+        function fetchTeamInfo(teamNumber) {
+            return fetchTBA(`team/frc${teamNumber}`)
+                .then(teamData => {
+                    if (teamData) {
+                        document.getElementById("teamName").textContent = 
+                            `Team ${teamData.team_number}: ${teamData.nickname}`;
+                        return true;
+                    } else {
+                        document.getElementById("teamName").textContent = 
+                            `Team ${teamNumber}`;
+                        return true;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById("teamName").textContent = 
+                        `Team ${teamNumber}`;
+                    return true; // Continue even if team info fails
+                });
+        }
+        
+        // Function to fetch team scouting data from local database
+        function fetchTeamScoutingData(teamNumber, eventKey) {
+            return fetch(`/api/team/${teamNumber}/matches`, {
+                headers: {
+                    'Authorization': localStorage.getItem('authToken') || ''
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch scouting data');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    teamScoutingData = [];
+                } else {
+                    // Filter scouting data for the current event
+                    teamScoutingData = data.filter(match => {
+                        const eventCode = match.pre_match_json.event_code || 
+                                        (match.pre_match_json.event_code = match.pre_match_json.event_code);
+                        return eventCode === eventKey;
+                    });
+                }
+                return true;
+            })
+            .catch(error => {
+                teamScoutingData = [];
+                return true; // Continue even if scouting data fails
+            });
+        }
+        
+        // Process the team event data to display
+        function processTeamEventData() {
+            // Filter matches for the team
+            teamMatches = allEventMatches.filter(match => {
+                const teamKey = `frc${currentTeamNumber}`;
+                return match.alliances.red.team_keys.includes(teamKey) || 
+                       match.alliances.blue.team_keys.includes(teamKey);
+            });
+            
+            if (teamMatches.length === 0) {
+                showError(`Team ${currentTeamNumber} not found in event ${currentEventKey}`);
+                return;
+            }
+            
+            // Filter by match type if needed
+            if (currentMatchType !== "all") {
+                teamMatches = teamMatches.filter(match => match.comp_level === currentMatchType);
+            }
+            
+            // Sort matches by time
+            teamMatches.sort((a, b) => a.time - b.time);
+            
+            // Display team and event info
+            displayTeamEventInfo();
+            
+            // Display match schedule
+            displayMatchSchedule();
+            
+            // Display scouting data if available
+            if (teamScoutingData.length > 0) {
+                displayScoutingData();
+            }
+        }
+        
+        // Display team and event information
+        function displayTeamEventInfo() {
+            const eventInfoDiv = document.getElementById("eventInfo");
+            const recordDisplayDiv = document.getElementById("recordDisplay");
+            
+            // Get event info from first match
+            const firstMatch = teamMatches[0];
+            const eventName = firstMatch.event_key;
+            
+            eventInfoDiv.textContent = `Event: ${eventName}`;
+            
+            // Calculate record
+            let wins = 0;
+            let losses = 0;
+            let ties = 0;
+            
+            teamMatches.forEach(match => {
+                if (match.alliances.red.score === null || match.alliances.blue.score === null) {
+                    return; // Skip matches that haven't been played
+                }
+                
+                const teamKey = `frc${currentTeamNumber}`;
+                const isRed = match.alliances.red.team_keys.includes(teamKey);
+                
+                if (isRed) {
+                    if (match.alliances.red.score > match.alliances.blue.score) wins++;
+                    else if (match.alliances.red.score < match.alliances.blue.score) losses++;
+                    else ties++;
+                } else {
+                    if (match.alliances.blue.score > match.alliances.red.score) wins++;
+                    else if (match.alliances.blue.score < match.alliances.red.score) losses++;
+                    else ties++;
+                }
+            });
+            
+            // Display record
+            recordDisplayDiv.innerHTML = `
+                <div class="record-item">
+                    <div class="record-value">${wins}</div>
+                    <div class="record-label">Wins</div>
+                </div>
+                <div class="record-item">
+                    <div class="record-value">${losses}</div>
+                    <div class="record-label">Losses</div>
+                </div>
+                <div class="record-item">
+                    <div class="record-value">${ties}</div>
+                    <div class="record-label">Ties</div>
+                </div>
+                <div class="record-item">
+                    <div class="record-value">${wins + losses + ties}</div>
+                    <div class="record-label">Played</div>
+                </div>
+            `;
+        }
+        
+        // Display match schedule with detailed breakdown
+        function displayMatchSchedule() {
+            const matchesContainer = document.getElementById("matchesContainer");
+            matchesContainer.innerHTML = "";
+            
+            if (teamMatches.length === 0) {
+                matchesContainer.innerHTML = "<p>No matches found for this team</p>";
+                return;
+            }
+            
+            teamMatches.forEach(match => {
+                const teamKey = `frc${currentTeamNumber}`;
+                const isRed = match.alliances.red.team_keys.includes(teamKey);
+                const matchTime = new Date(match.time * 1000);
+                const now = new Date();
+                
+                // Find scouting data for this match
+                const scoutingMatch = teamScoutingData.find(scout => 
+                    scout.pre_match_json.match_number === match.match_number && 
+                    scout.pre_match_json.comp_level === match.comp_level
+                );
+                
+                // Calculate scoring breakdown
+                const scoringBreakdown = calculateScoringBreakdown(match, currentTeamNumber, scoutingMatch);
+                
+                const matchCard = document.createElement("div");
+                
+                // Determine match status
+                let statusClass = "upcoming";
+                let statusText = "Upcoming";
+                
+                if (match.alliances.red.score !== null && match.alliances.blue.score !== null) {
+                    const teamWon = isRed ? 
+                        (match.alliances.red.score > match.alliances.blue.score) :
+                        (match.alliances.blue.score > match.alliances.red.score);
+                    
+                    if (match.alliances.red.score === match.alliances.blue.score) {
+                        statusClass = "tie";
+                        statusText = "Tie";
+                    } else {
+                        statusClass = teamWon ? "win" : "loss";
+                        statusText = teamWon ? "Win" : "Loss";
+                    }
+                }
+                
+                matchCard.className = `match-card ${statusClass}`;
+                
+                // Format alliance teams with highlighting for the target team
+                const formatAllianceTeams = (teamKeys, isTeamAlliance) => {
+                    return teamKeys.map(key => {
+                        const teamNum = key.substring(3);
+                        return isTeamAlliance && key === teamKey ? 
+                            `<span class="team-highlight">${teamNum}</span>` : teamNum;
+                    }).join(", ");
+                };
+                
+                // Create detailed breakdown HTML if available
+                let detailedBreakdownHTML = "";
+                if (scoringBreakdown) {
+                    // Determine contribution level for styling
+                    let contributionClass = "contribution-medium";
+                    if (scoringBreakdown.percentage >= 40) {
+                        contributionClass = "contribution-high";
+                    } else if (scoringBreakdown.percentage < 25) {
+                        contributionClass = "contribution-low";
+                    }
+                    
+                    detailedBreakdownHTML = `
+                        <div class="detailed-breakdown">
+                            <div class="breakdown-header">Team ${currentTeamNumber} Performance</div>
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Auto Points:</span>
+                                <span class="breakdown-value">${scoringBreakdown.autoPoints}</span>
+                                <span class="breakdown-percentage">${scoringBreakdown.allianceScore > 0 ? ((scoringBreakdown.autoPoints / scoringBreakdown.allianceScore) * 100).toFixed(1) + '%' : 'N/A'}</span>
+                            </div>
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Teleop Points:</span>
+                                <span class="breakdown-value">${scoringBreakdown.teleopPoints}</span>
+                                <span class="breakdown-percentage">${scoringBreakdown.allianceScore > 0 ? ((scoringBreakdown.teleopPoints / scoringBreakdown.allianceScore) * 100).toFixed(1) + '%' : 'N/A'}</span>
+                            </div>
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Endgame Points:</span>
+                                <span class="breakdown-value">${scoringBreakdown.endgamePoints}</span>
+                                <span class="breakdown-percentage">${scoringBreakdown.allianceScore > 0 ? ((scoringBreakdown.endgamePoints / scoringBreakdown.allianceScore) * 100).toFixed(1) + '%' : 'N/A'}</span>
+                            </div>
+                            <div class="breakdown-row" style="font-weight: bold; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 5px;">
+                                <span class="breakdown-label">Total Points:</span>
+                                <span class="breakdown-value">${scoringBreakdown.totalPoints}</span>
+                                <span class="breakdown-percentage ${contributionClass}">${scoringBreakdown.percentage}% of Alliance</span>
+                            </div>
+                            
+                            <div class="accuracy-section">
+                                <div class="accuracy-header">Accuracy Metrics</div>
+                                <div class="breakdown-row">
+                                    <span class="breakdown-label">Auto Accuracy:</span>
+                                    <span class="breakdown-value">${scoringBreakdown.autoAccuracy}%</span>
+                                </div>
+                                <div class="breakdown-row">
+                                    <span class="breakdown-label">Teleop Accuracy:</span>
+                                    <span class="breakdown-value">${scoringBreakdown.teleopAccuracy}%</span>
+                                </div>
+                                <div class="breakdown-row">
+                                    <span class="breakdown-label">Total Shots:</span>
+                                    <span class="breakdown-value">${scoringBreakdown.shotsMade}/${scoringBreakdown.shotsAttempted}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (scoutingMatch) {
+                    // Show basic scouting data if detailed breakdown isn't available
+                    detailedBreakdownHTML = `
+                        <div class="detailed-breakdown">
+                            <div class="breakdown-header">Scouting Data Available</div>
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Auto Points:</span>
+                                <span class="breakdown-value">${scoutingMatch.auto_points || 0}</span>
+                            </div>
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Teleop Points:</span>
+                                <span class="breakdown-value">${scoutingMatch.teleop_points || 0}</span>
+                            </div>
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Endgame Points:</span>
+                                <span class="breakdown-value">${scoutingMatch.endgame_points || 0}</span>
+                            </div>
+                            <div class="breakdown-row" style="font-weight: bold;">
+                                <span class="breakdown-label">Total Points:</span>
+                                <span class="breakdown-value">${scoutingMatch.total_points || 0}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                matchCard.innerHTML = `
+                    <h4>
+                        ${match.comp_level.toUpperCase()} Match ${match.match_number}
+                        <span class="match-time">${matchTime.toLocaleString()}</span>
+                    </h4>
+                    <div class="alliance-teams">
+                        <div class="alliance red">
+                            Red: ${formatAllianceTeams(match.alliances.red.team_keys, isRed)}
+                        </div>
+                        <div class="alliance blue">
+                            Blue: ${formatAllianceTeams(match.alliances.blue.team_keys, !isRed)}
+                        </div>
+                    </div>
+                    <div class="score">
+                        ${match.alliances.red.score !== null ? 
+                            `<span class="red-score">${match.alliances.red.score}</span> - 
+                             <span class="blue-score">${match.alliances.blue.score}</span>` : 
+                            'Not Played Yet'}
+                    </div>
+                    ${detailedBreakdownHTML}
+                    <div style="text-align: center; font-weight: bold; color: ${
+                        statusClass === 'win' ? 'var(--green)' : 
+                        statusClass === 'loss' ? 'var(--red)' : 
+                        statusClass === 'tie' ? 'var(--gold)' : 'var(--blue)'
+                    }">
+                        ${statusText}
+                    </div>
+                `;
+                
+                matchesContainer.appendChild(matchCard);
+            });
+        }
+        
+        // Calculate detailed scoring breakdown
+        function calculateScoringBreakdown(match, teamNumber, scoutingMatch) {
+            if (!scoutingMatch || !match.alliances.red.score || !match.alliances.blue.score) {
+                return null;
+            }
+
+            const teamKey = `frc${teamNumber}`;
+            const isRed = match.alliances.red.team_keys.includes(teamKey);
+            const allianceScore = isRed ? match.alliances.red.score : match.alliances.blue.score;
+            
+            // Get points from scouting data
+            const autoPoints = scoutingMatch.auto_points || 0;
+            const teleopPoints = scoutingMatch.teleop_points || 0;
+            const endgamePoints = scoutingMatch.endgame_points || 0;
+            const totalPoints = scoutingMatch.total_points || 0;
+            
+            // Calculate percentage of alliance points
+            const percentage = allianceScore > 0 ? ((totalPoints / allianceScore) * 100).toFixed(1) : 0;
+            
+            // Calculate accuracy metrics
+            let autoAccuracy = 0;
+            let teleopAccuracy = 0;
+            let shotsMade = 0;
+            let shotsAttempted = 0;
+            
+            if (scoutingMatch.auto_json) {
+                const autoData = JSON.parse(scoutingMatch.auto_json);
+                
+                // Calculate auto accuracy based on your specific scouting form structure
+                for (const level of ['L1', 'L2', 'L3', 'L4', 'Net', 'Processor']) {
+                    if (autoData[level]) {
+                        const made = autoData[level].Made || 0;
+                        const missed = autoData[level].Missed || 0;
+                        shotsAttempted += made + missed;
+                        shotsMade += made;
+                    }
+                }
+                
+                // Calculate auto period accuracy
+                const autoShotsAttempted = shotsAttempted;
+                const autoShotsMade = shotsMade;
+                autoAccuracy = autoShotsAttempted > 0 ? ((autoShotsMade / autoShotsAttempted) * 100).toFixed(1) : 0;
+            }
+            
+            if (scoutingMatch.teleop_json) {
+                const teleopData = JSON.parse(scoutingMatch.teleop_json);
+                let teleopShotsAttempted = 0;
+                let teleopShotsMade = 0;
+                
+                // Calculate teleop accuracy based on your specific scouting form structure
+                for (const level of ['L1', 'L2', 'L3', 'L4', 'Net', 'Processor']) {
+                    if (teleopData[level]) {
+                        const made = teleopData[level].Made || 0;
+                        const missed = teleopData[level].Missed || 0;
+                        teleopShotsAttempted += made + missed;
+                        teleopShotsMade += made;
+                    }
+                }
+                
+                // Add teleop shots to totals
+                shotsAttempted += teleopShotsAttempted;
+                shotsMade += teleopShotsMade;
+                
+                // Calculate teleop period accuracy
+                teleopAccuracy = teleopShotsAttempted > 0 ? ((teleopShotsMade / teleopShotsAttempted) * 100).toFixed(1) : 0;
+            }
+            
+            return {
+                autoPoints,
+                teleopPoints,
+                endgamePoints,
+                totalPoints,
+                percentage,
+                autoAccuracy,
+                teleopAccuracy,
+                allianceScore,
+                shotsMade,
+                shotsAttempted
+            };
+        }
+        
+        // Display scouting data if available
+        function displayScoutingData() {
+            const scoutingDataDiv = document.getElementById("scoutingData");
+            const scoutingStatsDiv = document.getElementById("scoutingStats");
+            
+            scoutingDataDiv.style.display = "block";
+            scoutingStatsDiv.innerHTML = "";
+            
+            // Calculate average scores
+            let totalAuto = 0;
+            let totalTeleop = 0;
+            let totalEndgame = 0;
+            let totalPoints = 0;
+            let totalContribution = 0;
+            
+            teamScoutingData.forEach(match => {
+                totalAuto += match.auto_points || 0;
+                totalTeleop += match.teleop_points || 0;
+                totalEndgame += match.endgame_points || 0;
+                totalPoints += match.total_points || 0;
+                
+                // Calculate contribution percentage if we can find the alliance score
+                const tbaMatch = teamMatches.find(m => 
+                    m.match_number === match.pre_match_json.match_number && 
+                    m.comp_level === match.pre_match_json.comp_level
+                );
+                
+                if (tbaMatch && tbaMatch.alliances.red.score !== null) {
+                    const teamKey = `frc${currentTeamNumber}`;
+                    const isRed = tbaMatch.alliances.red.team_keys.includes(teamKey);
+                    const allianceScore = isRed ? tbaMatch.alliances.red.score : tbaMatch.alliances.blue.score;
+                    
+                    if (allianceScore > 0) {
+                        totalContribution += (match.total_points / allianceScore) * 100;
+                    }
+                }
+            });
+            
+            const matchCount = teamScoutingData.length;
+            
+            // Create stat items
+            const createStatItem = (label, value, suffix = "") => {
+                const statItem = document.createElement("div");
+                statItem.className = "stat-item";
+                statItem.innerHTML = `
+                    <div class="stat-value">${value}${suffix}</div>
+                    <div class="stat-label">${label}</div>
+                `;
+                return statItem;
+            };
+            
+            if (matchCount > 0) {
+                scoutingStatsDiv.appendChild(createStatItem(
+                    "Avg Auto Points", 
+                    (totalAuto / matchCount).toFixed(1)
+                ));
+                
+                scoutingStatsDiv.appendChild(createStatItem(
+                    "Avg Teleop Points", 
+                    (totalTeleop / matchCount).toFixed(1)
+                ));
+                
+                scoutingStatsDiv.appendChild(createStatItem(
+                    "Avg Endgame Points", 
+                    (totalEndgame / matchCount).toFixed(1)
+                ));
+                
+                scoutingStatsDiv.appendChild(createStatItem(
+                    "Avg Total Points", 
+                    (totalPoints / matchCount).toFixed(1)
+                ));
+                
+                // Only show contribution if we have valid data
+                const validContributionMatches = teamScoutingData.filter(match => {
+                    const tbaMatch = teamMatches.find(m => 
+                        m.match_number === match.pre_match_json.match_number && 
+                        m.comp_level === match.pre_match_json.comp_level
+                    );
+                    return tbaMatch && tbaMatch.alliances.red.score !== null && 
+                           tbaMatch.alliances.red.score > 0;
+                }).length;
+                
+                if (validContributionMatches > 0) {
+                    scoutingStatsDiv.appendChild(createStatItem(
+                        "Avg Alliance Contribution", 
+                        (totalContribution / validContributionMatches).toFixed(1),
+                        "%"
+                    ));
+                }
+            }
+        }
+        
+        // Helper function to fetch from TBA API
+        function fetchTBA(path) {
+            return fetch(`https://www.thebluealliance.com/api/v3/${path}`, {
+                headers: {
+                    'X-TBA-Auth-Key': TBA_KEY
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`TBA API error: ${response.status}`);
+                }
+                return response.json();
+            });
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById("error");
+            errorDiv.textContent = message;
+            errorDiv.style.display = "block";
+            document.getElementById("results").style.display = "none";
+        }
+        
+        // Mobile menu functions
+        function toggleMenu() {
+            const menu = document.getElementById("mobileMenu");
+            const body = document.body;
+            
+            if (menu.classList.contains("open")) {
+                menu.classList.remove("open");
+                body.classList.remove("menu-open");
+            } else {
+                menu.classList.add("open");
+                body.classList.add("menu-open");
+            }
+        }
+        
+        // Check admin status and hide/show admin links
+        function checkAdminStatus() {
+            const isAdmin = localStorage.getItem('isAdmin') === 'true';
+            const adminElements = document.querySelectorAll('.admin-only');
+            
+            adminElements.forEach(el => {
+                el.style.display = isAdmin ? 'block' : 'none';
+            });
+        }
+        
+        // Initialize on page load
+        window.onload = function() {
+            checkAdminStatus();
+            // Load data for default team and event
+            loadTeamEventData();
+        };
+    </script>
+</body>
+</html>

@@ -5,6 +5,24 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>CSV Upload</title>
     <link rel="stylesheet" href="/css/style.css"/>
+    <style>
+        .progress-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 4px;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            transition: width 0.3s;
+        }
+    </style>
 </head>
 <body>
 <!-- Mobile navigation -->
@@ -110,11 +128,28 @@ document.addEventListener('touchmove', function(event) {
     <button class="btn" onclick="uploadPits()">Upload Pits CSV</button>
     <div id="pitsStatus"></div>
   </div>
+  
+  <div class="form-section">
+    <h2>Google Form CSV Upload</h2>
+    <p>Convert Google Form CSV data to match our system format</p>
+    <input type="file" id="googleFormFile" accept=".csv" />
+    <button class="btn" onclick="uploadGoogleForm()">Upload Google Form CSV</button>
+    <div class="progress-container" id="progressContainer" style="display: none;">
+      <div class="progress-bar" id="progressBar">0%</div>
+    </div>
+    <div id="googleFormStatus"></div>
+  </div>
 </div>
 </div>
 <footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
 
 <script>
+// Get auth token from localStorage and create headers
+function getAuthHeaders() {
+    const token = localStorage.getItem('authToken');
+    return token ? { 'Authorization': token } : {};
+}
+
 async function uploadMatches() {
   const fileInput = document.getElementById('matchesFile');
   const statusDiv = document.getElementById('matchesStatus');
@@ -131,7 +166,8 @@ async function uploadMatches() {
     statusDiv.innerHTML = '<div class="info">Uploading...</div>';
     const response = await fetch('/api/upload/csv', {
       method: 'POST',
-      body: formData
+      body: formData,
+      headers: getAuthHeaders()
     });
     
     const result = await response.json();
@@ -166,7 +202,8 @@ async function uploadPits() {
     statusDiv.innerHTML = '<div class="info">Uploading...</div>';
     const response = await fetch('/api/upload/csv', {
       method: 'POST',
-      body: formData
+      body: formData,
+      headers: getAuthHeaders()
     });
     
     const result = await response.json();
@@ -182,6 +219,54 @@ async function uploadPits() {
     }
   } catch (error) {
     statusDiv.innerHTML = `<div class="error">Upload failed: ${error.message}</div>`;
+  }
+}
+
+async function uploadGoogleForm() {
+  const fileInput = document.getElementById('googleFormFile');
+  const statusDiv = document.getElementById('googleFormStatus');
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+  
+  if (!fileInput.files.length) {
+    statusDiv.innerHTML = '<div class="error">Please select a CSV file</div>';
+    return;
+  }
+  
+  try {
+    statusDiv.innerHTML = '<div class="info">Uploading Google Form CSV...</div>';
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.textContent = '0%';
+    
+    const formData = new FormData();
+    formData.append('csv', fileInput.files[0]);
+    
+    const response = await fetch('/api/upload/google-form-csv', {
+      method: 'POST',
+      body: formData,
+      headers: getAuthHeaders()
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      let message = `<div class="success">${result.message}</div>`;
+      if (result.errors && result.errors.length) {
+        message += `<div class="warning">Some errors occurred:<ul>${result.errors.map(e => `<li>${e}</li>`).join('')}</ul></div>`;
+      }
+      statusDiv.innerHTML = message;
+      progressBar.style.width = '100%';
+      progressBar.textContent = '100%';
+    } else {
+      statusDiv.innerHTML = `<div class="error">Error: ${result.error || 'Unknown error'}</div>`;
+    }
+  } catch (error) {
+    statusDiv.innerHTML = `<div class="error">Upload failed: ${error.message}</div>`;
+  } finally {
+    setTimeout(() => {
+      progressContainer.style.display = 'none';
+    }, 3000);
   }
 }
 </script>

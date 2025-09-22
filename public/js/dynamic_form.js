@@ -557,7 +557,7 @@ export async function buildMatchForm(root, totalsEl){
   const matchFormConfig = conf.match_form;
   
   // Pre-Match Info (first section)
-  addSection('Pre-Match Info', matchFormConfig['pre-match_info'], 'pre_match_json');
+  addSection('Pre-Match Info', matchFormConfig['pre_match'], 'pre_match_json');
   
   // Autonomous Period
   addSection('Autonomous Period', matchFormConfig.auto_period, 'auto_json', autoScoreEl);

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Data Comparison - FRC Scouting</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        :root {
+            --correct-prediction: #4caf50;
+            --incorrect-prediction: #f44336;
+            --close-prediction: #ff9800;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .comparison-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .comparison-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .score-comparison {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+        
+        .score-correct {
+            background-color: rgba(76, 175, 80, 0.2);
+            border-left: 4px solid var(--correct-prediction);
+        }
+        
+        .score-close {
+            background-color: rgba(255, 152, 0, 0.2);
+            border-left: 4px solid var(--close-prediction);
+        }
+        
+        .score-incorrect {
+            background-color: rgba(244, 67, 54, 0.2);
+            border-left: 4px solid var(--incorrect-prediction);
+        }
+        
+        .winner-comparison {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .winner-correct {
+            background-color: rgba(76, 175, 80, 0.2);
+            border: 1px solid var(--correct-prediction);
+        }
+        
+        .winner-incorrect {
+            background-color: rgba(244, 67, 54, 0.2);
+            border: 1px solid var(--incorrect-prediction);
+        }
+        
+        .accuracy-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        
+        .accuracy-high {
+            background-color: var(--correct-prediction);
+        }
+        
+        .accuracy-medium {
+            background-color: var(--close-prediction);
+        }
+        
+        .accuracy-low {
+            background-color: var(--incorrect-prediction);
+        }
+        
+        .match-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .match-card:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .match-card.selected {
+            border: 2px solid #d4af37;
+        }
+        
+        .match-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .match-details {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile navigation -->
+    <div class="mobile-nav">
+        <button class="hamburger" onclick="toggleMenu()">☰</button>
+        <div class="mobile-menu" id="mobileMenu">
+            <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+            <a href="/" onclick="toggleMenu()">Home</a>
+            <a href="/pages/ondeck.html" onclick="toggleMenu()">Ondeck</a>
+            <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
+            <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
+            <a href="/pages/team_summary.html" class="admin-only" onclick="toggleMenu()">Team Summary</a>
+            <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
+            <a href="/pages/rankings.html" class="admin-only" onclick="toggleMenu()">Rankings</a>
+            <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
+            <a href="/pages/raw_match_edit.html" class="admin-only" onclick="toggleMenu()">Raw Match Data Edit</a>
+            <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
+            <a href="/pages/raw_pit_edit.html" class="admin-only" onclick="toggleMenu()">Raw Pit Data Edit</a>
+            <a href="/pages/csv_upload.html" class="admin-only" onclick="toggleMenu()">CSV Upload</a>
+            <a href="/pages/config_creator.html" onclick="toggleMenu()">Config Creator</a>
+            <a href="/pages/admin.html" class="admin-only" onclick="toggleMenu()">User Management</a>
+            <a href="/pages/match_comparison.html" onclick="toggleMenu()">Match Comparison</a>
+            <a href="/pages/logout.html" onclick="toggleMenu()">Logout</a>
+        </div>
+    </div>
+
+    <!-- Original navbar (hidden on mobile) -->
+    <nav class="navbar">
+        <a href="/">Home</a>
+        <a href="/pages/ondeck.html">Ondeck</a>
+        <a href="/pages/match_scouting.html">Match Scouting</a>
+        <a href="/pages/pit_scouting.html">Pit Scouting</a>
+        <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+        <a href="/pages/match_simulator.html">Match Simulator</a>
+        <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+        <a href="/pages/raw_match.html">Raw Match Data</a>
+        <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+        <a href="/pages/raw_pit.html">Raw Pit Data</a>
+        <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+        <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+        <a href="/pages/config_creator.html">Config Creator</a>
+        <a href="/pages/admin.html" class="admin-only">User Management</a>
+        <a href="/pages/match_comparison.html">Match Comparison</a>
+        <a href="/pages/logout.html">Logout</a>
+    </nav>
+
+    <div class="container">
+        <h1>Match Data Comparison</h1>
+        <p>Compare scouting predictions with actual match results from The Blue Alliance</p>
+        
+        <div class="card">
+            <h3>Select Event and Match Type</h3>
+            <div class="form-row">
+                <label for="eventKey">Event Key</label>
+                <div class="form-controls">
+                    <input type="text" id="eventKey" placeholder="e.g., 2025caav">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <label for="matchType">Match Type</label>
+                <div class="form-controls">
+                    <select id="matchType">
+                        <option value="qm">Qualification</option>
+                        <option value="qf">Quarterfinal</option>
+                        <option value="sf">Semifinal</option>
+                        <option value="f">Final</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-controls">
+                    <button id="loadMatches" class="btn">Load Matches</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="matchesList" class="card" style="display: none;">
+            <h3>Select a Match to Compare</h3>
+            <div id="matchesContainer"></div>
+        </div>
+        
+        <div id="comparisonResults" class="card" style="display: none;">
+            <h3>Comparison Results</h3>
+            <div class="comparison-grid">
+                <div class="comparison-card">
+                    <div class="comparison-header">
+                        <h4>Scouting Prediction</h4>
+                        <span id="scoutingAccuracy" class="accuracy-badge">Accuracy: N/A</span>
+                    </div>
+                    <div id="scoutingData"></div>
+                </div>
+                
+                <div class="comparison-card">
+                    <div class="comparison-header">
+                        <h4>Actual Results (TBA)</h4>
+                    </div>
+                    <div id="tbaData"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h4>Analysis</h4>
+                <div id="analysisResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>FRC Scouting • Match Data Comparison</footer>
+
+    <script src="/js/auth.js"></script>
+    <script>
+        // Your TBA API key
+        const TBA_KEY = "I6XNIQ0p8VtiUdy0u5oIVjmj7d4mGqteLwQczb91wyBCmd7439BPLxvqf6poH1wA";
+        let config = null;
+        let allMatches = [];
+        let selectedMatch = null;
+
+        // Mobile menu functionality
+        function toggleMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const isOpening = !menu.classList.contains('open');
+            menu.classList.toggle('open');
+            document.body.classList.toggle('menu-open', isOpening);
+            if (isOpening) {
+                setTimeout(() => {
+                    menu.scrollTop = 0;
+                }, 50);
+            }
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('mobileMenu');
+            const hamburger = document.querySelector('.hamburger');
+            if (menu.classList.contains('open') && 
+                !menu.contains(event.target) && 
+                event.target !== hamburger) {
+                toggleMenu();
+            }
+        });
+
+        // Close menu on escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const menu = document.getElementById('mobileMenu');
+                if (menu.classList.contains('open')) {
+                    toggleMenu();
+                }
+            }
+        });
+
+        // Prevent background scrolling when menu is open
+        document.addEventListener('touchmove', function(event) {
+            const menu = document.getElementById('mobileMenu');
+            if (menu.classList.contains('open')) {
+                if (!menu.contains(event.target)) {
+                    event.preventDefault();
+                }
+            }
+        }, { passive: false });
+
+        // Check authentication
+        async function checkAuth() {
+            if (window.auth && auth.isInitialized) {
+                if (!auth.isLoggedIn()) {
+                    window.location.href = '/login.html';
+                    return false;
+                }
+                return true;
+            } else {
+                setTimeout(checkAuth, 100);
+            }
+        }
+
+        // Get authentication headers
+        function getAuthHeaders() {
+            const token = localStorage.getItem('authToken');
+            return token ? { 'Authorization': token } : {};
+        }
+
+        // Load configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                config = await response.json();
+            } catch (error) {
+                console.error('Error loading config:', error);
+            }
+        }
+
+// Enhanced calculateScoreFromScouting function
+function calculateScoreFromScouting(matchData) {
+    if (!config || !matchData) return 0;
+    
+    try {
+        const auto = typeof matchData.auto_json === 'string' ? 
+            JSON.parse(matchData.auto_json) : matchData.auto_json;
+        const teleop = typeof matchData.teleop_json === 'string' ? 
+            JSON.parse(matchData.teleop_json) : matchData.teleop_json;
+        const endgame = typeof matchData.endgame_json === 'string' ? 
+            JSON.parse(matchData.endgame_json) : matchData.endgame_json;
+        
+        let totalPoints = 0;
+        
+        // Calculate autonomous points
+        const autoConfig = config.match_form?.auto_period || {};
+        for (const [key, value] of Object.entries(auto || {})) {
+            if (autoConfig[key] && autoConfig[key].Value !== undefined) {
+                if (typeof value === 'boolean') {
+                    totalPoints += value ? autoConfig[key].Value : 0;
+                } else if (typeof value === 'object' && value.Made !== undefined) {
+                    totalPoints += value.Made * autoConfig[key].Value;
+                } else if (typeof value === 'number') {
+                    totalPoints += value;
+                }
+            }
+        }
+        
+        // Calculate teleop points
+        const teleopConfig = config.match_form?.teleop_period || {};
+        for (const [key, value] of Object.entries(teleop || {})) {
+            if (teleopConfig[key] && teleopConfig[key].Value !== undefined) {
+                if (typeof value === 'boolean') {
+                    totalPoints += value ? teleopConfig[key].Value : 0;
+                } else if (typeof value === 'object' && value.Made !== undefined) {
+                    totalPoints += value.Made * teleopConfig[key].Value;
+                } else if (typeof value === 'number') {
+                    totalPoints += value;
+                }
+            }
+        }
+        
+        // Calculate endgame points
+        const endgameConfig = config.match_form?.endgame || {};
+        const finalStatus = endgame?.final_status;
+        if (finalStatus && endgameConfig.final_status) {
+            if (endgameConfig.final_status.options && endgameConfig.final_status.values) {
+                const index = endgameConfig.final_status.options.indexOf(finalStatus);
+                if (index !== -1 && index < endgameConfig.final_status.values.length) {
+                    totalPoints += endgameConfig.final_status.values[index];
+                }
+            } else if (endgameConfig.final_status[finalStatus] && 
+                      endgameConfig.final_status[finalStatus].Value !== undefined) {
+                totalPoints += endgameConfig.final_status[finalStatus].Value;
+            }
+        }
+        
+        return totalPoints;
+    } catch (error) {
+        console.error('Error calculating score from scouting data:', error, matchData);
+        return 0;
+    }
+}
+
+// Determine winner from scouting data - FIXED VERSION
+function determineWinnerFromScouting(matchKey, scoutingData) {
+    const alliances = {
+        red: { teams: [], scores: [], total: 0 },
+        blue: { teams: [], scores: [], total: 0 }
+    };
+    
+    scoutingData.forEach(data => {
+        const preMatch = typeof data.pre_match_json === 'string' ? 
+            JSON.parse(data.pre_match_json) : data.pre_match_json;
+        
+        if (preMatch && preMatch.match_key === matchKey) {
+            const alliance = preMatch.team_color?.toLowerCase().replace(/\d+$/, '');
+            const score = calculateScoreFromScouting(data);
+            
+            if (alliance && alliances[alliance]) {
+                alliances[alliance].teams.push(preMatch.team_number);
+                alliances[alliance].scores.push(score);
+                alliances[alliance].total += score; // This is already summing correctly
+            }
+        }
+    });
+    
+    // Return the SUM, not the average
+    return {
+        red: Math.round(alliances.red.total), // Just use the sum
+        blue: Math.round(alliances.blue.total), // Just use the sum
+        winner: alliances.red.total > alliances.blue.total ? 'red' : 
+                (alliances.blue.total > alliances.red.total ? 'blue' : 'tie'),
+        details: {
+            red: {
+                teams: alliances.red.teams,
+                scores: alliances.red.scores,
+                total: alliances.red.total
+            },
+            blue: {
+                teams: alliances.blue.teams,
+                scores: alliances.blue.scores,
+                total: alliances.blue.total
+            }
+        }
+    };
+}
+
+        // Fetch data from TBA API
+        async function fetchTBA(endpoint) {
+            const url = `https://www.thebluealliance.com/api/v3/${endpoint}`;
+            
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        "X-TBA-Auth-Key": TBA_KEY
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error("Error fetching from TBA API:", error);
+                throw error;
+            }
+        }
+
+        // Load matches for selected event and type
+        async function loadMatches() {
+            const eventKey = document.getElementById('eventKey').value.trim();
+            const matchType = document.getElementById('matchType').value;
+            
+            if (!eventKey) {
+                alert('Please enter an event key');
+                return;
+            }
+            
+            try {
+                // Show loading state
+                document.getElementById('matchesContainer').innerHTML = '<p>Loading matches...</p>';
+                document.getElementById('matchesList').style.display = 'block';
+                document.getElementById('comparisonResults').style.display = 'none';
+                
+                // Load matches from TBA
+                const matches = await fetchTBA(`event/${eventKey}/matches/simple`);
+                
+                // Filter by match type
+                const filteredMatches = matches.filter(match => 
+                    match.comp_level === matchType
+                ).sort((a, b) => a.match_number - b.match_number);
+                
+                if (filteredMatches.length === 0) {
+                    document.getElementById('matchesContainer').innerHTML = 
+                        '<p>No matches found for the selected event and type.</p>';
+                    return;
+                }
+                
+                // Store matches for later use
+                allMatches = filteredMatches;
+                
+                // Display matches
+                const matchesContainer = document.getElementById('matchesContainer');
+                matchesContainer.innerHTML = '';
+                
+                filteredMatches.forEach(match => {
+                    const matchCard = document.createElement('div');
+                    matchCard.className = 'match-card';
+                    matchCard.innerHTML = `
+                        <h4>${match.comp_level.toUpperCase()} Match ${match.match_number}</h4>
+                        <p><strong>Time:</strong> ${new Date(match.time * 1000).toLocaleString()}</p>
+                        <p><strong>Red:</strong> ${match.alliances.red.team_keys.map(t => t.substring(3)).join(', ')}</p>
+                        <p><strong>Blue:</strong> ${match.alliances.blue.team_keys.map(t => t.substring(3)).join(', ')}</p>
+                    `;
+                    
+                    matchCard.addEventListener('click', () => {
+                        // Remove selected class from all cards
+                        document.querySelectorAll('.match-card').forEach(card => {
+                            card.classList.remove('selected');
+                        });
+                        
+                        // Add selected class to clicked card
+                        matchCard.classList.add('selected');
+                        
+                        // Load comparison for this match
+                        loadComparison(match);
+                    });
+                    
+                    matchesContainer.appendChild(matchCard);
+                });
+            } catch (error) {
+                console.error('Error loading matches:', error);
+                document.getElementById('matchesContainer').innerHTML = 
+                    '<p>Error loading matches. Please check the event key and try again.</p>';
+            }
+        }
+
+async function loadComparison(match) {
+    try {
+        document.getElementById('comparisonResults').style.display = 'block';
+        
+        // Get scouting data for all teams in this match
+        const redTeams = match.alliances.red.team_keys.map(key => key.substring(3));
+        const blueTeams = match.alliances.blue.team_keys.map(key => key.substring(3));
+        
+        const allTeams = [...redTeams, ...blueTeams];
+        const matchKey = `${match.comp_level}${match.match_number}`;
+        
+        // Extract event code from TBA event key (remove year prefix)
+        const tbaEventKey = match.event_key;
+        const eventCode = tbaEventKey.replace(/^\d+/, ''); // Remove year prefix
+        
+        console.log("Debug - Match Info:", {
+            tbaEventKey,
+            extractedEventCode: eventCode,
+            matchKey,
+            redTeams,
+            blueTeams
+        });
+        
+        // Fetch scouting data for these teams
+        const scoutingData = [];
+        const teamsWithData = []; // Track which teams actually have data
+        
+        for (const team of allTeams) {
+            try {
+                const response = await fetch(`/api/team/${team}/matches`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`Debug - Team ${team} matches:`, data);
+                    
+                    const teamMatches = data.filter(item => {
+                        const preMatch = typeof item.pre_match_json === 'string' ? 
+                            JSON.parse(item.pre_match_json) : item.pre_match_json;
+                        
+                        // Normalize match key format for comparison
+                        const dbMatchKey = preMatch.match_key || 
+                                      `${(preMatch.match_type || 'qm').charAt(0).toLowerCase()}m${preMatch.match_number}`;
+                        
+                        // Normalize event code for comparison (remove year prefix if needed)
+                        const dbEventCode = (preMatch.event_code || '').toLowerCase().replace(/^\d+/, '');
+                        const tbaEventCode = eventCode.toLowerCase();
+                        
+                        console.log("Matching:", {
+                            dbMatchKey, 
+                            matchKey, 
+                            dbEventCode, 
+                            tbaEventCode,
+                            match: dbMatchKey === matchKey && dbEventCode === tbaEventCode
+                        });
+                        
+                        return dbMatchKey === matchKey && dbEventCode === tbaEventCode;
+                    });
+                    
+                    if (teamMatches.length > 0) {
+                        scoutingData.push(...teamMatches);
+                        teamsWithData.push(team);
+                        console.log(`Debug - Found ${teamMatches.length} matches for team ${team}`);
+                        
+                        // Debug: Show calculated score for each team
+                        teamMatches.forEach(matchData => {
+                            const score = calculateScoreFromScouting(matchData);
+                            console.log(`Team ${team} score:`, score, matchData);
+                        });
+                    } else {
+                        console.log(`Debug - No matches found for team ${team} with criteria`);
+                    }
+                }
+            } catch (error) {
+                console.error(`Error fetching data for team ${team}:`, error);
+            }
+        }
+        
+        console.log("Debug - Final scouting data:", {
+            scoutingDataCount: scoutingData.length,
+            teamsWithData,
+            allTeams,
+            scoutingData: scoutingData.map(d => ({
+                team: d.pre_match_json?.team_number,
+                score: calculateScoreFromScouting(d),
+                data: d
+            }))
+        });
+        
+        // Calculate predicted scores from scouting data
+        const predicted = determineWinnerFromScouting(matchKey, scoutingData);
+        console.log("Debug - Predicted scores:", predicted);
+        
+        // Get actual scores from TBA
+        const actual = {
+            red: match.alliances.red.score || 0,
+            blue: match.alliances.blue.score || 0,
+            winner: match.winning_alliance || 'unknown'
+        };
+        
+        // Display comparison
+        displayComparison(predicted, actual, match, scoutingData, teamsWithData);
+    } catch (error) {
+        console.error('Error loading comparison:', error);
+        document.getElementById('comparisonResults').innerHTML = 
+            '<p>Error loading comparison data.</p>';
+    }
+}
+
+        // Display comparison results
+ // Display comparison results
+function displayComparison(predicted, actual, match, scoutingData, teamsWithData) {
+    const scoutingContainer = document.getElementById('scoutingData');
+    const tbaContainer = document.getElementById('tbaData');
+    const analysisContainer = document.getElementById('analysisResults');
+    
+    // Display scouting prediction
+    scoutingContainer.innerHTML = `
+        <div class="score-comparison ${getScoreAccuracyClass(predicted.red, actual.red)}">
+            <span>Red Alliance:</span>
+            <span>${predicted.red} pts</span>
+        </div>
+        <div class="score-comparison ${getScoreAccuracyClass(predicted.blue, actual.blue)}">
+            <span>Blue Alliance:</span>
+            <span>${predicted.blue} pts</span>
+        </div>
+        <div class="winner-comparison ${predicted.winner === actual.winner ? 'winner-correct' : 'winner-incorrect'}">
+            Predicted Winner: ${predicted.winner.toUpperCase()}
+        </div>
+    `;
+    
+    // Display actual results
+    tbaContainer.innerHTML = `
+        <div class="score-comparison">
+            <span>Red Alliance:</span>
+            <span>${actual.red} pts</span>
+        </div>
+        <div class="score-comparison">
+            <span>Blue Alliance:</span>
+            <span>${actual.blue} pts</span>
+        </div>
+        <div class="winner-comparison">
+            Actual Winner: ${actual.winner.toUpperCase()}
+        </div>
+    `;
+    
+    // Calculate accuracy
+    const redAccuracy = calculateAccuracy(predicted.red, actual.red);
+    const blueAccuracy = calculateAccuracy(predicted.blue, actual.blue);
+    const overallAccuracy = (redAccuracy + blueAccuracy) / 2;
+    const winnerAccuracy = predicted.winner === actual.winner ? 100 : 0;
+    
+    document.getElementById('scoutingAccuracy').textContent = `Accuracy: ${overallAccuracy.toFixed(1)}%`;
+    document.getElementById('scoutingAccuracy').className = `accuracy-badge ${getAccuracyClass(overallAccuracy)}`;
+    
+    // Display analysis
+    analysisContainer.innerHTML = `
+        <p><strong>Score Prediction Accuracy:</strong></p>
+        <ul>
+            <li>Red Alliance: ${redAccuracy.toFixed(1)}% ${getAccuracyBadge(redAccuracy)}</li>
+            <li>Blue Alliance: ${blueAccuracy.toFixed(1)}% ${getAccuracyBadge(blueAccuracy)}</li>
+            <li>Overall: ${overallAccuracy.toFixed(1)}% ${getAccuracyBadge(overallAccuracy)}</li>
+        </ul>
+        <p><strong>Winner Prediction:</strong> ${winnerAccuracy === 100 ? '✓ Correct' : '✗ Incorrect'}</p>
+        
+        <p><strong>Team Score Breakdown:</strong></p>
+        <div class="match-details">
+            <div>
+                <h4>Red Alliance</h4>
+                <p>Predicted: ${predicted.red} | Actual: ${actual.red}</p>
+                <ul>
+                    ${match.alliances.red.team_keys.map(team => {
+                        const teamNum = team.substring(3);
+                        const hasData = teamsWithData.includes(teamNum);
+                        const teamData = scoutingData.find(d => {
+                            const preMatch = typeof d.pre_match_json === 'string' ? 
+                                JSON.parse(d.pre_match_json) : d.pre_match_json;
+                            return preMatch.team_number == teamNum;
+                        });
+                        const teamScore = teamData ? calculateScoreFromScouting(teamData) : 'No data';
+                        return `<li>${teamNum}: ${teamScore} pts ${hasData ? '✓' : '✗'}</li>`;
+                    }).join('')}
+                </ul>
+            </div>
+            <div>
+                <h4>Blue Alliance</h4>
+                <p>Predicted: ${predicted.blue} | Actual: ${actual.blue}</p>
+                <ul>
+                    ${match.alliances.blue.team_keys.map(team => {
+                        const teamNum = team.substring(3);
+                        const hasData = teamsWithData.includes(teamNum);
+                        const teamData = scoutingData.find(d => {
+                            const preMatch = typeof d.pre_match_json === 'string' ? 
+                                JSON.parse(d.pre_match_json) : d.pre_match_json;
+                            return preMatch.team_number == teamNum;
+                        });
+                        const teamScore = teamData ? calculateScoreFromScouting(teamData) : 'No data';
+                        return `<li>${teamNum}: ${teamScore} pts ${hasData ? '✓' : '✗'}</li>`;
+                    }).join('')}
+                </ul>
+            </div>
+        </div>
+        
+        ${scoutingData.length > 0 ? `
+            <p><strong>Scouting Data Sources:</strong> ${scoutingData.length} data points collected from ${teamsWithData.length} teams</p>
+        ` : '<p><strong>Warning:</strong> No scouting data found for this match</p>'}
+    `;
+}
+
+        // Calculate accuracy percentage
+        function calculateAccuracy(predicted, actual) {
+            if (actual === 0) return predicted === 0 ? 100 : 0;
+            return Math.max(0, 100 - (Math.abs(predicted - actual) / actual * 100));
+        }
+
+        // Get accuracy class for styling
+        function getAccuracyClass(accuracy) {
+            if (accuracy >= 80) return 'accuracy-high';
+            if (accuracy >= 60) return 'accuracy-medium';
+            return 'accuracy-low';
+        }
+
+        // Get accuracy badge
+        function getAccuracyBadge(accuracy) {
+            return `<span class="accuracy-badge ${getAccuracyClass(accuracy)}">${getAccuracyClass(accuracy).replace('accuracy-', '')}</span>`;
+        }
+
+        // Get score accuracy class for styling
+        function getScoreAccuracyClass(predicted, actual) {
+            const accuracy = calculateAccuracy(predicted, actual);
+            if (accuracy >= 80) return 'score-correct';
+            if (accuracy >= 60) return 'score-close';
+            return 'score-incorrect';
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            await checkAuth();
+            await loadConfig();
+            
+            // Set up event listeners
+            document.getElementById('loadMatches').addEventListener('click', loadMatches);
+            
+            // Allow pressing Enter in event key field
+            document.getElementById('eventKey').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') loadMatches();
+            });
+        });
+    </script>
+</body>
+</html>

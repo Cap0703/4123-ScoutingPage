@@ -156,6 +156,330 @@
   color: white;
 }
 </style>
+<style>
+  /* Event History Toggle and Cards */
+  .event-history-toggle {
+    margin: 15px 0;
+    text-align: center;
+  }
+  
+  .event-history-container {
+    display: none;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 350px;
+    height: 100vh;
+    overflow-y: auto;
+    background-color: rgba(40, 40, 40, 0.95);
+    padding: 20px;
+    z-index: 1000;
+    box-shadow: 3px 0 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  .event-history-container.open {
+    display: block;
+  }
+  
+  .event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .event-name {
+    font-weight: bold;
+    color: var(--gold);
+  }
+  
+  .event-record {
+    font-size: 0.9rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 3px 8px;
+    border-radius: 12px;
+  }
+  
+  .match-breakdown {
+    margin-top: 10px;
+  }
+  
+  .match-item {
+    padding: 8px;
+    margin-bottom: 8px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  
+  .match-win {
+    border-left: 3px solid #00ff6a;
+  }
+  
+  .match-loss {
+    border-left: 3px solid #ff1900;
+  }
+  
+  .match-tie {
+    border-left: 3px solid #f39c12;
+  }
+  
+  .close-event-history {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  
+  .event-history-title {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--gold);
+  }
+  
+  /* Adjust main content when event history is open */
+  body.event-history-open .container {
+    margin-left: 370px;
+    transition: margin-left 0.3s ease;
+  }
+
+  /* Event History Toggle and Cards */
+.event-history-toggle {
+  margin: 15px 0;
+  text-align: center;
+}
+
+.event-history-container {
+  display: none;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 350px;
+  height: 100vh;
+  overflow-y: auto;
+  background-color: rgba(40, 40, 40, 0.95);
+  padding: 20px;
+  z-index: 1000;
+  box-shadow: 3px 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.match-breakdown {
+  margin-top: 10px;
+}
+
+.event-history-title {
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--gold);
+}
+
+body.event-history-open .container {
+  margin-left: 370px;
+  transition: margin-left 0.3s ease;
+}
+  .event-history-toggle {
+    margin: 15px 0;
+    text-align: center;
+  }
+
+  .event-history-container {
+    display: none;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 350px;
+    height: 100vh;
+    overflow-y: auto;
+    background-color: var(--bg);
+    padding: 20px;
+    z-index: 1000;
+    box-shadow: 3px 0 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .event-history-container.open {
+    display: block;
+  }
+
+  .event-card {
+    background-color: #727272;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border-left: 4px solid #ccc;
+  }
+
+  .event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .event-name {
+    font-weight: bold;
+    color: var(--gold);
+    font-size: 1.1rem;
+  }
+
+  .event-record {
+    font-size: 0.9rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 5px 10px;
+    border-radius: 12px;
+    color: var(--text);
+  }
+
+  .match-breakdown {
+    margin-top: 10px;
+  }
+
+  .match-item {
+    background-color: rgb(149, 149, 149);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    
+    transition: transform 0.2s;
+  }
+
+    .match-item.loss {
+    border-left: 4px solid #fd0000;
+  }
+    .match-item.win {
+    border-left: 4px solid #00ff0d;
+  }
+      .match-item.tie {
+    border-left: 4px solid #fdad00;
+  }
+
+  .match-item:hover {
+    transform: translateY(-3px);
+  }
+
+  .match-upcoming {
+    border-left-color: var(--blue);
+  }
+
+  .alliance-teams {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px 0;
+    font-size: 0.9rem;
+  }
+
+  .alliance {
+    flex: 1;
+    padding: 5px;
+    border-radius: 4px;
+    text-align: center;
+  }
+
+  .alliance.red {
+    background-color: rgb(192, 80, 67);
+    color: var(--red);
+  }
+
+  .alliance.blue {
+    background-color: rgb(52, 152, 219);
+    color: var(--blue);
+  }
+
+  .team-highlight {
+    color:rgb(246, 255, 0);
+    font-weight: bold;
+    text-decoration: underline;
+  }
+
+  .score {
+    font-weight: bold;
+    font-size: 1.1em;
+    text-align: center;
+    margin: 8px 0;
+  }
+
+  .red-score {
+    color: rgb(175, 44, 30);
+  }
+
+  .blue-score {
+    color: rgb(52, 152, 219);
+  }
+
+  .match-result {
+    text-align: center;
+    font-weight: bold;
+    margin-top: 8px;
+    padding-top: 5px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .result-win {
+    color: rgb(12, 161, 74);
+  }
+
+  .result-loss {
+    color: rgb(231, 76, 60);
+  }
+
+  .result-tie {
+    color: rgb(255, 191, 0);
+  }
+
+  .result-upcoming {
+    color: var(--blue);
+  }
+
+  .close-event-history {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 1001;
+  }
+
+  .event-history-title {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--gold);
+    font-family: Starjedi, sans-serif;
+    font-size: 1.5rem;
+  }
+
+  /* Adjust main content when event history is open */
+  body.event-history-open .container {
+    margin-left: 370px;
+    transition: margin-left 0.3s ease;
+  }
+
+  @media (max-width: 768px) {
+    .event-history-container {
+      width: 100%;
+    }
+    
+    body.event-history-open .container {
+      margin-left: 0;
+    }
+    
+    .alliance-teams {
+      flex-direction: column;
+      gap: 8px;
+    }
+  }
+</style>
 <script src="/js/auth.js"></script>
 </head>
 <body>
@@ -288,6 +612,15 @@ document.addEventListener('touchmove', function(event) {
 </div>
 </div>
   </div>
+  <div class="event-history-toggle">
+    <button id="toggleEventHistory" class="btn">Show Event History</button>
+  </div>
+
+  <div class="event-history-container" id="eventHistoryContainer">
+    <button class="close-event-history" onclick="toggleEventHistory()">×</button>
+    <h3 class="event-history-title">Event History for Team <span id="eventHistoryTeamNumber"></span> (<span id="eventHistoryYear"></span>)</h3>
+    <div id="eventHistoryContent"></div>
+  </div>
   <div id="teamInfo" class="card" style="display: none;">
     <h3>Team Information</h3>
     <div id="teamInfoContent"></div>
@@ -300,6 +633,7 @@ document.addEventListener('touchmove', function(event) {
     <div id="matchTypeStatsContent"></div>
   </div>
 </div>
+
   <div id="summary" class="card"></div>
   
   <div id="robotImageContainer" class="card" style="display: none;">
@@ -315,6 +649,220 @@ document.addEventListener('touchmove', function(event) {
 <script>
 let currentEventCodeFilter = 'all';
 let uniqueEventCodes = [];
+let eventHistoryData = [];
+let currentTeamNumber = 0;
+let configYear = 2025;
+const TBA_KEY = "I6XNIQ0p8VtiUdy0u5oIVjmj7d4mGqteLwQczb91wyBCmd7439BPLxvqf6poH1wA";
+
+// Add this function to fetch event history
+async function fetchTeamEventHistory(teamNumber, year) {
+  try {
+    const response = await fetch(`https://www.thebluealliance.com/api/v3/team/frc${teamNumber}/events`, {
+      headers: {
+        'X-TBA-Auth-Key': TBA_KEY
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch events');
+    }
+    
+    const events = await response.json();
+    
+    // Filter events by the specified year
+    const filteredEvents = events.filter(event => event.year === year);
+    
+    // Get event details for each event
+    const eventPromises = filteredEvents.map(async event => {
+      const matchesResponse = await fetch(`https://www.thebluealliance.com/api/v3/team/frc${teamNumber}/event/${event.key}/matches`, {
+        headers: {
+          'X-TBA-Auth-Key': TBA_KEY
+        }
+      });
+      
+      if (!matchesResponse.ok) {
+        return { event, matches: [] };
+      }
+      
+      const matches = await matchesResponse.json();
+      return { event, matches };
+    });
+    
+    const eventDetails = await Promise.all(eventPromises);
+    return eventDetails;
+  } catch (error) {
+    console.error('Error fetching event history:', error);
+    return [];
+  }
+}
+
+// Add this function to display event history
+function displayEventHistory(events) {
+  const container = document.getElementById('eventHistoryContent');
+  container.innerHTML = '';
+  
+  if (events.length === 0) {
+    container.innerHTML = '<p>No event history found for ' + configYear + '</p>';
+    return;
+  }
+  
+  // Sort events by date (most recent first)
+  events.sort((a, b) => new Date(b.event.start_date) - new Date(a.event.start_date));
+  
+  events.forEach(eventData => {
+    const event = eventData.event;
+    const matches = eventData.matches;
+    
+    // Calculate record for this event
+    let wins = 0, losses = 0, ties = 0;
+    const teamKey = `frc${currentTeamNumber}`;
+    
+    matches.forEach(match => {
+      if (match.alliances.red.score === null || match.alliances.blue.score === null) return;
+      
+      const isRed = match.alliances.red.team_keys.includes(teamKey);
+      const redScore = match.alliances.red.score;
+      const blueScore = match.alliances.blue.score;
+      
+      if (isRed) {
+        if (redScore > blueScore) wins++;
+        else if (redScore < blueScore) losses++;
+        else ties++;
+      } else {
+        if (blueScore > redScore) wins++;
+        else if (blueScore < redScore) losses++;
+        else ties++;
+      }
+    });
+    
+    const eventCard = document.createElement('div');
+    eventCard.className = 'event-card';
+    
+    eventCard.innerHTML = `
+      <div class="event-header">
+        <span class="event-name">${event.name}</span>
+        <span class="event-record">${wins}-${losses}-${ties}</span>
+      </div>
+      <div class="match-breakdown">
+        ${matches.length > 0 ? matches.map(match => {
+          const teamKey = `frc${currentTeamNumber}`;
+          const isRed = match.alliances.red.team_keys.includes(teamKey);
+          const redScore = match.alliances.red.score;
+          const blueScore = match.alliances.blue.score;
+          const matchTime = new Date(match.time * 1000);
+          
+          let statusClass = "upcoming";
+          let statusText = "Scheduled";
+          let resultClass = "result-upcoming";
+          
+          if (redScore !== null && blueScore !== null) {
+            if (isRed) {
+              if (redScore > blueScore) {
+                statusClass = "win";
+                statusText = "Win";
+                resultClass = "result-win";
+              } else if (redScore < blueScore) {
+                statusClass = "loss";
+                statusText = "Loss";
+                resultClass = "result-loss";
+              } else {
+                statusClass = "tie";
+                statusText = "Tie";
+                resultClass = "result-tie";
+              }
+            } else {
+              if (blueScore > redScore) {
+                statusClass = "win";
+                statusText = "Win";
+                resultClass = "result-win";
+              } else if (blueScore < redScore) {
+                statusClass = "loss";
+                statusText = "Loss";
+                resultClass = "result-loss";
+              } else {
+                statusClass = "tie";
+                statusText = "Tie";
+                resultClass = "result-tie";
+              }
+            }
+          }
+          
+          // Format alliance teams with highlighting for the target team
+          const formatAllianceTeams = (teamKeys, isTeamAlliance) => {
+            return teamKeys.map(key => {
+              const teamNum = key.substring(3);
+              return isTeamAlliance && key === teamKey ? 
+                `<span class="team-highlight">${teamNum}</span>` : teamNum;
+            }).join(", ");
+          };
+          
+          return `
+            <div class="match-item ${statusClass}">
+              <h4>${match.comp_level.toUpperCase()} Match ${match.match_number}</h4>
+              <div class="match-time">${matchTime.toLocaleString()}</div>
+              <div class="alliance-teams">
+                <div class="alliance red">
+                  Red: ${formatAllianceTeams(match.alliances.red.team_keys, isRed)}
+                </div>
+                <div class="alliance blue">
+                  Blue: ${formatAllianceTeams(match.alliances.blue.team_keys, !isRed)}
+                </div>
+              </div>
+              <div class="score">
+                ${redScore !== null ? 
+                  `<span class="red-score">${redScore}</span> - 
+                   <span class="blue-score">${blueScore}</span>` : 
+                  'Not Played Yet'}
+              </div>
+              <div class="match-result ${resultClass}">
+                ${statusText}
+              </div>
+            </div>
+          `;
+        }).join('') : '<p>No matches found for this event</p>'}
+      </div>
+    `;
+    
+    container.appendChild(eventCard);
+  });
+}
+
+// Add this function to toggle event history
+function toggleEventHistory() {
+  const container = document.getElementById('eventHistoryContainer');
+  const isOpening = !container.classList.contains('open');
+  
+  container.classList.toggle('open');
+  document.body.classList.toggle('event-history-open', isOpening);
+  
+  const button = document.getElementById('toggleEventHistory');
+  button.textContent = isOpening ? 'Hide Event History' : 'Show Event History';
+  
+  // Load event history if opening
+  if (isOpening && eventHistoryData.length === 0 && currentTeamNumber) {
+    button.textContent = 'Loading Events...';
+    button.disabled = true;
+    
+    fetchTeamEventHistory(currentTeamNumber, configYear)
+      .then(events => {
+        eventHistoryData = events;
+        document.getElementById('eventHistoryTeamNumber').textContent = currentTeamNumber;
+        document.getElementById('eventHistoryYear').textContent = configYear;
+        displayEventHistory(events);
+        button.textContent = 'Hide Event History';
+        button.disabled = false;
+      })
+      .catch(error => {
+        console.error('Error loading event history:', error);
+        document.getElementById('eventHistoryContent').innerHTML = '<p>Error loading event history</p>';
+        button.textContent = 'Show Event History';
+        button.disabled = false;
+      });
+  }
+}
+
+// Add event listener for the toggle button
+document.getElementById('toggleEventHistory').addEventListener('click', toggleEventHistory);
 
 function linearRegression(x, y) {
   const n = x.length;
@@ -1151,6 +1699,7 @@ async function loadTeam(){
     if (!isAuthenticated) return;
     const team = document.getElementById('team').value;
     if (!team) return;
+    currentTeamNumber = parseInt(team);
     currentMatchTypeFilter = document.getElementById('matchTypeFilter').value;
     currentEventCodeFilter = document.getElementById('eventCodeFilter').value;
     try {
