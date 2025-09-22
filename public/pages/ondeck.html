@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FRC Match Ondeck - TBA API</title>
+    <title>FRC 4123 Match Ondeck</title>
     <!-- Corrected path to CSS file -->
     <link rel="stylesheet" href="../css/style.css">
     <style>
@@ -375,6 +375,23 @@
             cursor: pointer;
         }
         
+        /* Team summary link styles */
+        .team-summary-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 16px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        .team-summary-link:hover {
+            background-color: #2980b9;
+        }
+        
         /* Responsive styles */
         @media (max-width: 768px) {
             body.menu-open {
@@ -694,8 +711,12 @@
                             // Create team card
                             const teamCard = document.createElement("div");
                             teamCard.className = "team-card";
+                            
+                            // Extract team number from team key (e.g., "frc254" -> "254")
+                            const teamNumber = teamData.team_number;
+                            
                             teamCard.innerHTML = `
-                                <h3>Team ${teamData.team_number}: ${teamData.nickname}</h3>
+                                <h3>Team ${teamNumber}: ${teamData.nickname}</h3>
                                 <div class="info-item">
                                     <span class="info-label">Location:</span>
                                     <span class="info-value">${teamData.city}, ${teamData.state_prov}, ${teamData.country}</span>
@@ -710,8 +731,9 @@
                                 </div>
                                 <div class="info-item">
                                     <span class="info-label">TBA Page:</span>
-                                    <span class="info-value"><a href="https://www.thebluealliance.com/team/${teamData.team_number}" target="_blank">View on The Blue Alliance</a></span>
+                                    <span class="info-value"><a href="https://www.thebluealliance.com/team/${teamNumber}" target="_blank">View on The Blue Alliance</a></span>
                                 </div>
+                                <a href="/pages/team_summary.html?team=${teamNumber}" class="team-summary-link" target="_blank">View Team Summary</a>
                             `;
                             teamsContainer.appendChild(teamCard);
                         }

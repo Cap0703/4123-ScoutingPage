@@ -645,7 +645,29 @@ document.addEventListener('touchmove', function(event) {
 </div>
 </div>
 <footer>FRC 4123 Scouting • Conrad Oldoerp</footer>
+<script>
+// Function to get URL parameters
+function getUrlParameter(name) {
+    name = name.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(location.search);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+}
 
+// Load team from URL parameter if present
+document.addEventListener('DOMContentLoaded', function() {
+    const teamFromUrl = getUrlParameter('team');
+    if (teamFromUrl) {
+        document.getElementById('team').value = teamFromUrl;
+        // Wait for auth to complete before loading team
+        setTimeout(() => {
+            if (document.getElementById('team').value) {
+                loadTeam();
+            }
+        }, 500);
+    }
+});
+</script>
 <script>
 let currentEventCodeFilter = 'all';
 let uniqueEventCodes = [];
@@ -662,32 +684,23 @@ async function fetchTeamEventHistory(teamNumber, year) {
         'X-TBA-Auth-Key': TBA_KEY
       }
     });
-    
     if (!response.ok) {
       throw new Error('Failed to fetch events');
     }
-    
     const events = await response.json();
-    
-    // Filter events by the specified year
     const filteredEvents = events.filter(event => event.year === year);
-    
-    // Get event details for each event
     const eventPromises = filteredEvents.map(async event => {
       const matchesResponse = await fetch(`https://www.thebluealliance.com/api/v3/team/frc${teamNumber}/event/${event.key}/matches`, {
         headers: {
           'X-TBA-Auth-Key': TBA_KEY
         }
       });
-      
       if (!matchesResponse.ok) {
         return { event, matches: [] };
       }
-      
       const matches = await matchesResponse.json();
       return { event, matches };
     });
-    
     const eventDetails = await Promise.all(eventPromises);
     return eventDetails;
   } catch (error) {
@@ -695,35 +708,50 @@ async function fetchTeamEventHistory(teamNumber, year) {
     return [];
   }
 }
-
-// Add this function to display event history
 function displayEventHistory(events) {
   const container = document.getElementById('eventHistoryContent');
   container.innerHTML = '';
-  
   if (events.length === 0) {
     container.innerHTML = '<p>No event history found for ' + configYear + '</p>';
     return;
   }
-  
-  // Sort events by date (most recent first)
   events.sort((a, b) => new Date(b.event.start_date) - new Date(a.event.start_date));
-  
   events.forEach(eventData => {
     const event = eventData.event;
     const matches = eventData.matches;
-    
-    // Calculate record for this event
     let wins = 0, losses = 0, ties = 0;
     const teamKey = `frc${currentTeamNumber}`;
-    
+    matches.sort((a, b) => {
+      const compLevelPriority = {
+        'f': 1,    // Final
+        'sf': 2,   // Semifinal
+        'qf': 3,   // Quarterfinal
+        'ef': 4,   // Eightfinal
+        'qm': 5,   // Qualification
+        'pr': 6    // Practice
+      };
+      const aPriority = compLevelPriority[a.comp_level] || 999;
+      const bPriority = compLevelPriority[b.comp_level] || 999;
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      if (a.comp_level === 'f') {
+        const aSetNum = parseInt(a.key.split('_').pop().replace('f', '').replace('m', ''));
+        const bSetNum = parseInt(b.key.split('_').pop().replace('f', '').replace('m', ''));
+        return bSetNum - aSetNum;
+      } else if (a.comp_level === 'sf') {
+        const aMatchNum = parseInt(a.key.split('_').pop().replace('sf', '').replace('m', ''));
+        const bMatchNum = parseInt(b.key.split('_').pop().replace('sf', '').replace('m', ''));
+        return bMatchNum - aMatchNum;
+      } else {
+        return b.match_number - a.match_number;
+      }
+    });
     matches.forEach(match => {
       if (match.alliances.red.score === null || match.alliances.blue.score === null) return;
-      
       const isRed = match.alliances.red.team_keys.includes(teamKey);
       const redScore = match.alliances.red.score;
       const blueScore = match.alliances.blue.score;
-      
       if (isRed) {
         if (redScore > blueScore) wins++;
         else if (redScore < blueScore) losses++;
@@ -734,10 +762,8 @@ function displayEventHistory(events) {
         else ties++;
       }
     });
-    
     const eventCard = document.createElement('div');
     eventCard.className = 'event-card';
-    
     eventCard.innerHTML = `
       <div class="event-header">
         <span class="event-name">${event.name}</span>
@@ -750,7 +776,26 @@ function displayEventHistory(events) {
           const redScore = match.alliances.red.score;
           const blueScore = match.alliances.blue.score;
           const matchTime = new Date(match.time * 1000);
-          
+          let matchDisplayName = '';
+          if (match.comp_level === 'qm') {
+            matchDisplayName = `Qualification Match ${match.match_number}`;
+          } else if (match.comp_level === 'pr') {
+            matchDisplayName = `Practice Match ${match.match_number}`;
+          } else if (match.comp_level === 'f') {
+            // Finals: f1m1 → set 1, match 1
+            const keyPart = match.key.split('_').pop(); // e.g. "f1m3"
+            const setNumber = parseInt(keyPart.match(/f(\d+)/)[1]);
+            const matchNumber = parseInt(keyPart.match(/m(\d+)/)[1]);
+            matchDisplayName = `Finals ${matchNumber}`;
+          } else if (match.comp_level === 'sf') {
+            // Semifinals: sf2m1 → set 2, match 1
+            const keyPart = match.key.split('_').pop(); // e.g. "sf2m1"
+            const setNumber = parseInt(keyPart.match(/m(\d+)/)[1]);
+            const matchNumber = parseInt(keyPart.match(/sf(\d+)/)[1]);
+            matchDisplayName = `Semifinal ${matchNumber}`;
+          }else {
+            matchDisplayName = `${match.comp_level.toUpperCase()} Match ${match.match_number}`;
+          }
           let statusClass = "upcoming";
           let statusText = "Scheduled";
           let resultClass = "result-upcoming";
@@ -786,8 +831,6 @@ function displayEventHistory(events) {
               }
             }
           }
-          
-          // Format alliance teams with highlighting for the target team
           const formatAllianceTeams = (teamKeys, isTeamAlliance) => {
             return teamKeys.map(key => {
               const teamNum = key.substring(3);
@@ -795,10 +838,9 @@ function displayEventHistory(events) {
                 `<span class="team-highlight">${teamNum}</span>` : teamNum;
             }).join(", ");
           };
-          
           return `
             <div class="match-item ${statusClass}">
-              <h4>${match.comp_level.toUpperCase()} Match ${match.match_number}</h4>
+              <h4>${matchDisplayName}</h4>
               <div class="match-time">${matchTime.toLocaleString()}</div>
               <div class="alliance-teams">
                 <div class="alliance red">
@@ -822,7 +864,6 @@ function displayEventHistory(events) {
         }).join('') : '<p>No matches found for this event</p>'}
       </div>
     `;
-    
     container.appendChild(eventCard);
   });
 }
