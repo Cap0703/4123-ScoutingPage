@@ -1,9 +1,29 @@
-:root{--bg:#111;--navy:#0b233f;--gold:#d4af37;--gray:#6b6b6b;--text:#fff}
-*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
-body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+:root {
+  --bg:#111;
+  --navy:#0b233f;
+  --gold:#d4af37;
+  --gray:#6b6b6b;
+  --text:#fff
+}
+
+* {
+  box-sizing:border-box; 
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial
+}
 
 /* Mobile navigation */
-.mobile-nav {display: none; position: relative;}
+.mobile-nav {
+  display: none; 
+  position: relative;
+}
+
 .hamburger {
   position: fixed;
   top: 10px;
@@ -84,11 +104,39 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,s
 }
 
 /* Original navbar - hide on mobile */
-.navbar{display:flex;gap:10px;justify-content:center;align-items:center;padding:14px;background:linear-gradient(90deg,var(--navy),#07182b);border-bottom:2px solid var(--gold);position:sticky;top:0;z-index:9}
-.navbar a{color:var(--text);text-decoration:none;padding:8px 12px;border-radius:12px;border:1px solid transparent}
-.navbar a:hover{border-color:var(--gold)}
+.navbar {
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  align-items:center;
+  padding:14px;
+  background:linear-gradient(180deg,var(--navy),#00346e);
+  border-bottom:2px solid var(--gold);
+  position:sticky;
+  top:0;
+  z-index:9
+}
+.navbar a {
+  color: var(--text);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+.navbar a:hover {
+  border-color: var(--gold);
+  background: rgba(255, 215, 0, 0.1);}
 
-.container{max-width:1100px;margin:20px auto;padding:16px;background:#0f0f0f;border:1px solid #1f2b3a;border-radius:16px;box-shadow:0 8px 18px rgba(0,0,0,.35)}
+.container {
+  max-width:1100px;
+  margin:20px auto;
+  padding:16px;
+  background:#0f0f0f;
+  border:1px solid #1f2b3a;
+  border-radius:16px;
+  box-shadow:0 8px 18px rgba(0,0,0,.35)
+}
+
 h1,h2,h3{color:var(--gold)}
 .card{background:#0b0b0b;border:1px solid #1f2b3a;border-radius:16px;padding:16px;margin:12px 0}
 .form-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed #22344c}

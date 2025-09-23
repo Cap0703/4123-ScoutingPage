@@ -674,6 +674,12 @@ let uniqueEventCodes = [];
 let eventHistoryData = [];
 let currentTeamNumber = 0;
 let configYear = 2025;
+function getConfigYear() {
+    if (config && config.team_summary && config.team_summary.team_info && config.team_summary.team_info.year) {
+        return config.team_summary.team_info.year;
+    }
+    return 2025;
+}
 const TBA_KEY = "I6XNIQ0p8VtiUdy0u5oIVjmj7d4mGqteLwQczb91wyBCmd7439BPLxvqf6poH1wA";
 
 // Add this function to fetch event history
@@ -1747,6 +1753,7 @@ async function loadTeam(){
         const configResp = await fetch('/api/config').then(r => r.json());
         config = configResp;
         window.config = configResp;
+        configYear = getConfigYear();
         await loadTeamInfo(team, configResp);
         const [avgResp, rowsResp] = await Promise.all([
             fetch(`/api/team/${team}/averages`, {

@@ -493,7 +493,7 @@ document.addEventListener('touchmove', function(event) {
             },
             Home: { body: {} },
             match_form: {
-                "pre-match_info": {}, auto_period: {}, teleop_period: {}, endgame: {}, misc: {}
+                "pre_match": {}, auto_period: {}, teleop_period: {}, endgame: {}, misc: {}
             },
             pit_form: {},
             rankings_options: {},
@@ -975,7 +975,7 @@ function generateJSON() {
     
     // Match form
     config.match_form = {
-        "pre-match_info": {},
+        "pre_match": {},
         auto_period: {},
         teleop_period: {},
         endgame: {},
@@ -984,7 +984,7 @@ function generateJSON() {
     
     // Process pre-match fields
     document.querySelectorAll('#pre-match-fields .array-item').forEach(field => {
-        processMatchFormField(field, config.match_form["pre-match_info"]);
+        processMatchFormField(field, config.match_form["pre_match"]);
     });
     
     // Process auto period fields
@@ -1246,7 +1246,7 @@ function loadJSON(evt) {
             ------------------------- */
             const matchData = loaded.match_form || loaded.match_scouting;
             if (matchData) {
-                const preMatchKey = matchData["pre-match_info"] || matchData["pre-match_information"];
+                const preMatchKey = matchData["pre_match"] || matchData["pre-match_information"];
                 if (preMatchKey) Object.entries(preMatchKey).forEach(([name, def]) => loadFieldIntoMatch("pre-match_information", name, def));
 
                 const autoKey = matchData.auton_period || matchData.auto_period;
