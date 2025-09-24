@@ -552,7 +552,6 @@ def update_checklist(checklist_key):
     try:
         data = request.get_json()
         checked_items = data.get('checked', [])
-       #print(f"Updating checklist {checklist_key} with checked items: {checked_items}")
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM checklist_items WHERE checklist_key = ?', (checklist_key,))
@@ -563,17 +562,18 @@ def update_checklist(checklist_key):
                 SET checked_json = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE checklist_key = ?
             ''', (json.dumps(checked_items), checklist_key))
-           #print(f"Updated existing checklist {checklist_key}")
         else:
             conf = read_config()
-            home_config = conf.get('Home', {})
-            body_config = home_config.get('body', {})
             checklist_config = None
-            for key, item in body_config.items():
-                if key == checklist_key and item.get('type') == 'checklist':
-                    checklist_config = item
-                    break
+            home_body = conf.get('Home', {}).get('body', {})
+            if checklist_key in home_body and home_body[checklist_key].get('type') == 'checklist':
+                checklist_config = home_body[checklist_key]
             if not checklist_config:
+                pit_body = conf.get('pitProcedures', {}).get('body', {})
+                if checklist_key in pit_body and pit_body[checklist_key].get('type') == 'checklist':
+                    checklist_config = pit_body[checklist_key]
+            if not checklist_config:
+                conn.close()
                 return jsonify({'error': 'Checklist not found in config'}), 404
             cursor.execute('''
                 INSERT INTO checklist_items (checklist_key, title, options_json, checked_json)
@@ -584,13 +584,13 @@ def update_checklist(checklist_key):
                 json.dumps(checklist_config.get('options', [])),
                 json.dumps(checked_items)
             ))
-           #print(f"Created new checklist {checklist_key}")
         conn.commit()
         conn.close()
         return jsonify({'ok': True})
     except Exception as e:
         print(f"Error updating checklist: {e}")
         return jsonify({'error': 'update', 'details': str(e)}), 500
+
 
 
 
