@@ -1,0 +1,337 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes"/>
+<title>Pit Procedures - FRC 4123 Scouting</title>
+<link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<!-- Mobile navigation -->
+<div class="mobile-nav">
+  <button class="hamburger" onclick="toggleMenu()">☰</button>
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+    <a href="/" onclick="toggleMenu()">Home</a>
+    <a href="/pages/pit_procedures.html" onclick="toggleMenu()">Pit Procedures</a>
+    <a href="/pages/ondeck.html" onclick="toggleMenu()">Ondeck</a>
+    <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
+    <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
+    <a href="/pages/team_summary.html" class="admin-only" onclick="toggleMenu()">Team Summary</a>
+    <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
+    <a href="/pages/rankings.html" class="admin-only" onclick="toggleMenu()">Rankings</a>
+    <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
+    <a href="/pages/raw_match_edit.html" class="admin-only" onclick="toggleMenu()">Raw Match Data Edit</a>
+    <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
+    <a href="/pages/raw_pit_edit.html" class="admin-only" onclick="toggleMenu()">Raw Pit Data Edit</a>
+    <a href="/pages/csv_upload.html" class="admin-only" onclick="toggleMenu()">CSV Upload</a>
+    <a href="/pages/config_creator.html" onclick="toggleMenu()">Config Creator</a>
+    <a href="/pages/admin.html" class="admin-only" onclick="toggleMenu()">User Management</a>
+    <a href="/pages/logout.html" onclick="toggleMenu()">Logout</a>
+  </div>
+</div>
+
+<!-- Original navbar (hidden on mobile) -->
+<nav class="navbar">
+  <a href="/">Home</a>
+  <a href="/pages/pit_procedures.html">Pit Procedures</a>
+  <a href="/pages/ondeck.html">Ondeck</a>
+  <a href="/pages/match_scouting.html">Match Scouting</a>
+  <a href="/pages/pit_scouting.html">Pit Scouting</a>
+  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+  <a href="/pages/match_simulator.html">Match Simulator</a>
+  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+  <a href="/pages/raw_match.html">Raw Match Data</a>
+  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+  <a href="/pages/raw_pit.html">Raw Pit Data</a>
+  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+  <a href="/pages/config_creator.html">Config Creator</a>
+  <a href="/pages/admin.html" class="admin-only">User Management</a>
+  <a href="/pages/logout.html">Logout</a>
+</nav>
+
+<div class="container">
+  <div class="center">
+    <h1>Pit Procedures</h1>
+    <p class="badge">FRC 4123 Scouting</p>
+    
+    <!-- Announcements Section -->
+    <div id="announcements-container" class="announcements-container"></div>
+    
+    <!-- Checklist Section -->
+    <div id="checklist-container" class="checklist-container"></div>
+    
+    <div class="card">
+      <p>Pit scouting procedures and checklists. All data is configurable via the config.json file.</p>
+    </div>
+  </div>
+</div>
+
+<footer>FRC 4123 Scouting - Pit Procedures</footer>
+
+<script>
+// Global variable to store checklist data
+let checklistData = {};
+
+// Mobile menu functionality
+function toggleMenu() {
+  const menu = document.getElementById('mobileMenu');
+  const isOpening = !menu.classList.contains('open');
+  menu.classList.toggle('open');
+  document.body.classList.toggle('menu-open', isOpening);
+  if (isOpening) {
+    setTimeout(() => {
+      menu.scrollTop = 0;
+    }, 50);
+  }
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', function(event) {
+  const menu = document.getElementById('mobileMenu');
+  const hamburger = document.querySelector('.hamburger');
+  if (menu.classList.contains('open') && 
+      !menu.contains(event.target) && 
+      event.target !== hamburger) {
+    toggleMenu();
+  }
+});
+
+// Close menu on escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    const menu = document.getElementById('mobileMenu');
+    if (menu.classList.contains('open')) {
+      toggleMenu();
+    }
+  }
+});
+
+// Prevent background scrolling when menu is open
+document.addEventListener('touchmove', function(event) {
+  const menu = document.getElementById('mobileMenu');
+  if (menu.classList.contains('open')) {
+    if (!menu.contains(event.target)) {
+      event.preventDefault();
+    }
+  }
+}, { passive: false });
+
+// Load pit procedures content from config
+async function loadPitContent() {
+  try {
+    const response = await fetch('/api/config');
+    const config = await response.json();
+    
+    // Load pit procedures content
+    if (config["pitProcedures"] && config["pitProcedures"].body) {
+      renderPitContent(config["pitProcedures"].body);
+    }
+    
+    // Load checklist data from server
+    await loadChecklistData();
+    
+    // Initialize any missing checklists
+    await initializeMissingChecklists(config);
+  } catch (error) {
+    console.error('Error loading pit procedures content:', error);
+  }
+}
+
+// Initialize any checklists that exist in config but not in database
+async function initializeMissingChecklists(config) {
+  try {
+    const bodyConfig = config["pitProcedures"]?.body;
+    if (!bodyConfig) return;
+    
+    for (const [key, item] of Object.entries(bodyConfig)) {
+      if (item.type === 'checklist' && !checklistData[key]) {
+        // This checklist exists in config but not in database, initialize it
+        await fetch(`/api/checklist/${key}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            checked: []
+          })
+        });
+      }
+    }
+    
+    // Reload checklist data after initialization
+    await loadChecklistData();
+    
+    // Re-render checklists
+    if (bodyConfig) {
+      renderChecklists(bodyConfig);
+    }
+  } catch (error) {
+    console.error('Error initializing missing checklists:', error);
+  }
+}
+
+// Render pit content based on config structure
+function renderPitContent(bodyConfig) {
+  const announcementsContainer = document.getElementById('announcements-container');
+  const checklistContainer = document.getElementById('checklist-container');
+  
+  if (!bodyConfig) return;
+  
+  let announcementsHtml = '';
+  let checklistsHtml = '';
+  
+  // Process each item in the body config
+  for (const [key, item] of Object.entries(bodyConfig)) {
+    if (item.type === 'announcement') {
+      announcementsHtml += `
+        <div class="announcement">
+          <div class="announcement-title">${item.title || 'Untitled'}</div>
+          <div class="announcement-description">${item.description || ''}</div>
+          <hr class="announcement-divider">
+        </div>
+      `;
+    } else if (item.type === 'checklist') {
+      // We'll render checklists after loading data from server
+      checklistsHtml += `<div id="checklist-${key}" class="checklist-wrapper"></div>`;
+    }
+  }
+  
+  // Render announcements
+  if (announcementsHtml) {
+    announcementsContainer.innerHTML = `<h2>Pit Announcements</h2>${announcementsHtml}`;
+  }
+  
+  // Render checklist placeholders
+  if (checklistsHtml) {
+    checklistContainer.innerHTML = checklistsHtml;
+    
+    // Now render each checklist with data from server
+    renderChecklists(bodyConfig);
+  }
+}
+
+// Load checklist data from server
+async function loadChecklistData() {
+  try {
+    const response = await fetch('/api/checklist');
+    checklistData = await response.json();
+  } catch (error) {
+    console.error('Error loading checklist data:', error);
+    checklistData = {};
+  }
+}
+
+// Render checklists with data from server
+function renderChecklists(bodyConfig) {
+  for (const [key, item] of Object.entries(bodyConfig)) {
+    if (item.type === 'checklist') {
+      const checklistElement = document.getElementById(`checklist-${key}`);
+      if (checklistElement) {
+        renderChecklist(key, item, checklistElement);
+      }
+    }
+  }
+}
+
+// Render a single checklist
+function renderChecklist(key, config, container) {
+  // Get the stored checklist data or use defaults
+  const storedChecklist = checklistData[key];
+  
+  // Use the title from config, but checked items from stored data
+  const checklist = {
+    title: config.title || 'Checklist',
+    options: config.options || [],
+    checked: storedChecklist ? storedChecklist.checked : []
+  };
+  
+  let html = `<h2>${checklist.title}</h2><div class="checklist">`;
+  
+  checklist.options.forEach((option, index) => {
+    const isChecked = checklist.checked.includes(index);
+    
+    html += `
+      <div class="checklist-item">
+        <label>
+          <input type="checkbox" data-key="${key}" data-index="${index}" 
+                 ${isChecked ? 'checked' : ''} onchange="updateChecklistItem(this)">
+          <span>${option}</span>
+        </label>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// Update checklist item state
+async function updateChecklistItem(checkbox) {
+  const key = checkbox.getAttribute('data-key');
+  const index = parseInt(checkbox.getAttribute('data-index'));
+  const isChecked = checkbox.checked;
+  
+  // Update local state
+  if (!checklistData[key]) {
+    checklistData[key] = {
+      title: '',
+      options: [],
+      checked: []
+    };
+  }
+  
+  // Update the checked array
+  if (isChecked) {
+    if (!checklistData[key].checked.includes(index)) {
+      checklistData[key].checked.push(index);
+      // Sort to maintain order
+      checklistData[key].checked.sort((a, b) => a - b);
+    }
+  } else {
+    checklistData[key].checked = checklistData[key].checked.filter(i => i !== index);
+  }
+  
+  // Send update to server
+  try {
+    const response = await fetch(`/api/checklist/${key}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        checked: checklistData[key].checked
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Server error');
+    }
+  } catch (error) {
+    console.error('Error updating checklist:', error);
+    // Revert the checkbox state if update fails
+    checkbox.checked = !isChecked;
+    // Also revert the local state
+    if (isChecked) {
+      checklistData[key].checked = checklistData[key].checked.filter(i => i !== index);
+    } else {
+      if (!checklistData[key].checked.includes(index)) {
+        checklistData[key].checked.push(index);
+        checklistData[key].checked.sort((a, b) => a - b);
+      }
+    }
+  }
+}
+
+// Load pit procedures content when page loads
+document.addEventListener('DOMContentLoaded', loadPitContent);
+
+// Periodically refresh checklist data to sync with other users
+setInterval(loadChecklistData, 5000); // Refresh every 5 seconds
+</script>
+
+</body>
+</html>

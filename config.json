@@ -73,6 +73,20 @@
       }
     }
   },
+  "pitProcedures": {
+    "body": {
+      "something": {
+        "type": "checklist",
+        "title": "Pit Procedures",
+        "options": [
+          "Inspect robot for safety",
+          "Check battery voltage",
+          "Verify all sensors are functional",
+          "Ensure all tools are accounted for"
+        ]
+      }
+    }
+  },
   "match_form": {
     "pre_match": {
       "scouter_initials": {
