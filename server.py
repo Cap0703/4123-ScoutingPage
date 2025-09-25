@@ -14,6 +14,8 @@ import secrets
 from functools import wraps
 import csv
 from io import StringIO
+from datetime import datetime
+import secrets
 
 app = Flask(__name__)
 CORS(app)
@@ -47,6 +49,11 @@ def get_db_connection():
 
 def init_db():
     conn = get_db_connection()
+    cursor = conn.cursor()
+    #cursor.execute("DROP TABLE IF EXISTS batteries")
+    #cursor.execute("DROP TABLE IF EXISTS battery_logs")
+
+
     conn.execute('''
         CREATE TABLE IF NOT EXISTS matches(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,6 +92,39 @@ def init_db():
             role TEXT NOT NULL DEFAULT 'scout',
             auth_token TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS batteries(
+            id TEXT PRIMARY KEY,
+            time_scanned TEXT NOT NULL,
+            usage_count INTEGER DEFAULT 0,
+            beakStatus TEXT NOT NULL,
+            charge REAL NOT NULL,
+            v0 REAL NOT NULL,
+            v1 REAL NOT NULL,
+            v2 REAL NOT NULL,
+            rint REAL NOT NULL,
+            status TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS battery_logs(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            battery_id TEXT NOT NULL,
+            time_scanned TEXT NOT NULL,
+            status TEXT NOT NULL,
+            charge REAL NOT NULL,
+            beakStatus TEXT NOT NULL,
+            v0 REAL NOT NULL,
+            v1 REAL NOT NULL,
+            v2 REAL NOT NULL,
+            rint REAL NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (battery_id) REFERENCES batteries (id)
         )
     ''')
     cursor = conn.cursor()
@@ -140,6 +180,422 @@ def login_required(role="scout"):
 
 
 
+# ==================== BATTERY MANAGEMENT ENDPOINTS ====================
+
+@app.route('/api/batteries', methods=['GET'])
+@login_required()
+def get_batteries():
+    """Retrieve all batteries"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM batteries ORDER BY id')
+        batteries = cursor.fetchall()
+        conn.close()
+        
+        batteries_list = []
+        for battery in batteries:
+            battery_dict = dict(battery)
+            # Ensure consistent field names - handle both formats
+            battery_dict['timeScanned'] = battery_dict.get('time_scanned', 'Unknown')
+            battery_dict['time_scanned'] = battery_dict.get('time_scanned', 'Unknown')
+            battery_dict['beakStatus'] = battery_dict.get('beakStatus', 'Good')
+            battery_dict['usage_count'] = battery_dict.get('usage_count', 0)
+            
+            # Ensure all required fields have default values
+            battery_dict['charge'] = battery_dict.get('charge', 0)
+            battery_dict['v0'] = battery_dict.get('v0', 0)
+            battery_dict['v1'] = battery_dict.get('v1', 0)
+            battery_dict['v2'] = battery_dict.get('v2', 0)
+            battery_dict['rint'] = battery_dict.get('rint', 0)
+            battery_dict['status'] = battery_dict.get('status', 'Unknown')
+            
+            batteries_list.append(battery_dict)
+            
+        return jsonify(batteries_list)
+    except Exception as e:
+        print(f"Error in get_batteries: {e}")  # Debug log
+        return jsonify({'error': 'Failed to fetch batteries', 'details': str(e)}), 500
+
+@app.route('/api/batteries/<battery_id>', methods=['GET'])
+@login_required()
+def get_battery(battery_id):
+    """Retrieve a specific battery by ID"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM batteries WHERE id = ?', (battery_id,))
+        battery = cursor.fetchone()
+        conn.close()
+        # In get_batteries and get_battery functions, after fetching from database:
+        battery_dict = dict(battery)
+        # Ensure consistent field names
+        battery_dict['timeScanned'] = battery_dict.get('time_scanned', 'Unknown')
+        battery_dict['time_scanned'] = battery_dict.get('time_scanned', 'Unknown')  # Keep both for compatibility
+        if not battery:
+            return jsonify({'error': 'Battery not found'}), 404
+            
+        battery_dict = dict(battery)
+        battery_dict['beakStatus'] = battery_dict.get('beakStatus', 'Good')
+        battery_dict['usage_count'] = battery_dict.get('usage_count', 0)
+        
+        return jsonify(battery_dict)
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch battery', 'details': str(e)}), 500
+
+@app.route('/api/batteries', methods=['POST'])
+@login_required()
+def create_battery():
+    try:
+        data = request.get_json()
+        print(f"Creating battery with data: {data}")  # Debug log
+        
+        # Validate required fields
+        # Handle both field names for compatibility
+        time_scanned = data.get('timeScanned') or data.get('time_scanned')
+        
+        # If time_scanned is missing or invalid, generate current timestamp
+        if not time_scanned or time_scanned == 'Unknown':
+            now = datetime.now()
+            time_scanned = f"{now.month}/{now.day}/{now.year}; {now.hour}:{now.minute:02d}:{now.second:02d}"
+        
+        required_fields = ['id', 'beakStatus', 'charge', 'v0', 'v1', 'v2', 'rint', 'status']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Validate battery ID format
+        battery_id = data['id']
+        if not battery_id.startswith('4123') or len(battery_id) != 8 or not battery_id[4:].isdigit():
+            return jsonify({'error': 'Battery ID must follow pattern 4123XXXX'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if battery already exists
+        cursor.execute('SELECT id FROM batteries WHERE id = ?', (battery_id,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            conn.close()
+            return jsonify({'error': 'Battery ID already exists'}), 400
+        
+        # Determine usage count - increment if status is "In Use"
+        usage_count = 1 if data['status'] == 'In Use' else 0
+        
+        # Insert battery
+        cursor.execute('''
+            INSERT INTO batteries (id, time_scanned, usage_count, beakStatus, charge, v0, v1, v2, rint, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            battery_id, 
+            time_scanned,
+            usage_count, 
+            data['beakStatus'], 
+            float(data['charge']), 
+            float(data['v0']), 
+            float(data['v1']), 
+            float(data['v2']), 
+            float(data['rint']), 
+            data['status']
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"Battery {battery_id} created successfully")  # Debug log
+        return jsonify({'message': 'Battery created successfully', 'id': battery_id})
+        
+    except Exception as e:
+        print(f"Error creating battery: {e}")  # Debug log
+        return jsonify({'error': 'Failed to create battery', 'details': str(e)}), 500
+    
+@app.route('/api/batteries/<battery_id>', methods=['PUT'])
+@login_required()
+def update_battery(battery_id):
+    """Update an existing battery"""
+    try:
+        data = request.get_json()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get current battery data
+        cursor.execute('SELECT * FROM batteries WHERE id = ?', (battery_id,))
+        existing_battery = cursor.fetchone()
+        
+        if not existing_battery:
+            conn.close()
+            return jsonify({'error': 'Battery not found'}), 404
+        
+        # Determine usage count - increment if status is changing to "In Use"
+        usage_count = existing_battery['usage_count']
+        new_status = data.get('status', existing_battery['status'])
+        
+        # Increment usage count if changing to "In Use" from any other status
+        if existing_battery['status'] != 'In Use' and new_status == 'In Use':
+            usage_count += 1
+        
+        time_scanned = data.get('timeScanned') or data.get('time_scanned', existing_battery['time_scanned'])
+        
+        # Update battery
+        cursor.execute('''
+            UPDATE batteries 
+            SET time_scanned = ?, usage_count = ?, beakStatus = ?, charge = ?, 
+                v0 = ?, v1 = ?, v2 = ?, rint = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (
+            time_scanned,
+            usage_count,
+            data.get('beakStatus', existing_battery['beakStatus']),
+            float(data.get('charge', existing_battery['charge'])),
+            float(data.get('v0', existing_battery['v0'])),
+            float(data.get('v1', existing_battery['v1'])),
+            float(data.get('v2', existing_battery['v2'])),
+            float(data.get('rint', existing_battery['rint'])),
+            new_status,
+            battery_id
+        ))
+        
+        # Create log entry for significant changes
+        cursor.execute('''
+            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            battery_id,
+            data.get('timeScanned', existing_battery['time_scanned']),
+            new_status,
+            float(data.get('charge', existing_battery['charge'])),
+            data.get('beakStatus', existing_battery['beakStatus']),
+            float(data.get('v0', existing_battery['v0'])),
+            float(data.get('v1', existing_battery['v1'])),
+            float(data.get('v2', existing_battery['v2'])),
+            float(data.get('rint', existing_battery['rint']))
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Battery updated successfully'})
+    except Exception as e:
+        return jsonify({'error': 'Failed to update battery', 'details': str(e)}), 500
+
+@app.route('/api/batteries/<battery_id>', methods=['DELETE'])
+@login_required(role="admin")
+def delete_battery(battery_id):
+    """Delete a battery and its logs"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Delete logs first
+        cursor.execute('DELETE FROM battery_logs WHERE battery_id = ?', (battery_id,))
+        # Delete battery
+        cursor.execute('DELETE FROM batteries WHERE id = ?', (battery_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Battery deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': 'Failed to delete battery', 'details': str(e)}), 500
+
+@app.route('/api/batteries/<battery_id>/advance-status', methods=['POST'])
+@login_required()
+def advance_battery_status(battery_id):
+    """Advance battery to next status in the cycle"""
+    try:
+        status_order = [
+            "Charging",
+            "Cooldown to Robot", 
+            "Ready for Robot",
+            "In Use",
+            "Cooldown to Charge",
+            "Ready for Charging"
+        ]
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get current battery data
+        cursor.execute('SELECT * FROM batteries WHERE id = ?', (battery_id,))
+        battery = cursor.fetchone()
+        
+        if not battery:
+            conn.close()
+            return jsonify({'error': 'Battery not found'}), 404
+        
+        # Determine next status
+        current_status = battery['status']
+        if current_status not in status_order:
+            current_status = "Charging"  # Default to start
+        
+        current_status_index = status_order.index(current_status)
+        next_status_index = (current_status_index + 1) % len(status_order)
+        next_status = status_order[next_status_index]
+        
+        # Update usage count if advancing to "In Use"
+        usage_count = battery['usage_count']
+        if next_status == "In Use" and current_status != "In Use":
+            usage_count += 1
+        
+        # Update timestamp
+        now = datetime.now()
+        time_scanned = f"{now.month}/{now.day}/{now.year}; {now.hour}:{now.minute:02d}:{now.second:02d}"
+        
+        # Update battery
+        cursor.execute('''
+            UPDATE batteries 
+            SET time_scanned = ?, usage_count = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (time_scanned, usage_count, next_status, battery_id))
+        
+        # Create log entry
+        cursor.execute('''
+            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            battery_id, time_scanned, next_status, battery['charge'], 
+            battery['beakStatus'], battery['v0'], battery['v1'], battery['v2'], battery['rint']
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': f'Battery status advanced to {next_status}',
+            'new_status': next_status,
+            'time_scanned': time_scanned
+        })
+    except Exception as e:
+        return jsonify({'error': 'Failed to advance battery status', 'details': str(e)}), 500
+    
+@app.route('/api/battery-logs', methods=['GET'])
+@login_required()
+def get_battery_logs():
+    """Retrieve battery logs"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM battery_logs 
+            ORDER BY created_at DESC
+        ''')
+        logs = cursor.fetchall()
+        conn.close()
+        
+        logs_list = []
+        for log in logs:
+            log_dict = dict(log)
+            logs_list.append(log_dict)
+            
+        return jsonify(logs_list)
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch battery logs', 'details': str(e)}), 500
+
+@app.route('/api/battery-logs/<int:log_id>', methods=['DELETE'])
+@login_required(role="admin")
+def delete_battery_log(log_id):
+    """Delete a battery log entry"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM battery_logs WHERE id = ?', (log_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Log entry deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': 'Failed to delete log entry', 'details': str(e)}), 500
+    
+@app.route('/api/debug/batteries', methods=['GET'])
+@login_required()
+def debug_batteries():
+    """Debug endpoint to check batteries table state"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='batteries'")
+        table_exists = cursor.fetchone() is not None
+        
+        if not table_exists:
+            conn.close()
+            return jsonify({'error': 'Batteries table does not exist'}), 500
+        
+        # Get table schema
+        cursor.execute("PRAGMA table_info(batteries)")
+        schema = cursor.fetchall()
+        
+        # Get all batteries
+        cursor.execute('SELECT * FROM batteries')
+        batteries = cursor.fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            'table_exists': table_exists,
+            'schema': [dict(col) for col in schema],
+            'batteries': [dict(battery) for battery in batteries],
+            'count': len(batteries)
+        })
+    except Exception as e:
+        return jsonify({'error': 'Debug failed', 'details': str(e)}), 500
+    
+@app.route('/api/debug/batteries-test', methods=['GET'])
+@login_required()
+def debug_batteries_test():
+    """Simple test endpoint to check battery data"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Simple query to test
+        cursor.execute('SELECT id, status, charge FROM batteries LIMIT 5')
+        batteries = cursor.fetchall()
+        conn.close()
+        
+        batteries_list = [dict(battery) for battery in batteries]
+        return jsonify({'success': True, 'batteries': batteries_list, 'count': len(batteries_list)})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
+@app.route('/api/debug/batteries-table', methods=['GET'])
+@login_required()
+def debug_batteries_table():
+    """Debug endpoint to check batteries table structure"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check table structure
+        cursor.execute("PRAGMA table_info(batteries)")
+        table_info = cursor.fetchall()
+        
+        # Check if table exists and has data
+        cursor.execute("SELECT COUNT(*) as count FROM batteries")
+        count = cursor.fetchone()['count']
+        
+        conn.close()
+        
+        return jsonify({
+            'table_exists': True,
+            'columns': [dict(col) for col in table_info],
+            'row_count': count
+        })
+    except Exception as e:
+        return jsonify({'error': 'Debug failed', 'details': str(e)}), 500
+    
+    
+    
+        
+    
+    
+    
 
 # ==================== SCORING & DATA PROCESSING FUNCTIONS ====================
 

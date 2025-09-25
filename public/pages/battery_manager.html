@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battery Tracking - FRC 4123 Scouting</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
+    <style>
+        /* Battery-specific styles */
+        .battery-visual-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .battery-visual {
+            height: 150px;
+            width: 300px;
+            background: linear-gradient(to right, #e0e0e0, #f5f5f5);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #ccc;
+        }
+
+        .battery-level {
+            height: 100%;
+            background: linear-gradient(to right, #27ae60, #2ecc71);
+            width: 50%;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .battery-cap {
+            position: absolute;
+            top: 40px;
+            right: -8px;
+            width: 15px;
+            height: 40px;
+            background: #ccc;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .battery-info {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #333;
+            font-weight: bold;
+            font-size: 1.5rem;
+            text-shadow: 0 1px 1px white;
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-charging { background-color: #f39c12; }
+        .status-cooldown-to-robot { background-color: #9b59b6; }
+        .status-ready-for-robot { background-color: #27ae60; }
+        .status-in-use { background-color: #3498db; }
+        .status-cooldown-to-charge { background-color: #9b59b6; }
+        .status-ready-for-charging { background-color: #e67e22; }
+
+        .condition-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .condition-good { background-color: #27ae60; }
+        .condition-fair { background-color: #f39c12; }
+        .condition-bad { background-color: #e74c3c; }
+
+        /* Battery cards */
+        .battery-inventory {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .battery-card {
+            background: rgb(27, 36, 116);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-left: 4px solid #3498db;
+        }
+
+        .battery-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .battery-id {
+            font-weight: bold;
+            font-size: 1.2em;
+            font-family: monospace;
+        }
+
+        .battery-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.85em;
+        }
+
+        /* Form enhancements */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .voltage-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .actions-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .btn-primary, .btn-warning, .btn-success, .btn-danger {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary { background: #3498db; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            color:#f5f5f5;
+        }
+
+        .tab.active {
+            border-bottom-color: #3498db;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Search and filter */
+        .search-filter {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .battery-inventory {
+                grid-template-columns: 1fr;
+            }
+            
+            .voltage-inputs {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .cooldown-timer {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #ffeb3b;
+            color: #333;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        /* Stopwatch styles */
+        .stopwatch {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #3498db;
+            color: white;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-left: 8px;
+            font-family: monospace;
+        }
+        
+        .charger-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #f39c12;
+        }
+        
+        .charger-status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        
+        .charger-on {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .charger-off {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-charger {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .btn-charger-on {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-charger-off {
+            background: #e74c3c;
+            color: white;
+        }
+        .stopwatch.charging {
+    background: #27ae60 !important;
+}
+
+.charging-indicator {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #27ae60;
+    color: white;
+    border-radius: 3px;
+    font-size: 0.7em;
+    margin-left: 5px;
+}
+        .scanner-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .scanner-modal.active {
+            display: flex;
+        }
+        
+        .scanner-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 90%;
+            max-height: 90%;
+            width: 600px;
+            text-align: center;
+        }
+        
+        #scanner-canvas {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            border: 2px solid #3498db;
+            border-radius: 4px;
+        }
+        
+        .scanner-controls {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .scanner-instructions {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .scanner-status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        .scanner-success {
+            color: #27ae60;
+        }
+        
+        .scanner-error {
+            color: #e74c3c;
+        }
+        /* Add to the existing scanner styles */
+#scanner-canvas {
+    width: 100%;
+    max-width: 500px;
+    height: 300px; /* Fixed height for better aspect ratio */
+    border: 2px solid #3498db;
+    border-radius: 4px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+}
+
+#scanner-canvas:before {
+    content: "Camera Feed Will Appear Here";
+    font-style: italic;
+}
+
+.scanner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    border: 2px solid #27ae60;
+}
+
+.scanner-guide {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 100px;
+    border: 2px dashed #27ae60;
+    background: rgba(39, 174, 96, 0.1);
+}
+    </style>
+</head>
+<body>
+    <!-- Mobile navigation -->
+    <div class="mobile-nav">
+        <button class="hamburger" onclick="toggleMenu()">☰</button>
+        <div class="mobile-menu" id="mobileMenu">
+            <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+            <a href="/" onclick="toggleMenu()">Home</a>
+            <a href="/pages/pit_procedures.html" onclick="toggleMenu()">Pit Procedures</a>
+            <a href="/pages/ondeck.html" onclick="toggleMenu()">Ondeck</a>
+            <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
+            <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
+            <a href="/pages/team_summary.html" class="admin-only" onclick="toggleMenu()">Team Summary</a>
+            <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
+            <a href="/pages/rankings.html" class="admin-only" onclick="toggleMenu()">Rankings</a>
+            <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
+            <a href="/pages/raw_match_edit.html" class="admin-only" onclick="toggleMenu()">Raw Match Data Edit</a>
+            <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
+            <a href="/pages/raw_pit_edit.html" class="admin-only" onclick="toggleMenu()">Raw Pit Data Edit</a>
+            <a href="/pages/csv_upload.html" class="admin-only" onclick="toggleMenu()">CSV Upload</a>
+            <a href="/pages/config_creator.html" onclick="toggleMenu()">Config Creator</a>
+            <a href="/pages/battery_manager.html" onclick="toggleMenu()">Battery Manager</a>
+            <a href="/pages/admin.html" class="admin-only" onclick="toggleMenu()">User Management</a>
+            <a href="/pages/logout.html" onclick="toggleMenu()">Logout</a>
+        </div>
+    </div>
+    
+    <!-- Original navbar (hidden on mobile) -->
+    <nav class="navbar">
+        <a href="/">Home</a>
+        <a href="/pages/pit_procedures.html">Pit Procedures</a>
+        <a href="/pages/ondeck.html">Ondeck</a>
+        <a href="/pages/match_scouting.html">Match Scouting</a>
+        <a href="/pages/pit_scouting.html">Pit Scouting</a>
+        <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+        <a href="/pages/match_simulator.html">Match Simulator</a>
+        <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+        <a href="/pages/raw_match.html">Raw Match Data</a>
+        <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+        <a href="/pages/raw_pit.html">Raw Pit Data</a>
+        <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+        <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+        <a href="/pages/config_creator.html">Config Creator</a>
+        <a href="/pages/battery_manager.html">Battery Manager</a>
+        <a href="/pages/admin.html" class="admin-only">User Management</a>
+        <a href="/pages/logout.html">Logout</a>
+    </nav>
+    
+    <div class="container">
+        <h1>Battery Tracking System</h1>
+        <p class="subtitle">Track battery usage, status, and health metrics</p>
+        
+        <!-- Charger Control -->
+        <div class="charger-control">
+            <span>Charger Status:</span>
+            <span id="chargerStatus" class="charger-status charger-on">ON</span>
+            <button id="toggleChargerBtn" class="btn-charger btn-charger-off">Turn Charger OFF</button>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="inventory">Battery Inventory</button>
+            <button class="tab" data-tab="logs">Scan Logs</button>
+        </div>
+        
+        <div class="tab-content active" id="inventory-tab">
+            <div class="form-section">
+                <h2>Add/Update Battery</h2>
+                <form id="batteryForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="batteryId">Battery ID (4123XXXX)</label>
+                            <input type="text" id="batteryId" class="battery-id-input" pattern="4123\d{4}" 
+                                   title="Must follow pattern 4123XXXX" required placeholder="41230001">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="batteryBeak">Battery Beak Status</label>
+                            <select id="batteryBeak">
+                                <option value="">Select Status</option>
+                                <option value="Good">Good</option>
+                                <option value="Fair">Fair</option>
+                                <option value="Bad">Bad</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="charge">Charge (%)</label>
+                            <input type="range" id="chargeSlider" min="0" max="130" value="50">
+                            <input type="number" id="charge" min="0" max="130" required value="50">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="status">Status</label>
+                            <select id="status" required>
+                                <option value="">Select Status</option>
+                                <option value="Charging">Charging</option>
+                                <option value="Cooldown to Robot">Cooldown to Robot</option>
+                                <option value="Ready for Robot">Ready for Robot</option>
+                                <option value="In Use">In Use</option>
+                                <option value="Cooldown to Charge">Cooldown to Charge</option>
+                                <option value="Ready for Charging">Ready for Charging</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="voltage-inputs">
+                        <div class="form-group">
+                            <label for="v0">V0 @ 0 Amps</label>
+                            <input type="number" id="v0" step="0.01" required placeholder="12.60">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="v1">V1 @ 1 Amp</label>
+                            <input type="number" id="v1" step="0.01" required placeholder="12.40">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="v2">V2 @ 18 Amps</label>
+                            <input type="number" id="v2" step="0.01" required placeholder="11.20">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="rint">Rint (Ohms)</label>
+                            <input type="number" id="rint" step="0.001" required placeholder="0.025">
+                        </div>
+                    </div>
+                    
+                    <div class="battery-visual-container">
+                        <div class="battery-visual">
+                            <div class="battery-level" id="batteryLevel"></div>
+                            <div class="battery-cap"></div>
+                            <div class="battery-info" id="batteryInfo">50%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="actions-row">
+                        <button type="submit" class="btn-primary" id="submitBtn">Add/Update Battery</button>
+                        <button type="button" class="btn-warning" id="scanBtn">Scan Barcode</button>
+                        <button type="button" class="btn-success" id="quickStatusBtn">Quick Status Update</button>
+                        <button type="button" class="btn-danger" id="clearFormBtn">Clear Form</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="search-filter">
+                <input type="text" id="searchBattery" placeholder="Search batteries...">
+                <select id="filterStatus">
+                    <option value="">All Statuses</option>
+                    <option value="Charging">Charging</option>
+                    <option value="Cooldown to Robot">Cooldown to Robot</option>
+                    <option value="Ready for Robot">Ready for Robot</option>
+                    <option value="In Use">In Use</option>
+                    <option value="Cooldown to Charge">Cooldown to Charge</option>
+                    <option value="Ready for Charging">Ready for Charging</option>
+                </select>
+                <select id="filterCondition">
+                    <option value="">All Conditions</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Bad">Bad</option>
+                </select>
+            </div>
+            
+            <h2>Battery Inventory</h2>
+            <div class="battery-inventory" id="batteryInventory">
+                <!-- Battery cards will be populated here -->
+            </div>
+        </div>
+        
+        <div class="tab-content" id="logs-tab">
+            <div class="search-filter">
+                <input type="text" id="searchLogs" placeholder="Search logs...">
+                <input type="date" id="filterLogDate">
+                <button class="btn-primary" id="exportLogsBtn">Export Logs</button>
+            </div>
+            
+            <h2>Battery Scan Logs</h2>
+            <div class="card">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Battery ID</th>
+                            <th>Time Scanned</th>
+                            <th>Status</th>
+                            <th>Charge</th>
+                            <th>Beak Status</th>
+                            <th>Voltages & Rint</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <!-- Logs will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+<div class="scanner-modal" id="scannerModal">
+    <div class="scanner-container">
+        <h3>Scan Battery Barcode</h3>
+        <p class="scanner-instructions">Position the barcode within the frame. The scanner will automatically detect it.</p>
+        <div id="scanner-canvas">
+            <div class="scanner-overlay">
+                <div class="scanner-guide"></div>
+            </div>
+        </div>
+        <div class="scanner-status" id="scannerStatus">Click "Start Scanner" to begin</div>
+        <div class="scanner-controls">
+            <button class="btn-primary" id="startScannerBtn">Start Scanner</button>
+            <button class="btn-primary" id="switchCameraBtn" style="display:none;">Switch Camera</button>
+            <button class="btn-warning" id="cancelScanBtn">Cancel</button>
+        </div>
+    </div>
+</div>
+    <footer>FRC 4123 Scouting • Config-driven • SQLite</footer>
+
+<script>
+// Battery data and API integration
+let batteries = [];
+let batteryLogs = [];
+let cooldownTimers = {};
+let stopwatchTimers = {};
+let chargerOn = true;
+let currentCamera = 'environment'; // 'environment' for back camera, 'user' for front
+let currentStream = null;
+
+const COOLDOWN_DURATIONS = {
+    'Cooldown to Robot': 5 * 60 * 1000, // 5 minutes
+    'Cooldown to Charge': 10 * 60 * 1000 // 10 minutes
+};
+
+// Status progression order
+const statusOrder = [
+    "Charging",
+    "Cooldown to Robot", 
+    "Ready for Robot",
+    "In Use",
+    "Cooldown to Charge",
+    "Ready for Charging"
+];
+
+// API endpoints
+const API_BASE = '/api';
+const API_ENDPOINTS = {
+    batteries: `${API_BASE}/batteries`,
+    logs: `${API_BASE}/battery-logs`,
+    battery: (id) => `${API_BASE}/batteries/${id}`,
+    log: (id) => `${API_BASE}/battery-logs/${id}`,
+    advanceStatus: (id) => `${API_BASE}/batteries/${id}/advance-status`
+};
+
+// Get auth headers
+function getAuthHeaders() {
+    const token = localStorage.getItem('authToken');
+    return token ? { 
+        'Authorization': token,
+        'Content-Type': 'application/json'
+    } : { 'Content-Type': 'application/json' };
+}
+
+// Authentication functions
+async function checkAuth() {
+    const token = localStorage.getItem('authToken');
+    if (!token) return false;
+    
+    try {
+        const response = await fetch('/api/debug/check-auth', {
+            headers: { 'Authorization': token }
+        });
+        const result = await response.json();
+        return result.authenticated === true;
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        return false;
+    }
+}
+
+async function debugAuthStatus() {
+    const token = localStorage.getItem('authToken');
+    if (!token) return false;
+    
+    try {
+        const response = await fetch('/api/debug/check-auth', {
+            headers: { 'Authorization': token }
+        });
+        const result = await response.json();
+        return result.authenticated === true;
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        return false;
+    }
+}
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAuthAndBatteryManager();
+});
+
+async function initializeAuthAndBatteryManager() {
+    try {
+        // Check if we have a token first
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            console.log('No auth token found, redirecting to login');
+            window.location.href = '/login.html';
+            return;
+        }
+        
+        // Try to verify the token directly
+        const isAuthenticated = await debugAuthStatus();
+        if (!isAuthenticated) {
+            console.log('Token invalid, redirecting to login');
+            localStorage.removeItem('authToken');
+            window.location.href = '/login.html';
+            return;
+        }
+        
+        // Initialize battery manager
+        await initializeBatteryManager();
+        
+    } catch (error) {
+        console.error('Initialization failed:', error);
+        window.location.href = '/login.html';
+    }
+}
+
+async function initializeBatteryManager() {
+    try {
+        // Check user role first
+        const userRole = await checkUserRole();
+        if (!userRole) {
+            showNotification('Unable to verify user permissions', 'error');
+            return;
+        }
+        
+        console.log('User authenticated with role:', userRole);
+        
+        // Initialize the battery manager components
+        initializeEventListeners();
+        await loadBatteries();
+        await loadBatteryLogs();
+        updateBatteryVisual();
+        startCooldownTimerUpdates();
+        startStopwatchUpdates();
+        
+    } catch (error) {
+        console.error('Battery manager initialization failed:', error);
+        showNotification('Failed to initialize battery manager', 'error');
+    }
+}
+
+// Set up event listeners
+function initializeEventListeners() {
+    // Form submission
+    document.getElementById('batteryForm').addEventListener('submit', handleBatterySubmit);
+    
+    // Barcode scan
+// Update the event listener for the scan button
+document.getElementById('scanBtn').addEventListener('click', function() {
+    document.getElementById('scannerModal').classList.add('active');
+    document.getElementById('scannerStatus').textContent = 'Click "Start Scanner" to begin';
+});
+
+// Add event listener for the start scanner button
+document.getElementById('startScannerBtn').addEventListener('click', function() {
+    this.style.display = 'none';
+    document.getElementById('switchCameraBtn').style.display = 'inline-block';
+    startBarcodeScan();
+});
+    // Scanner controls
+    document.getElementById('cancelScanBtn').addEventListener('click', stopBarcodeScan);
+    document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
+
+    // Quick status update
+    document.getElementById('quickStatusBtn').addEventListener('click', quickStatusUpdate);
+    
+    // Clear form
+    document.getElementById('clearFormBtn').addEventListener('click', clearForm);
+    
+    // Charge slider sync with number input
+    document.getElementById('chargeSlider').addEventListener('input', function() {
+        document.getElementById('charge').value = this.value;
+        updateBatteryVisual();
+    });
+    
+    document.getElementById('charge').addEventListener('input', function() {
+        document.getElementById('chargeSlider').value = this.value;
+        updateBatteryVisual();
+    });
+    
+    // Search and filter
+    document.getElementById('searchBattery').addEventListener('input', filterBatteries);
+    document.getElementById('filterStatus').addEventListener('change', filterBatteries);
+    document.getElementById('filterCondition').addEventListener('change', filterBatteries);
+    
+    document.getElementById('searchLogs').addEventListener('input', filterLogs);
+    document.getElementById('filterLogDate').addEventListener('change', filterLogs);
+    
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            switchTab(this.dataset.tab);
+        });
+    });
+    
+    // Export logs
+    document.getElementById('exportLogsBtn').addEventListener('click', exportLogs);
+    
+    // Charger control
+    document.getElementById('toggleChargerBtn').addEventListener('click', toggleCharger);
+}
+// Barcode scanning functions
+async function startBarcodeScan() {
+    try {
+        // Show the scanner modal
+        document.getElementById('scannerModal').classList.add('active');
+        document.getElementById('scannerStatus').textContent = 'Initializing camera...';
+        
+        // Initialize QuaggaJS
+        await initQuagga();
+        
+    } catch (error) {
+        console.error('Error starting barcode scanner:', error);
+        document.getElementById('scannerStatus').textContent = 'Error: ' + error.message;
+        document.getElementById('scannerStatus').className = 'scanner-status scanner-error';
+    }
+}
+
+
+// Barcode scanning functions
+async function startBarcodeScan() {
+    try {
+        // Show the scanner modal
+        document.getElementById('scannerModal').classList.add('active');
+        document.getElementById('scannerStatus').textContent = 'Initializing camera...';
+        
+        // Initialize QuaggaJS
+        await initQuagga();
+        
+    } catch (error) {
+        console.error('Error starting barcode scanner:', error);
+        document.getElementById('scannerStatus').textContent = 'Error: ' + error.message;
+        document.getElementById('scannerStatus').className = 'scanner-status scanner-error';
+    }
+}
+
+async function initQuagga() {
+    try {
+        // More robust camera support check
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            // Fallback for older browsers
+            if (navigator.getUserMedia) {
+                navigator.mediaDevices = navigator.mediaDevices || {};
+                navigator.mediaDevices.getUserMedia = navigator.getUserMedia.bind(navigator);
+            } else {
+                throw new Error('Your browser does not support camera access. Please use Chrome, Firefox, or another modern browser.');
+            }
+        }
+
+        document.getElementById('scannerStatus').textContent = 'Requesting camera permission...';
+
+        // Request camera permission with proper user interaction
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: currentCamera,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
+            audio: false
+        });
+        
+        // Stop the test stream immediately since Quagga will handle its own stream
+        stream.getTracks().forEach(track => track.stop());
+
+        document.getElementById('scannerStatus').textContent = 'Camera access granted. Initializing scanner...';
+
+        // Configure Quagga with proper constraints
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#scanner-canvas'),
+                constraints: {
+                    facingMode: currentCamera,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            },
+            decoder: {
+                readers: [
+                    "code_128_reader",
+                    "ean_reader",
+                    "ean_8_reader",
+                    "code_39_reader",
+                    "code_39_vin_reader",
+                    "codabar_reader",
+                    "upc_reader",
+                    "upc_e_reader"
+                ]
+            },
+            locator: {
+                patchSize: "medium",
+                halfSample: true
+            },
+            locate: true,
+            numOfWorkers: 2, // Reduced for better performance
+            frequency: 10,
+            debug: {
+                drawBoundingBox: true,
+                showPattern: true,
+                showFrequency: false
+            }
+        }, function(err) {
+            if (err) {
+                console.error('Quagga initialization error:', err);
+                document.getElementById('scannerStatus').textContent = 'Error initializing scanner: ' + err.message;
+                document.getElementById('scannerStatus').className = 'scanner-status scanner-error';
+                
+                // Stop any existing stream
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
+                }
+                return;
+            }
+            
+            document.getElementById('scannerStatus').textContent = 'Scanner ready. Point camera at barcode.';
+            document.getElementById('scannerStatus').className = 'scanner-status';
+            
+            // Start Quagga
+            Quagga.start();
+            
+            // Listen for detected barcodes
+            Quagga.onDetected(function(result) {
+                if (result.codeResult && result.codeResult.code) {
+                    const barcode = result.codeResult.code;
+                    console.log('Barcode detected:', barcode);
+                    
+                    // Validate the barcode format (should be 4123XXXX)
+                    if (/^4123\d{4}$/.test(barcode)) {
+                        document.getElementById('scannerStatus').textContent = 'Barcode detected: ' + barcode;
+                        document.getElementById('scannerStatus').className = 'scanner-status scanner-success';
+                        
+                        // Fill the battery ID field
+                        document.getElementById('batteryId').value = barcode;
+                        
+                        // Try to find existing battery data
+                        const existingBattery = batteries.find(b => b.id === barcode);
+                        if (existingBattery) {
+                            // Populate form with existing data
+                            document.getElementById('batteryBeak').value = existingBattery.beakStatus;
+                            document.getElementById('charge').value = existingBattery.charge;
+                            document.getElementById('chargeSlider').value = existingBattery.charge;
+                            document.getElementById('status').value = existingBattery.status;
+                            document.getElementById('v0').value = existingBattery.v0;
+                            document.getElementById('v1').value = existingBattery.v1;
+                            document.getElementById('v2').value = existingBattery.v2;
+                            document.getElementById('rint').value = existingBattery.rint;
+                            updateBatteryVisual();
+                            showNotification(`Loaded existing battery ${barcode}`, 'info');
+                        } else {
+                            showNotification(`Scanned new battery ${barcode}`, 'info');
+                        }
+                        
+                        // Stop scanning and close modal after a short delay
+                        setTimeout(() => {
+                            stopBarcodeScan();
+                        }, 1000);
+                    } else {
+                        document.getElementById('scannerStatus').textContent = 'Invalid barcode format. Expected: 4123XXXX';
+                        document.getElementById('scannerStatus').className = 'scanner-status scanner-error';
+                    }
+                }
+            });
+        });
+        
+    } catch (error) {
+        console.error('Camera access error:', error);
+        document.getElementById('scannerStatus').textContent = 'Camera error: ' + error.message;
+        document.getElementById('scannerStatus').className = 'scanner-status scanner-error';
+        
+        // Provide helpful instructions based on error type
+        if (error.name === 'NotAllowedError') {
+            document.getElementById('scannerStatus').textContent += '. Please allow camera access and try again.';
+            // Add a button to retry permission
+            addRetryButton();
+        } else if (error.name === 'NotFoundError') {
+            document.getElementById('scannerStatus').textContent += '. No camera found.';
+        } else if (error.name === 'NotSupportedError') {
+            document.getElementById('scannerStatus').textContent += '. Your browser does not support this feature.';
+        } else if (error.name === 'NotReadableError') {
+            document.getElementById('scannerStatus').textContent += '. Camera is already in use by another application.';
+        }
+        
+        // Ensure any existing stream is stopped
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+    }
+}
+
+// Add retry button for permission denied cases
+function addRetryButton() {
+    const scannerControls = document.querySelector('.scanner-controls');
+    const existingRetryBtn = document.getElementById('retryPermissionBtn');
+    
+    if (!existingRetryBtn) {
+        const retryBtn = document.createElement('button');
+        retryBtn.id = 'retryPermissionBtn';
+        retryBtn.className = 'btn-primary';
+        retryBtn.textContent = 'Retry Camera Permission';
+        retryBtn.onclick = () => {
+            retryBtn.remove();
+            startBarcodeScan();
+        };
+        scannerControls.appendChild(retryBtn);
+    }
+}
+
+function stopBarcodeScan() {
+    try {
+        // Stop Quagga
+        if (typeof Quagga !== 'undefined' && Quagga) {
+            Quagga.stop();
+            Quagga.offDetected();
+        }
+        
+        // Stop camera stream
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            currentStream = null;
+        }
+        
+        // Hide the modal
+        document.getElementById('scannerModal').classList.remove('active');
+        
+    } catch (error) {
+        console.error('Error stopping barcode scan:', error);
+        // Force hide modal even if there's an error
+        document.getElementById('scannerModal').classList.remove('active');
+    }
+}
+
+function switchCamera() {
+    // Toggle between front and back camera
+    currentCamera = currentCamera === 'environment' ? 'user' : 'environment';
+    
+    // Restart the scanner with the new camera
+    stopBarcodeScan();
+    setTimeout(() => {
+        startBarcodeScan();
+    }, 500);
+}
+
+// Charger control function
+function toggleCharger() {
+    const wasChargerOn = chargerOn;
+    chargerOn = !chargerOn;
+    
+    const chargerStatus = document.getElementById('chargerStatus');
+    const toggleBtn = document.getElementById('toggleChargerBtn');
+    
+    if (chargerOn) {
+        chargerStatus.textContent = 'ON';
+        chargerStatus.className = 'charger-status charger-on';
+        toggleBtn.textContent = 'Turn Charger OFF';
+        toggleBtn.className = 'btn-charger btn-charger-off';
+        showNotification('Charger turned ON', 'success');
+        
+        // Reset stopwatch for all charging batteries when charger is turned on
+        if (!wasChargerOn) {
+            resetChargingStopwatches();
+        }
+    } else {
+        chargerStatus.textContent = 'OFF';
+        chargerStatus.className = 'charger-status charger-off';
+        toggleBtn.textContent = 'Turn Charger ON';
+        toggleBtn.className = 'btn-charger btn-charger-on';
+        showNotification('Charger turned OFF - Stopwatches paused for charging batteries', 'warning');
+    }
+}
+
+function resetChargingStopwatches() {
+    const now = new Date();
+    const currentTimeString = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}; ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    
+    // Update the time_scanned for all charging batteries to now
+    batteries.forEach(battery => {
+        if (battery.status === 'Charging') {
+            battery.timeScanned = currentTimeString;
+            
+            // Update the battery in the database
+            updateBatteryTimeScanned(battery.id, currentTimeString);
+        }
+    });
+    
+    // Reload batteries to reflect the changes
+    loadBatteries();
+}
+
+async function updateBatteryTimeScanned(batteryId, timeScanned) {
+    try {
+        const battery = batteries.find(b => b.id === batteryId);
+        if (!battery) return;
+        
+        const batteryData = {
+            id: batteryId,
+            timeScanned: timeScanned,
+            beakStatus: battery.beakStatus,
+            charge: battery.charge,
+            v0: battery.v0,
+            v1: battery.v1,
+            v2: battery.v2,
+            rint: battery.rint,
+            status: battery.status
+        };
+        
+        const response = await fetch(API_ENDPOINTS.battery(batteryId), {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(batteryData)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        console.log(`Reset stopwatch for battery ${batteryId}`);
+        
+    } catch (error) {
+        console.error('Error updating battery time:', error);
+    }
+}
+// Tab switching function
+function switchTab(tabName) {
+    // Update active tab
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+    
+    // Update active content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+}
+
+// Add this function to check user role
+async function checkUserRole() {
+    try {
+        const response = await fetch('/api/user', {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const user = await response.json();
+            console.log('User role:', user.role);
+            return user.role;
+        }
+        return null;
+    } catch (error) {
+        console.error('Role check failed:', error);
+        return null;
+    }
+}
+
+// Update battery visual based on charge
+function updateBatteryVisual() {
+    try {
+        const chargeInput = document.getElementById('charge');
+        const chargeSlider = document.getElementById('chargeSlider');
+        const batteryLevel = document.getElementById('batteryLevel');
+        const batteryInfo = document.getElementById('batteryInfo');
+        
+        if (!chargeInput || !chargeSlider || !batteryLevel || !batteryInfo) {
+            console.error('Required elements not found');
+            return;
+        }
+        
+        let charge = parseFloat(chargeInput.value);
+        
+        // Validate charge value
+        if (isNaN(charge) || charge < 0) charge = 0;
+        if (charge > 130) charge = 130;
+        
+        // Update slider and input to stay in sync
+        chargeSlider.value = charge;
+        chargeInput.value = charge;
+        
+        // Update visual display
+        const percentage = Math.min(100, (charge / 130) * 100);
+        batteryLevel.style.width = `${percentage}%`;
+        batteryInfo.textContent = `${charge}%`;
+        
+        // Change color based on charge level
+        if (charge < 20) {
+            batteryLevel.style.background = 'linear-gradient(to right, #e74c3c, #c0392b)';
+        } else if (charge < 120) {
+            batteryLevel.style.background = 'linear-gradient(to right, #f39c12, #e67e22)';
+        } else {
+            batteryLevel.style.background = 'linear-gradient(to right, #27ae60, #2ecc71)';
+        }
+    } catch (error) {
+        console.error('Error updating battery visual:', error);
+    }
+}
+
+function startCooldownTimerUpdates() {
+    // Update timers every second
+    setInterval(updateAllCooldownTimers, 1000);
+}
+
+function startStopwatchUpdates() {
+    // Update stopwatches every second
+    setInterval(updateAllStopwatches, 1000);
+}
+
+function updateAllCooldownTimers() {
+    batteries.forEach(battery => {
+        if (battery.status === 'Cooldown to Robot' || battery.status === 'Cooldown to Charge') {
+            updateCooldownTimer(battery.id, battery.status, battery.time_scanned);
+        }
+    });
+}
+
+function updateAllStopwatches() {
+    batteries.forEach(battery => {
+        updateStopwatch(battery.id, battery.status, battery.time_scanned);
+    });
+}
+
+function parseTimeScanned(timeScanned) {
+    if (!timeScanned || timeScanned === 'Unknown') {
+        return null;
+    }
+    
+    try {
+        // Handle different time formats
+        let datePart, timePart;
+        
+        if (timeScanned.includes('; ')) {
+            // Format: "9/24/2025; 8:18:56"
+            [datePart, timePart] = timeScanned.split('; ');
+        } else if (timeScanned.includes(', ')) {
+            // Format: "9/24/2025, 8:18:56 PM"
+            [datePart, timePart] = timeScanned.split(', ');
+        } else {
+            console.warn(`Unknown time format: ${timeScanned}`);
+            return null;
+        }
+        
+        // Parse date part
+        const [month, day, year] = datePart.split('/');
+        if (!month || !day || !year) {
+            console.warn(`Invalid date format: ${datePart}`);
+            return null;
+        }
+        
+        // Parse time part - handle AM/PM
+        let hours, minutes, seconds;
+        
+        if (timePart.includes('PM') || timePart.includes('AM')) {
+            // Format with AM/PM: "8:18:56 PM"
+            const timeParts = timePart.split(' ');
+            const [time, period] = timeParts;
+            [hours, minutes, seconds] = time.split(':');
+            
+            // Convert to 24-hour format
+            if (period === 'PM' && hours < 12) {
+                hours = parseInt(hours) + 12;
+            } else if (period === 'AM' && hours == 12) {
+                hours = 0;
+            }
+        } else {
+            // 24-hour format: "8:18:56" or "20:18:56"
+            [hours, minutes, seconds] = timePart.split(':');
+        }
+        
+        if (!hours || !minutes || !seconds) {
+            console.warn(`Invalid time format: ${timePart}`);
+            return null;
+        }
+        
+        const scannedTime = new Date(
+            parseInt(year), 
+            parseInt(month) - 1, 
+            parseInt(day), 
+            parseInt(hours), 
+            parseInt(minutes), 
+            parseInt(seconds)
+        );
+        
+        if (isNaN(scannedTime.getTime())) {
+            console.warn(`Invalid date created from components`);
+            return null;
+        }
+        
+        return scannedTime;
+        
+    } catch (error) {
+        console.warn(`Error parsing timeScanned: ${timeScanned}`, error);
+        return null;
+    }
+}
+
+function updateCooldownTimer(batteryId, status, timeScanned) {
+    // Use the new time parser
+    const scannedTime = parseTimeScanned(timeScanned);
+    if (!scannedTime) {
+        const timerElement = document.getElementById(`timer-${batteryId}`);
+        if (timerElement) {
+            timerElement.textContent = 'N/A';
+        }
+        return;
+    }
+    
+    const now = new Date();
+    const elapsed = now - scannedTime;
+    const duration = COOLDOWN_DURATIONS[status];
+    const remaining = duration - elapsed;
+    
+    if (remaining <= 0) {
+        // Cooldown complete - remove timer
+        const timerElement = document.getElementById(`timer-${batteryId}`);
+        if (timerElement) {
+            timerElement.remove();
+        }
+        return;
+    }
+    
+    // Update timer display
+    const timerElement = document.getElementById(`timer-${batteryId}`);
+    if (timerElement) {
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Add expired class if less than 30 seconds remaining
+        if (remaining < 30000) {
+            timerElement.classList.add('timer-expired');
+        } else {
+            timerElement.classList.remove('timer-expired');
+        }
+    }
+}
+
+function updateStopwatch(batteryId, status, timeScanned) {
+    // Handle missing timeScanned
+    if (!timeScanned || timeScanned === 'Unknown') {
+        const stopwatchElement = document.getElementById(`stopwatch-${batteryId}`);
+        if (stopwatchElement) {
+            stopwatchElement.textContent = 'N/A';
+            stopwatchElement.style.background = '#95a5a6';
+        }
+        return;
+    }
+    
+    // Don't update stopwatch if charger is off and battery is charging
+    if (!chargerOn && status === 'Charging') {
+        const stopwatchElement = document.getElementById(`stopwatch-${batteryId}`);
+        if (stopwatchElement) {
+            stopwatchElement.textContent = 'PAUSED';
+            stopwatchElement.style.background = '#95a5a6';
+        }
+        return;
+    }
+    
+    // Use the new time parser
+    const scannedTime = parseTimeScanned(timeScanned);
+    if (!scannedTime) {
+        const stopwatchElement = document.getElementById(`stopwatch-${batteryId}`);
+        if (stopwatchElement) {
+            stopwatchElement.textContent = 'N/A';
+            stopwatchElement.style.background = '#95a5a6';
+        }
+        return;
+    }
+    
+    const now = new Date();
+    const elapsed = now - scannedTime;
+    
+    // Update stopwatch display
+    const stopwatchElement = document.getElementById(`stopwatch-${batteryId}`);
+    if (stopwatchElement) {
+        const hours = Math.floor(elapsed / 3600000);
+        const minutes = Math.floor((elapsed % 3600000) / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        
+        let timeString = '';
+        if (hours > 0) {
+            timeString = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        } else {
+            timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        stopwatchElement.textContent = timeString;
+        stopwatchElement.style.background = '#3498db';
+        
+        // Add charging indicator for charging batteries
+        if (status === 'Charging') {
+            stopwatchElement.classList.add('charging');
+            stopwatchElement.textContent = timeString + ' ⚡';
+        } else {
+            stopwatchElement.classList.remove('charging');
+        }
+    }
+}
+
+
+// Handle battery form submission
+// Handle battery form submission
+async function handleBatterySubmit(e) {
+    e.preventDefault();
+    
+    try {
+        const batteryId = document.getElementById('batteryId').value.trim();
+        const batteryBeak = document.getElementById('batteryBeak').value;
+        const charge = parseFloat(document.getElementById('charge').value);
+        const v0 = parseFloat(document.getElementById('v0').value);
+        const v1 = parseFloat(document.getElementById('v1').value);
+        const v2 = parseFloat(document.getElementById('v2').value);
+        const rint = parseFloat(document.getElementById('rint').value);
+        const status = document.getElementById('status').value;
+        
+        // Validate required fields
+        if (!batteryId || !batteryBeak || !status) {
+            showNotification('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        // Validate battery ID format
+        if (!/^4123\d{4}$/.test(batteryId)) {
+            showNotification('Battery ID must follow pattern 4123XXXX', 'error');
+            return;
+        }
+        
+        // Validate numeric fields
+        if (isNaN(charge) || isNaN(v0) || isNaN(v1) || isNaN(v2) || isNaN(rint)) {
+            showNotification('Please enter valid numbers for all voltage fields', 'error');
+            return;
+        }
+        
+        // Get current timestamp
+        const now = new Date();
+        const timeScanned = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}; ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        
+        const batteryData = {
+            id: batteryId,
+            timeScanned: timeScanned,
+            beakStatus: batteryBeak,
+            charge: charge,
+            v0: v0,
+            v1: v1,
+            v2: v2,
+            rint: rint,
+            status: status
+        };
+        
+        console.log('Submitting battery data:', batteryData);
+        
+        // Always try to create first, if it fails due to duplicate, then update
+        let result;
+        try {
+            // Try to create new battery
+            result = await createBattery(batteryData);
+            showNotification(`Battery ${batteryId} created successfully!`, 'success');
+        } catch (createError) {
+            if (createError.message.includes('404') || createError.message.includes('already exists')) {
+                // If creation fails because battery exists, try to update
+                result = await updateBattery(batteryId, batteryData);
+                showNotification(`Battery ${batteryId} updated successfully!`, 'success');
+            } else {
+                throw createError;
+            }
+        }
+        
+        // Reload data
+        await loadBatteries();
+        await loadBatteryLogs();
+        
+        // Clear form if it was a new battery
+        clearForm();
+        
+    } catch (error) {
+        console.error('Error saving battery:', error);
+        showNotification('Error saving battery data: ' + error.message, 'error');
+    }
+}
+
+// Quick status update - just change the status
+async function quickStatusUpdate() {
+    const batteryId = document.getElementById('batteryId').value;
+    if (!batteryId) {
+        showNotification('Please enter a Battery ID first', 'warning');
+        return;
+    }
+    
+    const existingBattery = batteries.find(b => b.id === batteryId);
+    if (!existingBattery) {
+        showNotification('Battery not found. Please fill in all details.', 'warning');
+        return;
+    }
+    
+    // Advance to next status using API
+    await advanceBatteryStatus(batteryId);
+}
+
+// Clear the form
+function clearForm() {
+    document.getElementById('batteryForm').reset();
+    document.getElementById('chargeSlider').value = 50;
+    document.getElementById('charge').value = 50;
+    updateBatteryVisual();
+}
+
+// Simulate barcode scanning
+function simulateBarcodeScan() {
+    // Generate a random battery ID following the pattern 4123XXXX
+    const randomId = '4123' + Math.floor(1000 + Math.random() * 9000);
+    document.getElementById('batteryId').value = randomId;
+    
+    // Try to find existing battery data
+    const existingBattery = batteries.find(b => b.id === randomId);
+    if (existingBattery) {
+        // Populate form with existing data
+        document.getElementById('batteryBeak').value = existingBattery.beakStatus;
+        document.getElementById('charge').value = existingBattery.charge;
+        document.getElementById('chargeSlider').value = existingBattery.charge;
+        document.getElementById('status').value = existingBattery.status;
+        document.getElementById('v0').value = existingBattery.v0;
+        document.getElementById('v1').value = existingBattery.v1;
+        document.getElementById('v2').value = existingBattery.v2;
+        document.getElementById('rint').value = existingBattery.rint;
+        updateBatteryVisual();
+        showNotification(`Loaded existing battery ${randomId}`, 'info');
+    } else {
+        // Clear other fields for new battery
+        document.getElementById('batteryBeak').value = '';
+        document.getElementById('charge').value = 50;
+        document.getElementById('chargeSlider').value = 50;
+        document.getElementById('status').value = '';
+        document.getElementById('v0').value = '';
+        document.getElementById('v1').value = '';
+        document.getElementById('v2').value = '';
+        document.getElementById('rint').value = '';
+        updateBatteryVisual();
+        showNotification(`Scanned new battery ${randomId}`, 'info');
+    }
+}
+
+async function loadBatteries() {
+    try {
+        const response = await fetch(API_ENDPOINTS.batteries, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('API Response:', data);
+        
+        // Ensure we have an array and handle property names consistently
+        batteries = Array.isArray(data) ? data : [];
+
+        // Normalize property names - handle both timeScanned and time_scanned
+        batteries = batteries.map(battery => {
+            // Ensure we have the correct timestamp format
+            let timeScannedValue = battery.timeScanned || battery.time_scanned;
+            
+            // If timeScanned is "Unknown", use the current time
+            if (!timeScannedValue || timeScannedValue === 'Unknown') {
+                const now = new Date();
+                timeScannedValue = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}; ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            }
+            
+            return {
+                id: battery.id,
+                status: battery.status,
+                beakStatus: battery.beakStatus || 'Unknown',
+                charge: battery.charge || 0,
+                v0: battery.v0 || 0,
+                v1: battery.v1 || 0,
+                v2: battery.v2 || 0,
+                rint: battery.rint || 0,
+                usage_count: battery.usage_count || 0, // Ensure usage_count is included
+                timeScanned: timeScannedValue, // Always use consistent name
+                time_scanned: timeScannedValue, // Also include for server compatibility
+            };
+        });
+        
+        renderBatteryInventory();
+        
+    } catch (error) {
+        console.error('Error loading batteries:', error);
+        showNotification('Error loading batteries: ' + error.message, 'error');
+        
+        // Fallback to sample data on error
+        batteries = [{
+            id: '41230001',
+            status: 'Charging',
+            beakStatus: 'Good',
+            charge: 75,
+            v0: 12.60,
+            v1: 12.40,
+            v2: 11.20,
+            rint: 0.025,
+            usage_count: 0, // Add usage_count to sample data
+            timeScanned: new Date().toLocaleString()
+        }];
+        renderBatteryInventory();
+        showNotification('Using sample data due to API error', 'warning');
+    }
+}
+
+// Load battery logs from API
+async function loadBatteryLogs() {
+    try {
+        const response = await fetch(API_ENDPOINTS.logs, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        batteryLogs = await response.json();
+        renderBatteryLogs();
+        
+    } catch (error) {
+        console.error('Error loading battery logs:', error);
+        showNotification('Error loading battery logs: ' + error.message, 'error');
+    }
+}
+
+// Create a new battery
+async function createBattery(batteryData) {
+    const response = await fetch(API_ENDPOINTS.batteries, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(batteryData)
+    });
+    
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+}
+
+// Update an existing battery
+async function updateBattery(batteryId, batteryData) {
+    const response = await fetch(API_ENDPOINTS.battery(batteryId), {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(batteryData)
+    });
+    
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+}
+
+// Advance battery status - FIXED VERSION
+async function advanceBatteryStatus(batteryId) {
+    try {
+        const response = await fetch(API_ENDPOINTS.advanceStatus(batteryId), {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        showNotification(`Battery ${batteryId} status advanced to ${result.new_status}`, 'success');
+        
+        // Reload data
+        await loadBatteries();
+        await loadBatteryLogs();
+        
+    } catch (error) {
+        console.error('Error advancing battery status:', error);
+        showNotification('Error advancing battery status: ' + error.message, 'error');
+    }
+}
+
+function renderBatteryInventory() {
+    const container = document.getElementById('batteryInventory');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (batteries.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
+                <h3>No batteries found</h3>
+                <p>Add your first battery using the form above.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    batteries.forEach(battery => {
+        const card = createBatteryCard(battery);
+        container.appendChild(card);
+    });
+}
+
+// Create a battery card element
+function createBatteryCard(battery) {
+    const card = document.createElement('div');
+    card.className = 'battery-card';
+    
+    // Safe property access with defaults
+    const batteryId = battery.id || battery.batteryId || 'Unknown';
+    const status = battery.status || 'Unknown';
+    const beakStatus = battery.beakStatus || battery.beakStatus || 'Unknown';
+    const charge = battery.charge !== undefined ? battery.charge : 0;
+    const v0 = battery.v0 !== undefined ? battery.v0 : 0;
+    const v1 = battery.v1 !== undefined ? battery.v1 : 0;
+    const v2 = battery.v2 !== undefined ? battery.v2 : 0;
+    const rint = battery.rint !== undefined ? battery.rint : 0;
+    let timeScanned = 'Unknown';
+    if (battery.timeScanned && battery.timeScanned !== 'Unknown') {
+        timeScanned = battery.timeScanned;
+    } else if (battery.time_scanned && battery.time_scanned !== 'Unknown') {
+        timeScanned = battery.time_scanned;
+    } else if (battery.lastScanned && battery.lastScanned !== 'Unknown') {
+        timeScanned = battery.lastScanned;
+    }
+    // Safe status indicator
+    const statusClass = status.toLowerCase().replace(/\s+/g, '-');
+    const statusIndicator = `<span class="status-indicator status-${statusClass}"></span>`;
+    
+    // Safe condition indicator
+    const conditionClass = beakStatus.toLowerCase();
+    const conditionIndicator = `<span class="condition-indicator condition-${conditionClass}"></span>`;
+    
+    // Add timer if in cooldown status
+    let timerHtml = '';
+    if (status === 'Cooldown to Robot' || status === 'Cooldown to Charge') {
+        timerHtml = `<span class="cooldown-timer" id="timer-${batteryId}">Calculating...</span>`;
+    }
+    
+    // Add stopwatch for all statuses
+    const stopwatchHtml = `<span class="stopwatch" id="stopwatch-${batteryId}">Calculating...</span>`;
+    
+    card.innerHTML = `
+        <div class="battery-card-header">
+            <span class="battery-id">${batteryId}</span>
+            <span class="battery-status">${statusIndicator} ${status} ${timerHtml} ${stopwatchHtml}</span>
+        </div>
+        
+        <div class="battery-stats">
+            <div class="stat-item">
+                <div class="stat-value">${charge}%</div>
+                <div class="stat-label">Charge</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${conditionIndicator} ${beakStatus}</div>
+                <div class="stat-label">Beak Status</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${battery.usage_count || 0}</div>
+                <div class="stat-label">Uses</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${v0}V</div>
+                <div class="stat-label">V0 @ 0A</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${v1}V</div>
+                <div class="stat-label">V1 @ 1A</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${v2}V</div>
+                <div class="stat-label">V2 @ 18A</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${rint}Ω</div>
+                <div class="stat-label">Rint</div>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <button class="btn-small btn-primary" onclick="editBattery('${batteryId}')">Edit</button>
+            <button class="btn-small btn-warning" onclick="advanceBatteryStatus('${batteryId}')">Advance Status</button>
+            <button class="btn-small btn-warning" onclick="quickScan('${battery.id}')">Quick Scan</button>
+            <button class="btn-small btn-danger" onclick="deleteBattery('${batteryId}')">Delete</button>
+        </div>
+        
+        <div style="margin-top: 10px; font-size: 0.8em; color: #ccc;">
+            Last scanned: ${timeScanned}
+        </div>
+    `;
+    
+    // Initialize the stopwatch and timer immediately
+    setTimeout(() => {
+        updateStopwatch(batteryId, status, timeScanned);
+        if (status === 'Cooldown to Robot' || status === 'Cooldown to Charge') {
+            updateCooldownTimer(batteryId, status, timeScanned);
+        }
+    }, 100);
+    
+    return card;
+}
+
+// Edit battery - populate form
+function editBattery(batteryId) {
+    const battery = batteries.find(b => b.id === batteryId);
+    if (!battery) return;
+    
+    document.getElementById('batteryId').value = battery.id;
+    document.getElementById('batteryBeak').value = battery.beakStatus;
+    document.getElementById('charge').value = battery.charge;
+    document.getElementById('chargeSlider').value = battery.charge;
+    document.getElementById('status').value = battery.status;
+    document.getElementById('v0').value = battery.v0;
+    document.getElementById('v1').value = battery.v1;
+    document.getElementById('v2').value = battery.v2;
+    document.getElementById('rint').value = battery.rint;
+    
+    updateBatteryVisual();
+    
+    // Scroll to form
+    document.getElementById('batteryForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+function quickScan(batteryId) {
+    // More defensive search with optional chaining
+    const battery = batteries.find(b => b.id === batteryId);
+    if (!battery) {
+        showNotification(`Battery ${batteryId} not found`, 'error');
+        return;
+    }
+    
+    try {
+        // Populate form with battery data - more robust approach
+        const formFields = {
+            'batteryId': battery.id,
+            'batteryBeak': battery.beakStatus || '',
+            'charge': battery.charge || 50,
+            'status': battery.status || '',
+            'v0': battery.v0 || '',
+            'v1': battery.v1 || '',
+            'v2': battery.v2 || '',
+            'rint': battery.rint || ''
+        };
+        
+        // Set all form values
+        Object.entries(formFields).forEach(([fieldId, value]) => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.value = value;
+            }
+        });
+        
+        // Sync slider with charge value
+        const chargeSlider = document.getElementById('chargeSlider');
+        if (chargeSlider) {
+            chargeSlider.value = formFields.charge;
+        }
+        
+        updateBatteryVisual();
+        
+        // Scroll to form with better positioning
+        const form = document.getElementById('batteryForm');
+        if (form) {
+            const yOffset = -80; // Adjust for fixed headers/navigation
+            const y = form.getBoundingClientRect().top + window.pageYOffset + yOffset;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+        
+        showNotification(`Loaded battery ${batteryId} for quick update`, 'success');
+        
+    } catch (error) {
+        console.error('Error in quickScan:', error);
+        showNotification('Error loading battery data', 'error');
+    }
+}
+
+// Delete battery
+async function deleteBattery(batteryId) {
+    if (!confirm(`Are you sure you want to delete battery ${batteryId}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(API_ENDPOINTS.battery(batteryId), {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        showNotification(`Battery ${batteryId} deleted successfully!`, 'success');
+        await loadBatteries();
+        
+    } catch (error) {
+        console.error('Error deleting battery:', error);
+        showNotification('Error deleting battery: ' + error.message, 'error');
+    }
+}
+
+// Render battery logs - FIXED VERSION
+function renderBatteryLogs() {
+    const tbody = document.getElementById('logsTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    batteryLogs.forEach(log => {
+        // Safe property access for logs with defaults
+        const logId = log.id || 'Unknown';
+        const batteryId = log.battery_id || log.batteryId || 'Unknown';
+        const timeScanned = log.time_scanned || log.timeScanned || 'Unknown';
+        const status = log.status || 'Unknown';
+        const charge = log.charge !== undefined ? log.charge : 0;
+        const beakStatus = log.beakStatus || 'Unknown';
+        const v0 = log.v0 !== undefined ? log.v0 : 0;
+        const v1 = log.v1 !== undefined ? log.v1 : 0;
+        const v2 = log.v2 !== undefined ? log.v2 : 0;
+        const rint = log.rint !== undefined ? log.rint : 0;
+        
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td>${batteryId}</td>
+            <td>${timeScanned}</td>
+            <td>${status}</td>
+            <td>${charge}%</td>
+            <td>${beakStatus}</td>
+            <td>V0: ${v0}V, V1: ${v1}V, V2: ${v2}V, Rint: ${rint}Ω</td>
+            <td>
+                <button class="btn-small btn-primary" onclick="viewLogDetails('${logId}')">View</button>
+                <button class="btn-small btn-danger" onclick="deleteLog('${logId}')">Delete</button>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// View log details
+function viewLogDetails(logId) {
+    const log = batteryLogs.find(l => l.id === logId);
+    if (!log) return;
+    
+    alert(`Battery Log Details:\n
+Battery ID: ${log.batteryId}
+Time Scanned: ${log.timeScanned}
+Status: ${log.status}
+Charge: ${log.charge}%
+Beak Status: ${log.beakStatus}
+V0: ${log.v0}V
+V1: ${log.v1}V
+V2: ${log.v2}V
+Rint: ${log.rint}Ω`);
+}
+
+// Delete log
+async function deleteLog(logId) {
+    if (!confirm('Are you sure you want to delete this log entry?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(API_ENDPOINTS.log(logId), {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        showNotification('Log entry deleted successfully!', 'success');
+        await loadBatteryLogs();
+        
+    } catch (error) {
+        console.error('Error deleting log:', error);
+        showNotification('Error deleting log: ' + error.message, 'error');
+    }
+}
+
+// Filter batteries
+function filterBatteries() {
+    const searchTerm = document.getElementById('searchBattery').value.toLowerCase();
+    const statusFilter = document.getElementById('filterStatus').value;
+    const conditionFilter = document.getElementById('filterCondition').value;
+    
+    const filteredBatteries = batteries.filter(battery => {
+        const matchesSearch = battery.id.toLowerCase().includes(searchTerm);
+        const matchesStatus = !statusFilter || battery.status === statusFilter;
+        const matchesCondition = !conditionFilter || battery.beakStatus === conditionFilter;
+        
+        return matchesSearch && matchesStatus && matchesCondition;
+    });
+    
+    const container = document.getElementById('batteryInventory');
+    container.innerHTML = '';
+    
+    filteredBatteries.forEach(battery => {
+        const card = createBatteryCard(battery);
+        container.appendChild(card);
+    });
+}
+
+// Filter logs
+function filterLogs() {
+    const searchTerm = document.getElementById('searchLogs').value.toLowerCase();
+    const dateFilter = document.getElementById('filterLogDate').value;
+    
+    const filteredLogs = batteryLogs.filter(log => {
+        const matchesSearch = log.batteryId.toLowerCase().includes(searchTerm);
+        const matchesDate = !dateFilter || log.timeScanned.includes(dateFilter.replace(/-/g, '/'));
+        
+        return matchesSearch && matchesDate;
+    });
+    
+    const tbody = document.getElementById('logsTableBody');
+    tbody.innerHTML = '';
+    
+    filteredLogs.forEach(log => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td>${log.batteryId}</td>
+            <td>${log.timeScanned}</td>
+            <td>${log.status}</td>
+            <td>${log.charge}%</td>
+            <td>${log.beakStatus}</td>
+            <td>V0: ${log.v0}V, V1: ${log.v1}V, V2: ${log.v2}V, Rint: ${log.rint}Ω</td>
+            <td>
+                <button class="btn-small btn-primary" onclick="viewLogDetails('${log.id}')">View</button>
+                <button class="btn-small btn-danger" onclick="deleteLog('${log.id}')">Delete</button>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Export logs to CSV
+function exportLogs() {
+    if (batteryLogs.length === 0) {
+        showNotification('No logs to export', 'warning');
+        return;
+    }
+    
+    const headers = ['Battery ID', 'Time Scanned', 'Status', 'Charge', 'Beak Status', 'V0', 'V1', 'V2', 'Rint'];
+    const csvContent = [
+        headers.join(','),
+        ...batteryLogs.map(log => [
+            log.batteryId,
+            `"${log.timeScanned}"`,
+            log.status,
+            log.charge,
+            log.beakStatus,
+            log.v0,
+            log.v1,
+            log.v2,
+            log.rint
+        ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `battery-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    showNotification('Logs exported successfully!', 'success');
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    // Add styles if not already added
+    if (!document.querySelector('#notification-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'notification-styles';
+        styles.textContent = `
+            .notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 4px;
+                color: white;
+                font-weight: bold;
+                z-index: 1000;
+                max-width: 300px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                animation: slideIn 0.3s ease-out;
+            }
+            
+            .notification-success { background: #27ae60; }
+            .notification-error { background: #e74c3c; }
+            .notification-warning { background: #f39c12; }
+            .notification-info { background: #3498db; }
+            
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 5000);
+}
+
+// Mobile menu toggle
+function toggleMenu() {
+    const menu = document.getElementById('mobileMenu');
+    menu.classList.toggle('active');
+}
+</script>
+</body>
+</html>

@@ -705,49 +705,93 @@
     </style>
 </head>
 <body>
-    <!-- Mobile navigation -->
-    <div class="mobile-nav">
-        <button class="hamburger" onclick="toggleMenu()">☰</button>
-        <div class="mobile-menu" id="mobileMenu">
-            <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
-            <a href="/" onclick="toggleMenu()">Home</a>
-            <a href="/pages/team_event_lookup.html" onclick="toggleMenu()">Team Event Lookup</a>
-            <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
-            <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
-            <a href="/pages/team_summary.html" class="admin-only" onclick="toggleMenu()">Team Summary</a>
-            <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
-            <a href="/pages/rankings.html" class="admin-only" onclick="toggleMenu()">Rankings</a>
-            <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
-            <a href="/pages/raw_match_edit.html" class="admin-only" onclick="toggleMenu()">Raw Match Data Edit</a>
-            <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
-            <a href="/pages/raw_pit_edit.html" class="admin-only" onclick="toggleMenu()">Raw Pit Data Edit</a>
-            <a href="/pages/csv_upload.html" class="admin-only" onclick="toggleMenu()">CSV Upload</a>
-            <a href="/pages/config_creator.html" onclick="toggleMenu()">Config Creator</a>
-            <a href="/pages/admin.html" class="admin-only" onclick="toggleMenu()">User Management</a>
-            <a href="/pages/logout.html" onclick="toggleMenu()">Logout</a>
-        </div>
-    </div>
+<!-- Mobile navigation -->
+<div class="mobile-nav">
+  <button class="hamburger" onclick="toggleMenu()">☰</button>
+  <div class="mobile-menu" id="mobileMenu">
+  <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
+  <a href="/" onclick="toggleMenu()">Home</a>
+  <a href="/pages/ondeck.html" onclick="toggleMenu()">Ondeck</a>
+  <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
+  <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
+  <a href="/pages/team_summary.html" class="admin-only" onclick="toggleMenu()">Team Summary</a>
+  <a href="/pages/match_simulator.html" onclick="toggleMenu()">Match Simulator</a>
+  <a href="/pages/rankings.html" class="admin-only" onclick="toggleMenu()">Rankings</a>
+  <a href="/pages/raw_match.html" onclick="toggleMenu()">Raw Match Data</a>
+  <a href="/pages/raw_match_edit.html" class="admin-only" onclick="toggleMenu()">Raw Match Data Edit</a>
+  <a href="/pages/raw_pit.html" onclick="toggleMenu()">Raw Pit Data</a>
+  <a href="/pages/raw_pit_edit.html" class="admin-only" onclick="toggleMenu()">Raw Pit Data Edit</a>
+  <a href="/pages/battery_manager.html" onclick="toggleMenu()">Battery Manager</a>
+  <a href="/pages/csv_upload.html" class="admin-only" onclick="toggleMenu()">CSV Upload</a>
+  <a href="/pages/config_creator.html" onclick="toggleMenu()">Config Creator</a>
+  <a href="/pages/admin.html" class="admin-only" onclick="toggleMenu()">User Management</a>
+  <a href="/pages/logout.html" onclick="toggleMenu()">Logout</a>
+  </div>
+</div>
+<script>
+// Mobile menu functionality
+function toggleMenu() {
+  const menu = document.getElementById('mobileMenu');
+  const isOpening = !menu.classList.contains('open');
+  menu.classList.toggle('open');
+  document.body.classList.toggle('menu-open', isOpening);
+  if (isOpening) {
+    setTimeout(() => {
+      menu.scrollTop = 0;
+    }, 50);
+  }
+}
 
-    <!-- Original navbar (hidden on mobile) -->
-    <nav class="navbar">
-        <a href="/">Home</a>
-        <a href="/pages/ondeck.html">Ondeck</a>
-        <a href="/pages/team_event_lookup.html" class="active">Team Event Lookup</a>
-        <a href="/pages/match_scouting.html">Match Scouting</a>
-        <a href="/pages/pit_scouting.html">Pit Scouting</a>
-        <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
-        <a href="/pages/match_simulator.html">Match Simulator</a>
-        <a href="/pages/rankings.html" class="admin-only">Rankings</a>
-        <a href="/pages/raw_match.html">Raw Match Data</a>
-        <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
-        <a href="/pages/raw_pit.html">Raw Pit Data</a>
-        <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
-        <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
-        <a href="/pages/config_creator.html">Config Creator</a>
-        <a href="/pages/admin.html" class="admin-only">User Management</a>
-        <a href="/pages/logout.html">Logout</a>
-    </nav>
+// Close menu when clicking outside
+document.addEventListener('click', function(event) {
+  const menu = document.getElementById('mobileMenu');
+  const hamburger = document.querySelector('.hamburger');
+  if (menu.classList.contains('open') && 
+      !menu.contains(event.target) && 
+      event.target !== hamburger) {
+    toggleMenu();
+  }
+});
 
+// Close menu on escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    const menu = document.getElementById('mobileMenu');
+    if (menu.classList.contains('open')) {
+      toggleMenu();
+    }
+  }
+});
+
+// Prevent background scrolling when menu is open
+document.addEventListener('touchmove', function(event) {
+  const menu = document.getElementById('mobileMenu');
+  if (menu.classList.contains('open')) {
+    if (!menu.contains(event.target)) {
+      event.preventDefault();
+    }
+  }
+}, { passive: false });
+</script>
+<!-- Original navbar (hidden on mobile) -->
+<nav class="navbar">
+  <a href="/">Home</a>
+  <a href="/pages/ondeck.html">Ondeck</a>
+  <a href="/pages/match_scouting.html">Match Scouting</a>
+  <a href="/pages/pit_scouting.html">Pit Scouting</a>
+  <a href="/pages/team_summary.html" class="admin-only">Team Summary</a>
+  <a href="/pages/match_simulator.html">Match Simulator</a>
+  <a href="/pages/rankings.html" class="admin-only">Rankings</a>
+  <a href="/pages/raw_match.html">Raw Match Data</a>
+  <a href="/pages/raw_match_edit.html" class="admin-only">Raw Match Data Edit</a>
+  <a href="/pages/raw_pit.html">Raw Pit Data</a>
+  <a href="/pages/raw_pit_edit.html" class="admin-only">Raw Pit Data Edit</a>
+  <a href="/pages/battery_manager.html">Battery Manager</a>
+  <a href="/pages/csv_upload.html" class="admin-only">CSV Upload</a>
+  <a href="/pages/config_creator.html">Config Creator</a>
+  <a href="/pages/admin.html" class="admin-only">User Management</a>
+  <a href="/pages/logout.html">Logout</a>
+</nav>
     <div class="container">
         <header>
             <h1>Team Event Scouting Lookup</h1>
