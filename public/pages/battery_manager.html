@@ -329,70 +329,37 @@
     font-size: 0.7em;
     margin-left: 5px;
 }
-        .scanner-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .scanner-modal.active {
-            display: flex;
-        }
-        
-        .scanner-container {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            max-width: 90%;
-            max-height: 90%;
-            width: 600px;
-            text-align: center;
-        }
-        
-        #scanner-canvas {
-            width: 100%;
-            max-width: 500px;
-            height: auto;
-            border: 2px solid #3498db;
-            border-radius: 4px;
-        }
-        
-        .scanner-controls {
-            margin-top: 15px;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        .scanner-instructions {
-            margin-bottom: 15px;
-            color: #333;
-        }
-        
-        .scanner-status {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-        
-        .scanner-success {
-            color: #27ae60;
-        }
-        
-        .scanner-error {
-            color: #e74c3c;
-        }
-        /* Add to the existing scanner styles */
+.scanner-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.scanner-modal.active {
+    display: flex;
+}
+
+.scanner-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 90%;
+    max-height: 90%;
+    width: 600px;
+    text-align: center;
+}
+
 #scanner-canvas {
     width: 100%;
     max-width: 500px;
-    height: 300px; /* Fixed height for better aspect ratio */
+    height: 300px;
     border: 2px solid #3498db;
     border-radius: 4px;
     background: #f0f0f0;
@@ -400,21 +367,35 @@
     align-items: center;
     justify-content: center;
     color: #666;
+    position: relative;
+    overflow: hidden; /* Crucial: prevents content from overflowing */
+    margin: 0 auto; /* Center the canvas */
 }
 
-#scanner-canvas:before {
-    content: "Camera Feed Will Appear Here";
-    font-style: italic;
+#scanner-canvas video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover; /* Ensures video fills container without distortion */
+}
+
+#scanner-canvas canvas {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 .scanner-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 10%;
+    left: 10%;
+    width: 80%;
+    height: 80%;
     pointer-events: none;
     border: 2px solid #27ae60;
+    z-index: 10;
+    box-sizing: border-box;
 }
 
 .scanner-guide {
@@ -426,6 +407,37 @@
     height: 100px;
     border: 2px dashed #27ae60;
     background: rgba(39, 174, 96, 0.1);
+    z-index: 5;
+}
+
+.scanner-controls {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.scanner-instructions {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.scanner-status {
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.scanner-success {
+    color: #27ae60;
+}
+
+.scanner-error {
+    color: #e74c3c;
+}
+
+/* Remove the :before pseudo-element since Quagga will handle the video */
+#scanner-canvas:before {
+    content: none;
 }
     </style>
 </head>
@@ -889,22 +901,7 @@ async function initQuagga() {
 
         document.getElementById('scannerStatus').textContent = 'Requesting camera permission...';
 
-        // Request camera permission with proper user interaction
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-                facingMode: currentCamera,
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: false
-        });
-        
-        // Stop the test stream immediately since Quagga will handle its own stream
-        stream.getTracks().forEach(track => track.stop());
-
-        document.getElementById('scannerStatus').textContent = 'Camera access granted. Initializing scanner...';
-
-        // Configure Quagga with proper constraints
+        // Configure Quagga with proper constraints and area definition
         Quagga.init({
             inputStream: {
                 name: "Live",
@@ -912,8 +909,14 @@ async function initQuagga() {
                 target: document.querySelector('#scanner-canvas'),
                 constraints: {
                     facingMode: currentCamera,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    width: { ideal: 640 }, // Reduced for better performance
+                    height: { ideal: 480 }
+                },
+                area: { // Define the scanning area within the canvas
+                    top: "10%",    // 10% from top
+                    right: "10%",  // 10% from right
+                    left: "10%",   // 10% from left
+                    bottom: "10%"  // 10% from bottom
                 }
             },
             decoder: {
@@ -933,24 +936,19 @@ async function initQuagga() {
                 halfSample: true
             },
             locate: true,
-            numOfWorkers: 2, // Reduced for better performance
+            numOfWorkers: 2,
             frequency: 10,
             debug: {
-                drawBoundingBox: true,
-                showPattern: true,
-                showFrequency: false
+                drawBoundingBox: false, // Disable to reduce visual clutter
+                showPattern: false,
+                showFrequency: false,
+                drawScanline: false
             }
         }, function(err) {
             if (err) {
                 console.error('Quagga initialization error:', err);
                 document.getElementById('scannerStatus').textContent = 'Error initializing scanner: ' + err.message;
                 document.getElementById('scannerStatus').className = 'scanner-status scanner-error';
-                
-                // Stop any existing stream
-                if (currentStream) {
-                    currentStream.getTracks().forEach(track => track.stop());
-                    currentStream = null;
-                }
                 return;
             }
             
@@ -1012,7 +1010,6 @@ async function initQuagga() {
         // Provide helpful instructions based on error type
         if (error.name === 'NotAllowedError') {
             document.getElementById('scannerStatus').textContent += '. Please allow camera access and try again.';
-            // Add a button to retry permission
             addRetryButton();
         } else if (error.name === 'NotFoundError') {
             document.getElementById('scannerStatus').textContent += '. No camera found.';
@@ -1020,12 +1017,6 @@ async function initQuagga() {
             document.getElementById('scannerStatus').textContent += '. Your browser does not support this feature.';
         } else if (error.name === 'NotReadableError') {
             document.getElementById('scannerStatus').textContent += '. Camera is already in use by another application.';
-        }
-        
-        // Ensure any existing stream is stopped
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-            currentStream = null;
         }
     }
 }
