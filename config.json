@@ -77,12 +77,18 @@
     "body": {
       "something": {
         "type": "checklist",
-        "title": "Pit Procedures",
+        "title": "Intake",
         "options": [
-          "Inspect robot for safety",
-          "Check battery voltage",
-          "Verify all sensors are functional",
-          "Ensure all tools are accounted for"
+          "Collar check",
+          "Make sure shafts turn smoothly",
+          "Intake wheel alignment",
+          "Belt alignment & tension",
+	  "Bolts are tightened",
+	  "Make sure motors motors are connected (to?)",
+	  "Check polycarbonate plates are screwed on",
+	  "Check all shafts on intake aren't bent"
+
+
         ]
       }
     }
