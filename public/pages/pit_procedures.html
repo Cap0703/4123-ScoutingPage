@@ -393,9 +393,10 @@ async function updateChecklistItem(checkbox) {
   // Update the counter
   updateChecklistCounter(key);
   
-  // Send update to server
+  // Send update to server - URL encode the key to handle special characters
   try {
-    const response = await fetch(`/api/checklist/${key}`, {
+    const encodedKey = encodeURIComponent(key);
+    const response = await fetch(`/api/checklist/${encodedKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -405,9 +406,14 @@ async function updateChecklistItem(checkbox) {
       })
     });
     
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
+    }
+    
     const result = await response.json();
     
-    if (!response.ok) {
+    if (!result.ok) {
       throw new Error(result.error || 'Server error');
     }
   } catch (error) {
@@ -431,6 +437,9 @@ async function updateChecklistItem(checkbox) {
     }
     // Revert the counter
     updateChecklistCounter(key);
+    
+    // Show user-friendly error message
+    alert('Failed to update checklist. Please try again.');
   }
 }
 
@@ -457,8 +466,9 @@ async function clearChecklistSection(key) {
     // Update the counter
     updateChecklistCounter(key);
     
-    // Send update to server
-    const response = await fetch(`/api/checklist/${key}`, {
+    // Send update to server - URL encode the key
+    const encodedKey = encodeURIComponent(key);
+    const response = await fetch(`/api/checklist/${encodedKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -468,11 +478,12 @@ async function clearChecklistSection(key) {
       })
     });
     
-    const result = await response.json();
-    
     if (!response.ok) {
-      throw new Error(result.error || 'Server error');
+      const errorText = await response.text();
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
     }
+    
+    const result = await response.json();
     
     console.log(`Checklist section ${key} cleared successfully`);
   } catch (error) {
@@ -481,20 +492,42 @@ async function clearChecklistSection(key) {
   }
 }
 
-// Clear all checklists
+// Clear all checklists (only those visible on the current page)
 async function clearAllChecklists() {
-  if (!confirm('Are you sure you want to clear ALL checklist sections?')) {
+  if (!confirm('Are you sure you want to clear ALL checklist sections on this page?')) {
     return;
   }
   
   try {
-    // Get all checklist keys
-    const checklistKeys = Object.keys(checklistData);
+    // Get the current page's config to identify which checklists belong to this page
+    const response = await fetch('/api/config');
+    const config = await response.json();
+    const pitProceduresConfig = config["pitProcedures"]?.body;
     
-    // Clear each checklist
-    for (const key of checklistKeys) {
+    if (!pitProceduresConfig) {
+      alert('No pit procedures configuration found.');
+      return;
+    }
+    
+    // Get only the checklist keys that belong to this page
+    const pageChecklistKeys = [];
+    for (const [key, item] of Object.entries(pitProceduresConfig)) {
+      if (item.type === 'checklist') {
+        pageChecklistKeys.push(key);
+      }
+    }
+    
+    if (pageChecklistKeys.length === 0) {
+      alert('No checklists found on this page.');
+      return;
+    }
+    
+    // Clear each checklist that belongs to this page
+    for (const key of pageChecklistKeys) {
       // Update local state
-      checklistData[key].checked = [];
+      if (checklistData[key]) {
+        checklistData[key].checked = [];
+      }
       
       // Update checkboxes and visual state in the UI
       const checkboxes = document.querySelectorAll(`input[type="checkbox"][data-key="${key}"]`);
@@ -507,8 +540,9 @@ async function clearAllChecklists() {
       // Update the counter
       updateChecklistCounter(key);
       
-      // Send update to server
-      const response = await fetch(`/api/checklist/${key}`, {
+      // Send update to server - URL encode the key
+      const encodedKey = encodeURIComponent(key);
+      const response = await fetch(`/api/checklist/${encodedKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -523,10 +557,10 @@ async function clearAllChecklists() {
       }
     }
     
-    console.log('All checklists cleared successfully');
+    console.log('All pit procedure checklists cleared successfully');
   } catch (error) {
     console.error('Error clearing all checklists:', error);
-    alert('Failed to clear all checklists. Please try again.');
+    alert('Failed to clear checklists. Please try again.');
   }
 }
 

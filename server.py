@@ -1085,9 +1085,13 @@ def get_checklist():
         return jsonify({'error': 'db', 'details': str(e)}), 500
 
 """Updates or creates a checklist item with the specified checked items."""
-@app.route('/api/checklist/<checklist_key>', methods=['POST'])
+@app.route('/api/checklist/<path:checklist_key>', methods=['POST'])
 def update_checklist(checklist_key):
     try:
+        # URL decode the key if needed
+        from urllib.parse import unquote
+        checklist_key = unquote(checklist_key)
+        
         data = request.get_json()
         checked_items = data.get('checked', [])
         conn = get_db_connection()
@@ -1128,8 +1132,6 @@ def update_checklist(checklist_key):
     except Exception as e:
         print(f"Error updating checklist: {e}")
         return jsonify({'error': 'update', 'details': str(e)}), 500
-
-
 
 
 
