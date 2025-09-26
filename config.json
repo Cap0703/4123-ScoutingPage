@@ -75,7 +75,7 @@
   },
   "pitProcedures": {
     "body": {
-      "something": {
+      "Intake": {
         "type": "checklist",
         "title": "Intake",
         "options": [
@@ -83,12 +83,88 @@
           "Make sure shafts turn smoothly",
           "Intake wheel alignment",
           "Belt alignment & tension",
-	  "Bolts are tightened",
-	  "Make sure motors motors are connected (to?)",
-	  "Check polycarbonate plates are screwed on",
-	  "Check all shafts on intake aren't bent"
-
-
+	        "Bolts are tightened",
+	        "Make sure motors motors are connected (to?)",
+	        "Check polycarbonate plates are screwed on",
+	        "Check all shafts on intake aren't bent",
+          "Check wheels are not damaged",
+          "Make sure spacers aren't broken"
+        ]
+      },
+      "Bumper": {
+        "type": "checklist",
+        "title": "Bumper",
+        "options": [
+            "Check what color is needed for the match (red/blue)",
+            "Make sure bumpers are securely attached to the robot"
+        ]
+      },
+      "Pivot": {
+        "type": "checklist",
+        "title": "Pivot",
+        "options": [
+          "Check chain aligned with sprockets properly",
+          "Check chain tension is adequate",
+          "Check motors are tightened properly",
+          "Check arm is connected to arm bar (on intake) properly",
+          "Check spacers are not damaged",
+          "Check giant churro is not damaged"
+        ]
+      },
+      "Swerve Drive": {
+        "type": "checklist",
+        "title": "Swerve Drive",
+        "options": [
+          "Check if square",
+          "Check nutes and bolts",
+          "Check swerve condition",
+          "Check belly pan condition",
+          "Check collars",
+          "Check sprockets",
+          "Make sure bearings are securely mounted",
+          "Check wheel condition",
+          "Check gearbox",
+          "Make sure electronics are secured",
+          "Make sure gears and shaft turn as they are supposed to",
+          "Check washer condition"
+        ]
+      },
+      "Electronics": {
+        "type": "checklist",
+        "title": "Electronics",
+        "options": [
+          "Check and replace battery per match",
+          "Make sure Vision Battery pack is plugged into the Orange Pi",
+          "Make sure all ethernet jacks are plugged in (RIO and Radio)",
+          "Check all lever terminals on the PDH and make sure every wire is plugged in fully and securely",
+          "Voltage readout ont he PDH should be around 12.8V and up",
+          "Each battery used on the robot should be checked by the Battery Beak, to make sure the battery's @ 18 amps is above 11.0 V",
+          "Pull test every WAGO NUG",
+          "Make sure E-Chain is out of way of any hazards/moving parts & within robot frame perimeter",
+          "Make sure RSL is plugged in and visible from all sides from atleast 2ft. away",
+          "Make sure RoboRIO is receiving power",
+          "Make sure all cameras are plugged in and working"
+        ]
+      },
+      "Replace Battery": {
+        "type": "checklist",
+        "title": "Replace Battery",
+        "options": [
+          "Turn off robot using the Main Breaker",
+          "Unplug battery from robot",
+          "Plug in new battery to robot",
+          "Turn on robot using the Main Breaker",
+          "Check voltage on PDH is above 12.8V"
+        ]
+      },
+      "Test/Running": {
+        "type": "checklist",
+        "title": "Test/Running",
+        "options": [
+          "Test Swerve Drive, make sure all modules are working properly and aligned",
+          "Test Algae Intake and Outtake",
+          "Test Coral Intake and Outtake",
+          "Test Vision Cameras"
         ]
       }
     }

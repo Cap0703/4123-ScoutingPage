@@ -439,6 +439,30 @@
 #scanner-canvas:before {
     content: none;
 }
+.battery-card.decommissioned {
+    background: #8B0000 !important; /* Dark red background */
+    border-left: 4px solid #FF0000 !important; /* Bright red border */
+    color: white !important;
+}
+
+.battery-card.decommissioned .battery-id,
+.battery-card.decommissioned .battery-status,
+.battery-card.decommissioned .stat-value,
+.battery-card.decommissioned .stat-label {
+    color: white !important;
+}
+
+.battery-card.decommissioned .stat-item {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+    .battery-id.good-rint {
+        background-color: #165c01;
+        color: rgb(255, 255, 255);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
     </style>
 </head>
 <body>
@@ -541,6 +565,7 @@
                                 <option value="In Use">In Use</option>
                                 <option value="Cooldown to Charge">Cooldown to Charge</option>
                                 <option value="Ready for Charging">Ready for Charging</option>
+                                <option value="Decommissioned">Decommissioned</option>
                             </select>
                         </div>
                     </div>
@@ -548,17 +573,17 @@
                     <div class="voltage-inputs">
                         <div class="form-group">
                             <label for="v0">V0 @ 0 Amps</label>
-                            <input type="number" id="v0" step="0.01" required placeholder="12.60">
+                            <input type="number" id="v0" step="0.001" required placeholder="12.60">
                         </div>
                         
                         <div class="form-group">
                             <label for="v1">V1 @ 1 Amp</label>
-                            <input type="number" id="v1" step="0.01" required placeholder="12.40">
+                            <input type="number" id="v1" step="0.001" required placeholder="12.40">
                         </div>
                         
                         <div class="form-group">
                             <label for="v2">V2 @ 18 Amps</label>
-                            <input type="number" id="v2" step="0.01" required placeholder="11.20">
+                            <input type="number" id="v2" step="0.001" required placeholder="11.20">
                         </div>
                         
                         <div class="form-group">
@@ -594,6 +619,7 @@
                     <option value="In Use">In Use</option>
                     <option value="Cooldown to Charge">Cooldown to Charge</option>
                     <option value="Ready for Charging">Ready for Charging</option>
+                    <option value="Decommissioned">Decommissioned</option>
                 </select>
                 <select id="filterCondition">
                     <option value="">All Conditions</option>
@@ -1431,9 +1457,7 @@ function updateStopwatch(batteryId, status, timeScanned) {
     }
 }
 
-
-// Handle battery form submission
-// Handle battery form submission
+// Handle battery form submission - FIXED VERSION
 async function handleBatterySubmit(e) {
     e.preventDefault();
     
@@ -1459,11 +1483,14 @@ async function handleBatterySubmit(e) {
             return;
         }
         
-        // Validate numeric fields
+        // Validate numeric fields with proper precision
         if (isNaN(charge) || isNaN(v0) || isNaN(v1) || isNaN(v2) || isNaN(rint)) {
             showNotification('Please enter valid numbers for all voltage fields', 'error');
             return;
         }
+        
+        // Format numbers to thousandths place
+        const formatToThousandths = (num) => parseFloat(num.toFixed(4));
         
         // Get current timestamp
         const now = new Date();
@@ -1474,37 +1501,36 @@ async function handleBatterySubmit(e) {
             timeScanned: timeScanned,
             beakStatus: batteryBeak,
             charge: charge,
-            v0: v0,
-            v1: v1,
-            v2: v2,
-            rint: rint,
+            v0: formatToThousandths(v0),
+            v1: formatToThousandths(v1),
+            v2: formatToThousandths(v2),
+            rint: formatToThousandths(rint),
             status: status
         };
         
         console.log('Submitting battery data:', batteryData);
         
-        // Always try to create first, if it fails due to duplicate, then update
-        let result;
-        try {
-            // Try to create new battery
-            result = await createBattery(batteryData);
-            showNotification(`Battery ${batteryId} created successfully!`, 'success');
-        } catch (createError) {
-            if (createError.message.includes('404') || createError.message.includes('already exists')) {
-                // If creation fails because battery exists, try to update
-                result = await updateBattery(batteryId, batteryData);
-                showNotification(`Battery ${batteryId} updated successfully!`, 'success');
-            } else {
-                throw createError;
-            }
+        // Always use POST - the backend will handle both create and update
+        const response = await fetch(API_ENDPOINTS.batteries, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(batteryData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
+        
+        const result = await response.json();
+        showNotification(result.message || `Battery ${batteryId} processed successfully!`, 'success');
         
         // Reload data
         await loadBatteries();
         await loadBatteryLogs();
         
-        // Clear form if it was a new battery
-        clearForm();
+        // Don't clear form automatically - allow for consecutive updates
+        // clearForm();
         
     } catch (error) {
         console.error('Error saving battery:', error);
@@ -1736,10 +1762,14 @@ function renderBatteryInventory() {
     });
 }
 
-// Create a battery card element
 function createBatteryCard(battery) {
     const card = document.createElement('div');
     card.className = 'battery-card';
+    
+    // Add decommissioned class if battery status is "Decommissioned"
+    if (battery.status === 'Decommissioned') {
+        card.classList.add('decommissioned');
+    }
     
     // Safe property access with defaults
     const batteryId = battery.id || battery.batteryId || 'Unknown';
@@ -1758,6 +1788,7 @@ function createBatteryCard(battery) {
     } else if (battery.lastScanned && battery.lastScanned !== 'Unknown') {
         timeScanned = battery.lastScanned;
     }
+    
     // Safe status indicator
     const statusClass = status.toLowerCase().replace(/\s+/g, '-');
     const statusIndicator = `<span class="status-indicator status-${statusClass}"></span>`;
@@ -1777,7 +1808,7 @@ function createBatteryCard(battery) {
     
     card.innerHTML = `
         <div class="battery-card-header">
-            <span class="battery-id">${batteryId}</span>
+            <span class="battery-id ${rint <= 0.014 ? 'good-rint' : ''}">${batteryId}</span>
             <span class="battery-status">${statusIndicator} ${status} ${timerHtml} ${stopwatchHtml}</span>
         </div>
         

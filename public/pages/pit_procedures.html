@@ -13,6 +13,7 @@
   <div class="mobile-menu" id="mobileMenu">
   <button class="mobile-menu-close" onclick="toggleMenu()">×</button>
   <a href="/" onclick="toggleMenu()">Home</a>
+  <a href="/pages/pit_procedures.html" onclick="toggleMenu()">Pit Procedures</a>
   <a href="/pages/ondeck.html" onclick="toggleMenu()">Ondeck</a>
   <a href="/pages/match_scouting.html" onclick="toggleMenu()">Match Scouting</a>
   <a href="/pages/pit_scouting.html" onclick="toggleMenu()">Pit Scouting</a>
@@ -78,6 +79,7 @@ document.addEventListener('touchmove', function(event) {
 <!-- Original navbar (hidden on mobile) -->
 <nav class="navbar">
   <a href="/">Home</a>
+  <a href="/pages/pit_procedures.html">Pit Procedures</a>
   <a href="/pages/ondeck.html">Ondeck</a>
   <a href="/pages/match_scouting.html">Match Scouting</a>
   <a href="/pages/pit_scouting.html">Pit Scouting</a>
@@ -99,6 +101,11 @@ document.addEventListener('touchmove', function(event) {
   <div class="center">
     <h1>Pit Procedures</h1>
     <p class="badge">FRC 4123 Scouting</p>
+    
+    <!-- Global Clear All Button -->
+    <div class="clear-all-container">
+      <button class="clear-all-btn" onclick="clearAllChecklists()">Clear All Checklists</button>
+    </div>
     
     <!-- Announcements Section -->
     <div id="announcements-container" class="announcements-container"></div>
@@ -261,6 +268,9 @@ async function loadChecklistData() {
   try {
     const response = await fetch('/api/checklist');
     checklistData = await response.json();
+    
+    // Update counters after loading data
+    updateAllChecklistCounters();
   } catch (error) {
     console.error('Error loading checklist data:', error);
     checklistData = {};
@@ -291,13 +301,27 @@ function renderChecklist(key, config, container) {
     checked: storedChecklist ? storedChecklist.checked : []
   };
   
-  let html = `<h2>${checklist.title}</h2><div class="checklist">`;
+  // Calculate progress
+  const totalItems = checklist.options.length;
+  const completedItems = checklist.checked.length;
+  
+  let html = `
+    <div class="checklist-header">
+      <div class="checklist-title-section">
+        <h2>${checklist.title}</h2>
+        <div class="checklist-counter" id="counter-${key}">${completedItems}/${totalItems} completed</div>
+      </div>
+      <button class="clear-section-btn" onclick="clearChecklistSection('${key}')">Clear Section</button>
+    </div>
+    <div class="checklist">
+  `;
   
   checklist.options.forEach((option, index) => {
     const isChecked = checklist.checked.includes(index);
+    const checkedClass = isChecked ? 'checked' : '';
     
     html += `
-      <div class="checklist-item">
+      <div class="checklist-item ${checkedClass}">
         <label>
           <input type="checkbox" data-key="${key}" data-index="${index}" 
                  ${isChecked ? 'checked' : ''} onchange="updateChecklistItem(this)">
@@ -311,11 +335,40 @@ function renderChecklist(key, config, container) {
   container.innerHTML = html;
 }
 
+// Update all checklist counters
+function updateAllChecklistCounters() {
+  for (const [key, checklist] of Object.entries(checklistData)) {
+    updateChecklistCounter(key);
+  }
+}
+
+// Update a specific checklist counter
+function updateChecklistCounter(key) {
+  const counterElement = document.getElementById(`counter-${key}`);
+  if (!counterElement) return;
+  
+  const checklist = checklistData[key];
+  if (!checklist) return;
+  
+  const totalItems = checklist.options ? checklist.options.length : 0;
+  const completedItems = checklist.checked ? checklist.checked.length : 0;
+  
+  counterElement.textContent = `${completedItems}/${totalItems} completed`;
+}
+
 // Update checklist item state
 async function updateChecklistItem(checkbox) {
   const key = checkbox.getAttribute('data-key');
   const index = parseInt(checkbox.getAttribute('data-index'));
   const isChecked = checkbox.checked;
+  const checklistItem = checkbox.closest('.checklist-item');
+  
+  // Update the visual state immediately
+  if (isChecked) {
+    checklistItem.classList.add('checked');
+  } else {
+    checklistItem.classList.remove('checked');
+  }
   
   // Update local state
   if (!checklistData[key]) {
@@ -336,6 +389,9 @@ async function updateChecklistItem(checkbox) {
   } else {
     checklistData[key].checked = checklistData[key].checked.filter(i => i !== index);
   }
+  
+  // Update the counter
+  updateChecklistCounter(key);
   
   // Send update to server
   try {
@@ -358,6 +414,12 @@ async function updateChecklistItem(checkbox) {
     console.error('Error updating checklist:', error);
     // Revert the checkbox state if update fails
     checkbox.checked = !isChecked;
+    // Also revert the visual state
+    if (isChecked) {
+      checklistItem.classList.remove('checked');
+    } else {
+      checklistItem.classList.add('checked');
+    }
     // Also revert the local state
     if (isChecked) {
       checklistData[key].checked = checklistData[key].checked.filter(i => i !== index);
@@ -367,6 +429,104 @@ async function updateChecklistItem(checkbox) {
         checklistData[key].checked.sort((a, b) => a - b);
       }
     }
+    // Revert the counter
+    updateChecklistCounter(key);
+  }
+}
+
+// Clear a specific checklist section
+async function clearChecklistSection(key) {
+  if (!confirm('Are you sure you want to clear this checklist section?')) {
+    return;
+  }
+  
+  try {
+    // Update local state
+    if (checklistData[key]) {
+      checklistData[key].checked = [];
+    }
+    
+    // Update checkboxes and visual state in the UI
+    const checkboxes = document.querySelectorAll(`input[type="checkbox"][data-key="${key}"]`);
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = false;
+      const checklistItem = checkbox.closest('.checklist-item');
+      checklistItem.classList.remove('checked');
+    });
+    
+    // Update the counter
+    updateChecklistCounter(key);
+    
+    // Send update to server
+    const response = await fetch(`/api/checklist/${key}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        checked: []
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Server error');
+    }
+    
+    console.log(`Checklist section ${key} cleared successfully`);
+  } catch (error) {
+    console.error('Error clearing checklist section:', error);
+    alert('Failed to clear checklist section. Please try again.');
+  }
+}
+
+// Clear all checklists
+async function clearAllChecklists() {
+  if (!confirm('Are you sure you want to clear ALL checklist sections?')) {
+    return;
+  }
+  
+  try {
+    // Get all checklist keys
+    const checklistKeys = Object.keys(checklistData);
+    
+    // Clear each checklist
+    for (const key of checklistKeys) {
+      // Update local state
+      checklistData[key].checked = [];
+      
+      // Update checkboxes and visual state in the UI
+      const checkboxes = document.querySelectorAll(`input[type="checkbox"][data-key="${key}"]`);
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+        const checklistItem = checkbox.closest('.checklist-item');
+        checklistItem.classList.remove('checked');
+      });
+      
+      // Update the counter
+      updateChecklistCounter(key);
+      
+      // Send update to server
+      const response = await fetch(`/api/checklist/${key}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          checked: []
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to clear checklist ${key}`);
+      }
+    }
+    
+    console.log('All checklists cleared successfully');
+  } catch (error) {
+    console.error('Error clearing all checklists:', error);
+    alert('Failed to clear all checklists. Please try again.');
   }
 }
 
@@ -376,6 +536,130 @@ document.addEventListener('DOMContentLoaded', loadPitContent);
 // Periodically refresh checklist data to sync with other users
 setInterval(loadChecklistData, 5000); // Refresh every 5 seconds
 </script>
+
+<style>
+/* Additional CSS for the clear buttons */
+.clear-all-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.clear-all-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.clear-all-btn:hover {
+  background-color: #d32f2f;
+}
+
+.checklist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.checklist-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.checklist-counter {
+  font-size: 14px;
+  color: #666;
+  font-weight: bold;
+}
+
+.clear-section-btn {
+  background-color: #ff9800;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.clear-section-btn:hover {
+  background-color: #f57c00;
+}
+
+.checklist-wrapper {
+  margin-bottom: 30px;
+  padding: 15px;
+  border: 1px solid rgb(2, 82, 174);
+  border-radius: 8px;
+  background-color: #2f2f2f;
+}
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  background-color: rgb(2, 82, 174);
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.checklist-item:hover {
+  background-color: rgb(1, 120, 255);
+  border-color: #ccc;
+}
+
+.checklist-item.checked {
+  background-color: #4CAF50; /* Green background when checked */
+  border-color: #388E3C;
+  color: white;
+}
+
+.checklist-item label {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  cursor: pointer;
+  margin: 0;
+}
+
+.checklist-item input[type="checkbox"] {
+  margin-right: 12px;
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+.checklist-item span {
+  flex: 1;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.checklist-item.checked span {
+  color: white;
+  font-weight: 500;
+}
+
+.checklist-item.checked input[type="checkbox"] {
+  accent-color: white;
+}
+</style>
 
 </body>
 </html>

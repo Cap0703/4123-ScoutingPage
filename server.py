@@ -248,7 +248,7 @@ def get_battery(battery_id):
 def create_battery():
     try:
         data = request.get_json()
-        print(f"Creating battery with data: {data}")  # Debug log
+        print(f"Creating/Updating battery with data: {data}")  # Debug log
         
         # Validate required fields
         # Handle both field names for compatibility
@@ -277,8 +277,9 @@ def create_battery():
         existing = cursor.fetchone()
         
         if existing:
+            # Battery exists - update it instead
             conn.close()
-            return jsonify({'error': 'Battery ID already exists'}), 400
+            return update_existing_battery(battery_id, data, time_scanned)
         
         # Determine usage count - increment if status is "In Use"
         usage_count = 1 if data['status'] == 'In Use' else 0
@@ -300,6 +301,22 @@ def create_battery():
             data['status']
         ))
         
+        # Create log entry
+        cursor.execute('''
+            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            battery_id, 
+            time_scanned,
+            data['status'], 
+            float(data['charge']), 
+            data['beakStatus'], 
+            float(data['v0']), 
+            float(data['v1']), 
+            float(data['v2']), 
+            float(data['rint'])
+        ))
+        
         conn.commit()
         conn.close()
         
@@ -309,6 +326,71 @@ def create_battery():
     except Exception as e:
         print(f"Error creating battery: {e}")  # Debug log
         return jsonify({'error': 'Failed to create battery', 'details': str(e)}), 500
+
+def update_existing_battery(battery_id, data, time_scanned):
+    """Helper function to update an existing battery"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get current battery data
+        cursor.execute('SELECT * FROM batteries WHERE id = ?', (battery_id,))
+        existing_battery = cursor.fetchone()
+        
+        if not existing_battery:
+            conn.close()
+            return jsonify({'error': 'Battery not found'}), 404
+        
+        # Determine usage count - increment if status is changing to "In Use"
+        usage_count = existing_battery['usage_count']
+        new_status = data.get('status', existing_battery['status'])
+        
+        # Increment usage count if changing to "In Use" from any other status
+        if existing_battery['status'] != 'In Use' and new_status == 'In Use':
+            usage_count += 1
+        
+        # Update battery with new data
+        cursor.execute('''
+            UPDATE batteries 
+            SET time_scanned = ?, usage_count = ?, beakStatus = ?, charge = ?, 
+                v0 = ?, v1 = ?, v2 = ?, rint = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (
+            time_scanned,
+            usage_count,
+            data.get('beakStatus', existing_battery['beakStatus']),
+            float(data.get('charge', existing_battery['charge'])),
+            float(data.get('v0', existing_battery['v0'])),
+            float(data.get('v1', existing_battery['v1'])),
+            float(data.get('v2', existing_battery['v2'])),
+            float(data.get('rint', existing_battery['rint'])),
+            new_status,
+            battery_id
+        ))
+        
+        # Create log entry for the update
+        cursor.execute('''
+            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            battery_id,
+            time_scanned,
+            new_status,
+            float(data.get('charge', existing_battery['charge'])),
+            data.get('beakStatus', existing_battery['beakStatus']),
+            float(data.get('v0', existing_battery['v0'])),
+            float(data.get('v1', existing_battery['v1'])),
+            float(data.get('v2', existing_battery['v2'])),
+            float(data.get('rint', existing_battery['rint']))
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Battery updated successfully', 'id': battery_id})
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to update battery', 'details': str(e)}), 500
     
 @app.route('/api/batteries/<battery_id>', methods=['PUT'])
 @login_required()
