@@ -107,9 +107,19 @@
           "Check chain tension is adequate",
           "Check motors are tightened properly",
           "Check arm is connected to arm bar (on intake) properly",
-          "Check spacers are not damaged",
-          "Check giant churro is not damaged"
+          "Check spacers are not damaged"
         ]
+      },
+      "Elevator": {
+      "type": "checklist",
+      "title": "Elevator",
+      "options": [
+      "Check the rope to make sure it is not damaged",
+      "Check the rope anchor",
+      "Check all screws",
+      "Check pullies",
+      "Check to make sure chain guard is good"
+      ]
       },
       "Swerve Drive": {
         "type": "checklist",
