@@ -590,6 +590,10 @@
                             <label for="rint">Rint (Ohms)</label>
                             <input type="number" id="rint" step="0.001" required placeholder="0.025">
                         </div>
+                        <div class="form-group">
+                            <label for="yearBought">Year Bought</label>
+                            <input type="text" id="yearBought" placeholder="e.g., 2024 or N/A" value="N/A">
+                        </div>
                     </div>
                     
                     <div class="battery-visual-container">
@@ -1137,10 +1141,10 @@ function resetChargingStopwatches() {
     // Update the time_scanned for all charging batteries to now
     batteries.forEach(battery => {
         if (battery.status === 'Charging') {
-            battery.timeScanned = currentTimeString;
+            battery.time_scanned = currentTimeString;
             
             // Update the battery in the database
-            updateBatteryTimeScanned(battery.id, currentTimeString);
+            updateBatterytime_scanned(battery.id, currentTimeString);
         }
     });
     
@@ -1148,21 +1152,22 @@ function resetChargingStopwatches() {
     loadBatteries();
 }
 
-async function updateBatteryTimeScanned(batteryId, timeScanned) {
+async function updateBatterytime_scanned(batteryId, time_scanned) {
     try {
         const battery = batteries.find(b => b.id === batteryId);
         if (!battery) return;
         
         const batteryData = {
             id: batteryId,
-            timeScanned: timeScanned,
+            time_scanned: time_scanned,
             beakStatus: battery.beakStatus,
             charge: battery.charge,
             v0: battery.v0,
             v1: battery.v1,
             v2: battery.v2,
             rint: battery.rint,
-            status: battery.status
+            status: battery.status,
+            year_bought: battery.year_bought || 'N/A'
         };
         
         const response = await fetch(API_ENDPOINTS.battery(batteryId), {
@@ -1280,8 +1285,8 @@ function updateAllStopwatches() {
     });
 }
 
-function parseTimeScanned(timeScanned) {
-    if (!timeScanned || timeScanned === 'Unknown') {
+function parsetime_scanned(time_scanned) {
+    if (!time_scanned || time_scanned === 'Unknown') {
         return null;
     }
     
@@ -1289,14 +1294,14 @@ function parseTimeScanned(timeScanned) {
         // Handle different time formats
         let datePart, timePart;
         
-        if (timeScanned.includes('; ')) {
+        if (time_scanned.includes('; ')) {
             // Format: "9/24/2025; 8:18:56"
-            [datePart, timePart] = timeScanned.split('; ');
-        } else if (timeScanned.includes(', ')) {
+            [datePart, timePart] = time_scanned.split('; ');
+        } else if (time_scanned.includes(', ')) {
             // Format: "9/24/2025, 8:18:56 PM"
-            [datePart, timePart] = timeScanned.split(', ');
+            [datePart, timePart] = time_scanned.split(', ');
         } else {
-            console.warn(`Unknown time format: ${timeScanned}`);
+            console.warn(`Unknown time format: ${time_scanned}`);
             return null;
         }
         
@@ -1349,14 +1354,14 @@ function parseTimeScanned(timeScanned) {
         return scannedTime;
         
     } catch (error) {
-        console.warn(`Error parsing timeScanned: ${timeScanned}`, error);
+        console.warn(`Error parsing time_scanned: ${time_scanned}`, error);
         return null;
     }
 }
 
-function updateCooldownTimer(batteryId, status, timeScanned) {
+function updateCooldownTimer(batteryId, status, time_scanned) {
     // Use the new time parser
-    const scannedTime = parseTimeScanned(timeScanned);
+    const scannedTime = parsetime_scanned(time_scanned);
     if (!scannedTime) {
         const timerElement = document.getElementById(`timer-${batteryId}`);
         if (timerElement) {
@@ -1395,9 +1400,9 @@ function updateCooldownTimer(batteryId, status, timeScanned) {
     }
 }
 
-function updateStopwatch(batteryId, status, timeScanned) {
-    // Handle missing timeScanned
-    if (!timeScanned || timeScanned === 'Unknown') {
+function updateStopwatch(batteryId, status, time_scanned) {
+    // Handle missing time_scanned
+    if (!time_scanned || time_scanned === 'Unknown') {
         const stopwatchElement = document.getElementById(`stopwatch-${batteryId}`);
         if (stopwatchElement) {
             stopwatchElement.textContent = 'N/A';
@@ -1417,7 +1422,7 @@ function updateStopwatch(batteryId, status, timeScanned) {
     }
     
     // Use the new time parser
-    const scannedTime = parseTimeScanned(timeScanned);
+    const scannedTime = parsetime_scanned(time_scanned);
     if (!scannedTime) {
         const stopwatchElement = document.getElementById(`stopwatch-${batteryId}`);
         if (stopwatchElement) {
@@ -1470,6 +1475,7 @@ async function handleBatterySubmit(e) {
         const v2 = parseFloat(document.getElementById('v2').value);
         const rint = parseFloat(document.getElementById('rint').value);
         const status = document.getElementById('status').value;
+        const yearBought = document.getElementById('yearBought').value.trim();
         
         // Validate required fields
         if (!batteryId || !batteryBeak || !status) {
@@ -1494,18 +1500,19 @@ async function handleBatterySubmit(e) {
         
         // Get current timestamp
         const now = new Date();
-        const timeScanned = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}; ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        const time_scanned = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}; ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
         
         const batteryData = {
             id: batteryId,
-            timeScanned: timeScanned,
+            time_scanned: time_scanned,
             beakStatus: batteryBeak,
             charge: charge,
             v0: formatToThousandths(v0),
             v1: formatToThousandths(v1),
             v2: formatToThousandths(v2),
             rint: formatToThousandths(rint),
-            status: status
+            status: status,
+            year_bought: yearBought || 'N/A'
         };
         
         console.log('Submitting battery data:', batteryData);
@@ -1612,18 +1619,14 @@ async function loadBatteries() {
         const data = await response.json();
         console.log('API Response:', data);
         
-        // Ensure we have an array and handle property names consistently
         batteries = Array.isArray(data) ? data : [];
 
-        // Normalize property names - handle both timeScanned and time_scanned
         batteries = batteries.map(battery => {
-            // Ensure we have the correct timestamp format
-            let timeScannedValue = battery.timeScanned || battery.time_scanned;
+            let time_scannedValue = battery.time_scanned || battery.time_scanned;
             
-            // If timeScanned is "Unknown", use the current time
-            if (!timeScannedValue || timeScannedValue === 'Unknown') {
+            if (!time_scannedValue || time_scannedValue === 'Unknown') {
                 const now = new Date();
-                timeScannedValue = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}; ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                time_scannedValue = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}; ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
             }
             
             return {
@@ -1635,9 +1638,9 @@ async function loadBatteries() {
                 v1: battery.v1 || 0,
                 v2: battery.v2 || 0,
                 rint: battery.rint || 0,
-                usage_count: battery.usage_count || 0, // Ensure usage_count is included
-                timeScanned: timeScannedValue, // Always use consistent name
-                time_scanned: timeScannedValue, // Also include for server compatibility
+                usage_count: battery.usage_count || 0,
+                year_bought: battery.year_bought || 'N/A', // ADD THIS LINE
+                time_scanned: time_scannedValue,
             };
         });
         
@@ -1658,7 +1661,7 @@ async function loadBatteries() {
             v2: 11.20,
             rint: 0.025,
             usage_count: 0, // Add usage_count to sample data
-            timeScanned: new Date().toLocaleString()
+            time_scanned: new Date().toLocaleString()
         }];
         renderBatteryInventory();
         showNotification('Using sample data due to API error', 'warning');
@@ -1780,13 +1783,13 @@ function createBatteryCard(battery) {
     const v1 = battery.v1 !== undefined ? battery.v1 : 0;
     const v2 = battery.v2 !== undefined ? battery.v2 : 0;
     const rint = battery.rint !== undefined ? battery.rint : 0;
-    let timeScanned = 'Unknown';
-    if (battery.timeScanned && battery.timeScanned !== 'Unknown') {
-        timeScanned = battery.timeScanned;
+    let time_scanned = 'Unknown';
+    if (battery.time_scanned && battery.time_scanned !== 'Unknown') {
+        time_scanned = battery.time_scanned;
     } else if (battery.time_scanned && battery.time_scanned !== 'Unknown') {
-        timeScanned = battery.time_scanned;
+        time_scanned = battery.time_scanned;
     } else if (battery.lastScanned && battery.lastScanned !== 'Unknown') {
-        timeScanned = battery.lastScanned;
+        time_scanned = battery.lastScanned;
     }
     
     // Safe status indicator
@@ -1826,6 +1829,10 @@ function createBatteryCard(battery) {
                 <div class="stat-label">Uses</div>
             </div>
             <div class="stat-item">
+                <div class="stat-value">${battery.year_bought === 'N/A' || !battery.year_bought ? 'N/A' : battery.year_bought}</div>
+                <div class="stat-label">Year Bought</div>
+            </div>
+            <div class="stat-item">
                 <div class="stat-value">${v0}V</div>
                 <div class="stat-label">V0 @ 0A</div>
             </div>
@@ -1851,15 +1858,15 @@ function createBatteryCard(battery) {
         </div>
         
         <div style="margin-top: 10px; font-size: 0.8em; color: #ccc;">
-            Last scanned: ${timeScanned}
+            Last scanned: ${time_scanned}
         </div>
     `;
     
     // Initialize the stopwatch and timer immediately
     setTimeout(() => {
-        updateStopwatch(batteryId, status, timeScanned);
+        updateStopwatch(batteryId, status, time_scanned);
         if (status === 'Cooldown to Robot' || status === 'Cooldown to Charge') {
-            updateCooldownTimer(batteryId, status, timeScanned);
+            updateCooldownTimer(batteryId, status, time_scanned);
         }
     }, 100);
     
@@ -1880,6 +1887,7 @@ function editBattery(batteryId) {
     document.getElementById('v1').value = battery.v1;
     document.getElementById('v2').value = battery.v2;
     document.getElementById('rint').value = battery.rint;
+    document.getElementById('yearBought').value = battery.year_bought || 'N/A';
     
     updateBatteryVisual();
     
@@ -1905,7 +1913,8 @@ function quickScan(batteryId) {
             'v0': battery.v0 || '',
             'v1': battery.v1 || '',
             'v2': battery.v2 || '',
-            'rint': battery.rint || ''
+            'rint': battery.rint || '',
+            'yearBought': battery.year_bought || 'N/A'
         };
         
         // Set all form values
@@ -1976,7 +1985,7 @@ function renderBatteryLogs() {
         // Safe property access for logs with defaults
         const logId = log.id || 'Unknown';
         const batteryId = log.battery_id || log.batteryId || 'Unknown';
-        const timeScanned = log.time_scanned || log.timeScanned || 'Unknown';
+        const time_scanned = log.time_scanned || log.time_scanned || 'Unknown';
         const status = log.status || 'Unknown';
         const charge = log.charge !== undefined ? log.charge : 0;
         const beakStatus = log.beakStatus || 'Unknown';
@@ -1989,7 +1998,7 @@ function renderBatteryLogs() {
         
         row.innerHTML = `
             <td>${batteryId}</td>
-            <td>${timeScanned}</td>
+            <td>${time_scanned}</td>
             <td>${status}</td>
             <td>${charge}%</td>
             <td>${beakStatus}</td>
@@ -2011,7 +2020,7 @@ function viewLogDetails(logId) {
     
     alert(`Battery Log Details:\n
 Battery ID: ${log.batteryId}
-Time Scanned: ${log.timeScanned}
+Time Scanned: ${log.time_scanned}
 Status: ${log.status}
 Charge: ${log.charge}%
 Beak Status: ${log.beakStatus}
@@ -2076,7 +2085,7 @@ function filterLogs() {
     
     const filteredLogs = batteryLogs.filter(log => {
         const matchesSearch = log.batteryId.toLowerCase().includes(searchTerm);
-        const matchesDate = !dateFilter || log.timeScanned.includes(dateFilter.replace(/-/g, '/'));
+        const matchesDate = !dateFilter || log.time_scanned.includes(dateFilter.replace(/-/g, '/'));
         
         return matchesSearch && matchesDate;
     });
@@ -2089,7 +2098,7 @@ function filterLogs() {
         
         row.innerHTML = `
             <td>${log.batteryId}</td>
-            <td>${log.timeScanned}</td>
+            <td>${log.time_scanned}</td>
             <td>${log.status}</td>
             <td>${log.charge}%</td>
             <td>${log.beakStatus}</td>
@@ -2116,7 +2125,7 @@ function exportLogs() {
         headers.join(','),
         ...batteryLogs.map(log => [
             log.batteryId,
-            `"${log.timeScanned}"`,
+            `"${log.time_scanned}"`,
             log.status,
             log.charge,
             log.beakStatus,

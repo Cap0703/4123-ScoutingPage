@@ -50,8 +50,8 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
-    #cursor.execute("DROP TABLE IF EXISTS batteries")
-    #cursor.execute("DROP TABLE IF EXISTS battery_logs")
+    cursor.execute("DROP TABLE IF EXISTS batteries")
+    cursor.execute("DROP TABLE IF EXISTS battery_logs")
 
 
     conn.execute('''
@@ -106,11 +106,11 @@ def init_db():
             v2 REAL NOT NULL,
             rint REAL NOT NULL,
             status TEXT NOT NULL,
+            year_bought TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
     conn.execute('''
         CREATE TABLE IF NOT EXISTS battery_logs(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,6 +123,7 @@ def init_db():
             v1 REAL NOT NULL,
             v2 REAL NOT NULL,
             rint REAL NOT NULL,
+            year_bought TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (battery_id) REFERENCES batteries (id)
         )
@@ -193,30 +194,21 @@ def get_batteries():
         batteries = cursor.fetchall()
         conn.close()
         
+        # Convert to list of dictionaries and ensure consistent field names
         batteries_list = []
         for battery in batteries:
             battery_dict = dict(battery)
-            # Ensure consistent field names - handle both formats
+            # Ensure consistent field names for frontend compatibility
             battery_dict['timeScanned'] = battery_dict.get('time_scanned', 'Unknown')
-            battery_dict['time_scanned'] = battery_dict.get('time_scanned', 'Unknown')
             battery_dict['beakStatus'] = battery_dict.get('beakStatus', 'Good')
             battery_dict['usage_count'] = battery_dict.get('usage_count', 0)
-            
-            # Ensure all required fields have default values
-            battery_dict['charge'] = battery_dict.get('charge', 0)
-            battery_dict['v0'] = battery_dict.get('v0', 0)
-            battery_dict['v1'] = battery_dict.get('v1', 0)
-            battery_dict['v2'] = battery_dict.get('v2', 0)
-            battery_dict['rint'] = battery_dict.get('rint', 0)
-            battery_dict['status'] = battery_dict.get('status', 'Unknown')
-            
+            battery_dict['year_bought'] = battery_dict.get('year_bought', 'N/A')
             batteries_list.append(battery_dict)
             
         return jsonify(batteries_list)
     except Exception as e:
-        print(f"Error in get_batteries: {e}")  # Debug log
         return jsonify({'error': 'Failed to fetch batteries', 'details': str(e)}), 500
-
+    
 @app.route('/api/batteries/<battery_id>', methods=['GET'])
 @login_required()
 def get_battery(battery_id):
@@ -250,15 +242,7 @@ def create_battery():
         data = request.get_json()
         print(f"Creating/Updating battery with data: {data}")  # Debug log
         
-        # Validate required fields
-        # Handle both field names for compatibility
-        time_scanned = data.get('timeScanned') or data.get('time_scanned')
-        
-        # If time_scanned is missing or invalid, generate current timestamp
-        if not time_scanned or time_scanned == 'Unknown':
-            now = datetime.now()
-            time_scanned = f"{now.month}/{now.day}/{now.year}; {now.hour}:{now.minute:02d}:{now.second:02d}"
-        
+        # Validate required fields with better error handling
         required_fields = ['id', 'beakStatus', 'charge', 'v0', 'v1', 'v2', 'rint', 'status']
         for field in required_fields:
             if field not in data:
@@ -268,6 +252,12 @@ def create_battery():
         battery_id = data['id']
         if not battery_id.startswith('4123') or len(battery_id) != 8 or not battery_id[4:].isdigit():
             return jsonify({'error': 'Battery ID must follow pattern 4123XXXX'}), 400
+        
+        # Handle time_scanned with better compatibility
+        time_scanned = data.get('timeScanned') or data.get('time_scanned')
+        if not time_scanned or time_scanned == 'Unknown':
+            now = datetime.now()
+            time_scanned = f"{now.month}/{now.day}/{now.year}; {now.hour}:{now.minute:02d}:{now.second:02d}"
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -284,37 +274,49 @@ def create_battery():
         # Determine usage count - increment if status is "In Use"
         usage_count = 1 if data['status'] == 'In Use' else 0
         
-        # Insert battery
+        # Convert all numeric values to float safely
+        try:
+            charge = float(data['charge'])
+            v0 = float(data['v0'])
+            v1 = float(data['v1'])
+            v2 = float(data['v2'])
+            rint = float(data['rint'])
+        except (ValueError, TypeError) as e:
+            return jsonify({'error': f'Invalid numeric value: {str(e)}'}), 400
+        
+        # Insert battery with proper field mapping
         cursor.execute('''
-            INSERT INTO batteries (id, time_scanned, usage_count, beakStatus, charge, v0, v1, v2, rint, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO batteries (id, time_scanned, usage_count, beakStatus, charge, v0, v1, v2, rint, status, year_bought)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             battery_id, 
             time_scanned,
             usage_count, 
             data['beakStatus'], 
-            float(data['charge']), 
-            float(data['v0']), 
-            float(data['v1']), 
-            float(data['v2']), 
-            float(data['rint']), 
-            data['status']
+            charge, 
+            v0, 
+            v1, 
+            v2, 
+            rint, 
+            data['status'],
+            data.get('year_bought', 'N/A')
         ))
-        
+
         # Create log entry
         cursor.execute('''
-            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint, year_bought)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             battery_id, 
             time_scanned,
             data['status'], 
-            float(data['charge']), 
+            charge, 
             data['beakStatus'], 
-            float(data['v0']), 
-            float(data['v1']), 
-            float(data['v2']), 
-            float(data['rint'])
+            v0, 
+            v1, 
+            v2, 
+            rint,
+            data.get('year_bought', 'N/A')
         ))
         
         conn.commit()
@@ -323,6 +325,9 @@ def create_battery():
         print(f"Battery {battery_id} created successfully")  # Debug log
         return jsonify({'message': 'Battery created successfully', 'id': battery_id})
         
+    except sqlite3.IntegrityError as e:
+        print(f"Database integrity error: {e}")
+        return jsonify({'error': 'Battery ID already exists or database constraint violation'}), 400
     except Exception as e:
         print(f"Error creating battery: {e}")  # Debug log
         return jsonify({'error': 'Failed to create battery', 'details': str(e)}), 500
@@ -349,39 +354,56 @@ def update_existing_battery(battery_id, data, time_scanned):
         if existing_battery['status'] != 'In Use' and new_status == 'In Use':
             usage_count += 1
         
-        # Update battery with new data
+        # Get year_bought with proper fallback logic
+        year_bought = data.get('year_bought')  # Try to get from incoming data first
+        if year_bought is None:  # If not provided, use existing value
+            year_bought = existing_battery.get('year_bought', 'N/A')
+        
+        # Convert numeric values safely
+        try:
+            charge = float(data.get('charge', existing_battery['charge']))
+            v0 = float(data.get('v0', existing_battery['v0']))
+            v1 = float(data.get('v1', existing_battery['v1']))
+            v2 = float(data.get('v2', existing_battery['v2']))
+            rint = float(data.get('rint', existing_battery['rint']))
+        except (ValueError, TypeError) as e:
+            return jsonify({'error': f'Invalid numeric value: {str(e)}'}), 400
+        
+        # Update battery with new data including year_bought
         cursor.execute('''
             UPDATE batteries 
             SET time_scanned = ?, usage_count = ?, beakStatus = ?, charge = ?, 
-                v0 = ?, v1 = ?, v2 = ?, rint = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                v0 = ?, v1 = ?, v2 = ?, rint = ?, status = ?, year_bought = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ''', (
             time_scanned,
             usage_count,
             data.get('beakStatus', existing_battery['beakStatus']),
-            float(data.get('charge', existing_battery['charge'])),
-            float(data.get('v0', existing_battery['v0'])),
-            float(data.get('v1', existing_battery['v1'])),
-            float(data.get('v2', existing_battery['v2'])),
-            float(data.get('rint', existing_battery['rint'])),
+            charge,
+            v0,
+            v1,
+            v2,
+            rint,
             new_status,
+            year_bought,
             battery_id
         ))
         
-        # Create log entry for the update
+        # Create log entry for the update with year_bought
         cursor.execute('''
-            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint, year_bought)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             battery_id,
             time_scanned,
             new_status,
-            float(data.get('charge', existing_battery['charge'])),
+            charge,
             data.get('beakStatus', existing_battery['beakStatus']),
-            float(data.get('v0', existing_battery['v0'])),
-            float(data.get('v1', existing_battery['v1'])),
-            float(data.get('v2', existing_battery['v2'])),
-            float(data.get('rint', existing_battery['rint']))
+            v0,
+            v1,
+            v2,
+            rint,
+            year_bought
         ))
         
         conn.commit()
@@ -390,8 +412,9 @@ def update_existing_battery(battery_id, data, time_scanned):
         return jsonify({'message': 'Battery updated successfully', 'id': battery_id})
         
     except Exception as e:
+        print(f"Error updating battery: {e}")
         return jsonify({'error': 'Failed to update battery', 'details': str(e)}), 500
-    
+
 @app.route('/api/batteries/<battery_id>', methods=['PUT'])
 @login_required()
 def update_battery(battery_id):
@@ -420,11 +443,17 @@ def update_battery(battery_id):
         
         time_scanned = data.get('timeScanned') or data.get('time_scanned', existing_battery['time_scanned'])
         
-        # Update battery
+        # Get year_bought with default value
+        # Get year_bought with proper fallback logic
+        year_bought = data.get('year_bought')  # Try to get from incoming data first
+        if year_bought is None:  # If not provided, use existing value
+            year_bought = existing_battery.get('year_bought', 'N/A')
+        
+        # Update battery including year_bought
         cursor.execute('''
             UPDATE batteries 
             SET time_scanned = ?, usage_count = ?, beakStatus = ?, charge = ?, 
-                v0 = ?, v1 = ?, v2 = ?, rint = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                v0 = ?, v1 = ?, v2 = ?, rint = ?, status = ?, year_bought = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ''', (
             time_scanned,
@@ -436,13 +465,14 @@ def update_battery(battery_id):
             float(data.get('v2', existing_battery['v2'])),
             float(data.get('rint', existing_battery['rint'])),
             new_status,
+            year_bought,  # Add this
             battery_id
         ))
         
-        # Create log entry for significant changes
+        # Create log entry for significant changes with year_bought
         cursor.execute('''
-            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint, year_bought)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             battery_id,
             data.get('timeScanned', existing_battery['time_scanned']),
@@ -452,7 +482,8 @@ def update_battery(battery_id):
             float(data.get('v0', existing_battery['v0'])),
             float(data.get('v1', existing_battery['v1'])),
             float(data.get('v2', existing_battery['v2'])),
-            float(data.get('rint', existing_battery['rint']))
+            float(data.get('rint', existing_battery['rint'])),
+            year_bought  # Add this
         ))
         
         conn.commit()
@@ -507,8 +538,11 @@ def advance_battery_status(battery_id):
             conn.close()
             return jsonify({'error': 'Battery not found'}), 404
         
+        # Convert battery row to dict for safe access
+        battery_dict = dict(battery)
+        
         # Determine next status
-        current_status = battery['status']
+        current_status = battery_dict['status']
         if current_status not in status_order:
             current_status = "Charging"  # Default to start
         
@@ -517,7 +551,7 @@ def advance_battery_status(battery_id):
         next_status = status_order[next_status_index]
         
         # Update usage count if advancing to "In Use"
-        usage_count = battery['usage_count']
+        usage_count = battery_dict['usage_count']
         if next_status == "In Use" and current_status != "In Use":
             usage_count += 1
         
@@ -532,13 +566,21 @@ def advance_battery_status(battery_id):
             WHERE id = ?
         ''', (time_scanned, usage_count, next_status, battery_id))
         
-        # Create log entry
+        # Create log entry - FIXED: Use battery_dict for safe access
         cursor.execute('''
-            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO battery_logs (battery_id, time_scanned, status, charge, beakStatus, v0, v1, v2, rint, year_bought)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            battery_id, time_scanned, next_status, battery['charge'], 
-            battery['beakStatus'], battery['v0'], battery['v1'], battery['v2'], battery['rint']
+            battery_id, 
+            time_scanned, 
+            next_status, 
+            battery_dict['charge'], 
+            battery_dict['beakStatus'], 
+            battery_dict['v0'], 
+            battery_dict['v1'], 
+            battery_dict['v2'], 
+            battery_dict['rint'],
+            battery_dict.get('year_bought', 'N/A')  # Safe access with get()
         ))
         
         conn.commit()
@@ -550,6 +592,7 @@ def advance_battery_status(battery_id):
             'time_scanned': time_scanned
         })
     except Exception as e:
+        print(f"Error advancing battery status: {e}")
         return jsonify({'error': 'Failed to advance battery status', 'details': str(e)}), 500
     
 @app.route('/api/battery-logs', methods=['GET'])
