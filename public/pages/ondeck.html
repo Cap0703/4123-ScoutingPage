@@ -148,6 +148,20 @@
             font-weight: bold;
         }
         
+        .alliance-avg-score {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .red-avg {
+            color: #e74c3c;
+        }
+        
+        .blue-avg {
+            color: #3498db;
+        }
+        
         .teams-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -237,6 +251,12 @@
         
         .blue-score {
             color: #3498db;
+        }
+        
+        .avg-total {
+            font-size: 0.9em;
+            margin-top: 5px;
+            font-weight: normal;
         }
         
         .error {
@@ -511,7 +531,7 @@ document.addEventListener('touchmove', function(event) {
         <section class="search-section">
             <div class="input-group">
                 <label for="eventKey">Event Key</label>
-                <input type="text" id="eventKey" placeholder="e.g., 2025caav" value="2025caav">
+                <input type="text" id="eventKey" placeholder="e.g., 2025cass" value="2025cass">
             </div>
             
             <div class="input-group">
@@ -526,7 +546,7 @@ document.addEventListener('touchmove', function(event) {
             
             <div class="input-group">
                 <label for="matchNumber">Match Number</label>
-                <input type="number" id="matchNumber" placeholder="e.g., 1" value="2" min="1">
+                <input type="number" id="matchNumber" placeholder="e.g., 1" value="1" min="1">
             </div>
             
             <button onclick="loadMatchData()">Load Match Data</button>
@@ -546,7 +566,10 @@ document.addEventListener('touchmove', function(event) {
             <div class="alliance-section red" id="redAllianceSection">
                 <div class="alliance-header">
                     <div class="alliance-title red-title">Red Alliance</div>
-                    <div class="alliance-score red-score" id="redScore"></div>
+                    <div class="alliance-scores">
+                        <div class="alliance-score red-score" id="redScore"></div>
+                        <div class="alliance-avg-score red-avg" id="redAvgScore"></div>
+                    </div>
                 </div>
                 <div class="teams-container" id="redTeamsContainer"></div>
             </div>
@@ -555,7 +578,10 @@ document.addEventListener('touchmove', function(event) {
             <div class="alliance-section blue" id="blueAllianceSection">
                 <div class="alliance-header">
                     <div class="alliance-title blue-title">Blue Alliance</div>
-                    <div class="alliance-score blue-score" id="blueScore"></div>
+                    <div class="alliance-scores">
+                        <div class="alliance-score blue-score" id="blueScore"></div>
+                        <div class="alliance-avg-score blue-avg" id="blueAvgScore"></div>
+                    </div>
                 </div>
                 <div class="teams-container" id="blueTeamsContainer"></div>
             </div>
@@ -694,6 +720,71 @@ document.addEventListener('touchmove', function(event) {
             // Set alliance scores
             document.getElementById("redScore").textContent = `Score: ${match.alliances.red.score}`;
             document.getElementById("blueScore").textContent = `Score: ${match.alliances.blue.score}`;
+            
+            // Calculate and display predicted averages
+            calculateAndDisplayPredictedAverages(match);
+        }
+        
+        // Calculate and display predicted average totals for alliances
+        function calculateAndDisplayPredictedAverages(match) {
+            const redTeams = match.alliances.red.team_keys;
+            const blueTeams = match.alliances.blue.team_keys;
+            
+            // Fetch average data for all teams
+            const redPromises = redTeams.map(teamKey => {
+                const teamNumber = teamKey.substring(3); // Remove "frc" prefix
+                return fetchTeamAverage(teamNumber);
+            });
+            
+            const bluePromises = blueTeams.map(teamKey => {
+                const teamNumber = teamKey.substring(3); // Remove "frc" prefix
+                return fetchTeamAverage(teamNumber);
+            });
+            
+            Promise.all([...redPromises, ...bluePromises])
+                .then(results => {
+                    const redAverages = results.slice(0, redTeams.length);
+                    const blueAverages = results.slice(redTeams.length);
+                    
+                    // SUM of all team averages in the alliance (not average of averages)
+                    const redTotal = redAverages.reduce((sum, avg) => sum + (avg.avg_total || 0), 0);
+                    const blueTotal = blueAverages.reduce((sum, avg) => sum + (avg.avg_total || 0), 0);
+                    
+                    // Display alliance total scores (sum of all team averages)
+                    document.getElementById("redAvgScore").textContent = `Predicted Total: ${redTotal.toFixed(1)}`;
+                    document.getElementById("blueAvgScore").textContent = `Predicted Total: ${blueTotal.toFixed(1)}`;
+                    
+                    // Add prediction to match info
+                    const predictionHTML = `
+                        <p><strong>Predicted Alliance Totals:</strong></p>
+                        <p style="color:#e74c3c;">Red Total: ${redTotal.toFixed(1)}</p>
+                        <p style="color:#3498db;">Blue Total: ${blueTotal.toFixed(1)}</p>
+                        <p><em>${redTotal > blueTotal 
+                            ? "🔥 Red predicted to win"
+                            : blueTotal > redTotal 
+                                ? "💙 Blue predicted to win"
+                                : "🤝 Even match predicted"}</em></p>
+                    `;
+                    document.getElementById("matchInfo").insertAdjacentHTML("beforeend", predictionHTML);
+                })
+                .catch(error => {
+                    console.error("Error calculating predicted averages:", error);
+                });
+        }
+        
+        // Fetch team average from local server
+        function fetchTeamAverage(teamNumber) {
+            return fetch(`/api/team/${teamNumber}/averages`)
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`Failed to fetch average for team ${teamNumber}`);
+                    }
+                    return res.json();
+                })
+                .catch(err => {
+                    console.warn(`No average data for ${teamNumber}:`, err);
+                    return { avg_total: 0 };
+                });
         }
         
         // Display information for an alliance
@@ -701,47 +792,67 @@ document.addEventListener('touchmove', function(event) {
             const teamsContainer = document.getElementById(allianceColor + "TeamsContainer");
             teamsContainer.innerHTML = "";
             
-            // Fetch data for each team
-            const teamPromises = alliance.team_keys.map(teamKey => 
-                fetchTBA(`team/${teamKey}`)
-                    .then(teamData => {
-                        if (teamData) {
-                            // Create team card
-                            const teamCard = document.createElement("div");
-                            teamCard.className = "team-card";
-                            
-                            // Extract team number from team key (e.g., "frc254" -> "254")
-                            const teamNumber = teamData.team_number;
-                            
-                            teamCard.innerHTML = `
-                                <h3>Team ${teamNumber}: ${teamData.nickname}</h3>
-                                <div class="info-item">
-                                    <span class="info-label">Location:</span>
-                                    <span class="info-value">${teamData.city}, ${teamData.state_prov}, ${teamData.country}</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Rookie Year:</span>
-                                    <span class="info-value">${teamData.rookie_year}</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Website:</span>
-                                    <span class="info-value">${teamData.website ? `<a href="${teamData.website}" target="_blank">${teamData.website}</a>` : "Not available"}</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">TBA Page:</span>
-                                    <span class="info-value"><a href="https://www.thebluealliance.com/team/${teamNumber}" target="_blank">View on The Blue Alliance</a></span>
-                                </div>
-                                <a href="/pages/team_summary.html?team=${teamNumber}" class="team-summary-link" target="_blank">View Team Summary</a>
-                            `;
-                            teamsContainer.appendChild(teamCard);
-                        }
-                    })
-            );
-            
-            // Wait for all team data to load
-            Promise.all(teamPromises).catch(error => {
-                console.error("Error loading team data:", error);
+            // Calculate alliance total (sum of all team averages)
+            const teamPromises = alliance.team_keys.map(teamKey => {
+                const teamNumber = teamKey.substring(3); // Remove "frc" prefix
+                return fetchTeamAverage(teamNumber);
             });
+            
+            Promise.all(teamPromises)
+                .then(teamAverages => {
+                    const allianceTotal = teamAverages.reduce((sum, avg) => sum + (avg.avg_total || 0), 0);
+                    
+                    // Update alliance total display (sum of all team averages)
+                    document.getElementById(allianceColor + "AvgScore").textContent = `Predicted Total: ${allianceTotal.toFixed(1)}`;
+                    
+                    // Create team cards
+                    alliance.team_keys.forEach((teamKey, index) => {
+                        fetchTBA(`team/${teamKey}`)
+                            .then(teamData => {
+                                if (teamData) {
+                                    const teamCard = document.createElement("div");
+                                    teamCard.className = "team-card";
+                                    
+                                    // Extract team number from team key (e.g., "frc254" -> "254")
+                                    const teamNumber = teamData.team_number;
+                                    const teamAvg = teamAverages[index] || { avg_total: 0 };
+                                    
+                                    teamCard.innerHTML = `
+                                        <h3>Team ${teamNumber}: ${teamData.nickname}</h3>
+                                        <div class="info-item">
+                                            <span class="info-label">Location:</span>
+                                            <span class="info-value">${teamData.city}, ${teamData.state_prov}, ${teamData.country}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Rookie Year:</span>
+                                            <span class="info-value">${teamData.rookie_year}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Avg Points:</span>
+                                            <span class="info-value">${teamAvg.avg_total ? teamAvg.avg_total.toFixed(1) : 'N/A'}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Website:</span>
+                                            <span class="info-value">${teamData.website ? `<a href="${teamData.website}" target="_blank">${teamData.website}</a>` : "Not available"}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">TBA Page:</span>
+                                            <span class="info-value"><a href="https://www.thebluealliance.com/team/${teamNumber}" target="_blank">View on The Blue Alliance</a></span>
+                                        </div>
+                                        <a href="/pages/team_summary.html?team=${teamNumber}" class="team-summary-link" target="_blank">View Team Summary</a>
+                                    `;
+                                    
+                                    teamsContainer.appendChild(teamCard);
+                                }
+                            })
+                            .catch(error => {
+                                console.error("Error loading team data:", error);
+                            });
+                    });
+                })
+                .catch(error => {
+                    console.error("Error calculating alliance total:", error);
+                });
         }
         
         // Find related matches (previous and upcoming)
@@ -786,33 +897,79 @@ document.addEventListener('touchmove', function(event) {
                 return;
             }
             
-            matches.forEach(match => {
-                const matchTime = new Date(match.time * 1000);
-                const matchCard = document.createElement("div");
-                matchCard.className = "match-card";
+            // Calculate totals for all matches first
+            const matchPromises = matches.map(match => {
+                const redTeams = match.alliances.red.team_keys;
+                const blueTeams = match.alliances.blue.team_keys;
                 
-                // Add win/loss/tie class if match has been played
-                if (match.alliances.red.score !== null && match.alliances.blue.score !== null) {
-                    if (match.alliances.red.score > match.alliances.blue.score) {
-                        matchCard.classList.add("win", "red-win");
-                    } else if (match.alliances.red.score < match.alliances.blue.score) {
-                        matchCard.classList.add("win", "blue-win");
-                    } else {
-                        matchCard.classList.add("tie");
-                    }
-                }
+                const redPromises = redTeams.map(teamKey => {
+                    const teamNumber = teamKey.substring(3);
+                    return fetchTeamAverage(teamNumber);
+                });
                 
-                matchCard.innerHTML = `
-                    <h4>${match.comp_level.toUpperCase()} Match ${match.match_number}</h4>
-                    <p><strong>Red:</strong> ${match.alliances.red.team_keys.map(t => t.substring(3)).join(", ")} 
-                    | <span class="score red-score">${match.alliances.red.score !== null ? match.alliances.red.score : 'TBD'}</span></p>
-                    <p><strong>Blue:</strong> ${match.alliances.blue.team_keys.map(t => t.substring(3)).join(", ")} 
-                    | <span class="score blue-score">${match.alliances.blue.score !== null ? match.alliances.blue.score : 'TBD'}</span></p>
-                    <p><strong>Time:</strong> ${matchTime.toLocaleString()}</p>
-                `;
+                const bluePromises = blueTeams.map(teamKey => {
+                    const teamNumber = teamKey.substring(3);
+                    return fetchTeamAverage(teamNumber);
+                });
                 
-                container.appendChild(matchCard);
+                return Promise.all([Promise.all(redPromises), Promise.all(bluePromises)])
+                    .then(([redAverages, blueAverages]) => {
+                        // SUM of all team averages in each alliance
+                        const redTotal = redAverages.reduce((sum, avg) => sum + (avg.avg_total || 0), 0);
+                        const blueTotal = blueAverages.reduce((sum, avg) => sum + (avg.avg_total || 0), 0);
+                        
+                        return {
+                            match: match,
+                            redTotal: redTotal,
+                            blueTotal: blueTotal
+                        };
+                    })
+                    .catch(error => {
+                        console.error("Error calculating totals for match:", error);
+                        return {
+                            match: match,
+                            redTotal: 0,
+                            blueTotal: 0
+                        };
+                    });
             });
+            
+            Promise.all(matchPromises)
+                .then(matchData => {
+                    matchData.forEach(data => {
+                        const match = data.match;
+                        const matchTime = new Date(match.time * 1000);
+                        const matchCard = document.createElement("div");
+                        matchCard.className = "match-card";
+                        
+                        // Add win/loss/tie class if match has been played
+                        if (match.alliances.red.score !== null && match.alliances.blue.score !== null) {
+                            if (match.alliances.red.score > match.alliances.blue.score) {
+                                matchCard.classList.add("win", "red-win");
+                            } else if (match.alliances.red.score < match.alliances.blue.score) {
+                                matchCard.classList.add("win", "blue-win");
+                            } else {
+                                matchCard.classList.add("tie");
+                            }
+                        }
+                        
+                        matchCard.innerHTML = `
+                            <h4>${match.comp_level.toUpperCase()} Match ${match.match_number}</h4>
+                            <p><strong>Red:</strong> ${match.alliances.red.team_keys.map(t => t.substring(3)).join(", ")} 
+                            | <span class="score red-score">${match.alliances.red.score !== null ? match.alliances.red.score : 'TBD'}</span></p>
+                            <p class="avg-total"><span class="red-score">Predicted: ${data.redTotal.toFixed(1)}</span></p>
+                            <p><strong>Blue:</strong> ${match.alliances.blue.team_keys.map(t => t.substring(3)).join(", ")} 
+                            | <span class="score blue-score">${match.alliances.blue.score !== null ? match.alliances.blue.score : 'TBD'}</span></p>
+                            <p class="avg-total"><span class="blue-score">Predicted: ${data.blueTotal.toFixed(1)}</span></p>
+                            <p><strong>Time:</strong> ${matchTime.toLocaleString()}</p>
+                        `;
+                        
+                        container.appendChild(matchCard);
+                    });
+                })
+                .catch(error => {
+                    console.error("Error displaying matches:", error);
+                });
         }
         
         // Generic function to fetch data from TBA API
@@ -858,50 +1015,6 @@ document.addEventListener('touchmove', function(event) {
                 loadMatchData();
             }
         });
-        
-        // Mobile menu functionality
-        function toggleMenu() {
-            const menu = document.getElementById("mobileMenu");
-            const isOpening = !menu.classList.contains("open");
-            menu.classList.toggle("open");
-            document.body.classList.toggle("menu-open", isOpening);
-            if (isOpening) {
-                setTimeout(() => {
-                    menu.scrollTop = 0;
-                }, 50);
-            }
-        }
-
-        // Close menu when clicking outside
-        document.addEventListener("click", function(event) {
-            const menu = document.getElementById("mobileMenu");
-            const hamburger = document.querySelector(".hamburger");
-            if (menu.classList.contains("open") && 
-                !menu.contains(event.target) && 
-                event.target !== hamburger) {
-                toggleMenu();
-            }
-        });
-
-        // Close menu on escape key
-        document.addEventListener("keydown", function(event) {
-            if (event.key === "Escape") {
-                const menu = document.getElementById("mobileMenu");
-                if (menu.classList.contains("open")) {
-                    toggleMenu();
-                }
-            }
-        });
-
-        // Prevent background scrolling when menu is open
-        document.addEventListener("touchmove", function(event) {
-            const menu = document.getElementById("mobileMenu");
-            if (menu.classList.contains("open")) {
-                if (!menu.contains(event.target)) {
-                    event.preventDefault();
-                }
-            }
-        }, { passive: false });
         
         // Load data for a default match on page load
         window.onload = function() {
