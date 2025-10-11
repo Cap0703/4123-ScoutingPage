@@ -550,6 +550,7 @@ document.addEventListener('touchmove', function(event) {
             </div>
             
             <button onclick="loadMatchData()">Load Match Data</button>
+            <button onclick="loadMostRecentMatch()">Load Most Recent Match</button>
         </section>
         
         <div class="loading" id="loading">
@@ -613,6 +614,78 @@ document.addEventListener('touchmove', function(event) {
         let currentMatchType = "";
         let currentMatchNumber = 0;
         let allMatches = [];
+        
+        // Function to load the most recent match based on scheduled time
+        function loadMostRecentMatch() {
+            currentEventKey = document.getElementById("eventKey").value.trim();
+            
+            // Validate input
+            if (!currentEventKey) {
+                showError("Please enter a valid event key");
+                return;
+            }
+            
+            // Show loading, hide results and error
+            document.getElementById("loading").style.display = "block";
+            document.getElementById("results").style.display = "none";
+            document.getElementById("error").style.display = "none";
+            
+            // Fetch all match data
+            fetchEventMatches(currentEventKey)
+                .then(() => {
+                    // Find the most recent match based on scheduled time
+                    const mostRecentMatch = findMostRecentMatch();
+                    
+                    if (!mostRecentMatch) {
+                        showError("No upcoming matches found for this event");
+                        return;
+                    }
+                    
+                    // Update form fields
+                    document.getElementById("matchType").value = mostRecentMatch.comp_level;
+                    document.getElementById("matchNumber").value = mostRecentMatch.match_number;
+                    
+                    // Process the data
+                    currentMatchType = mostRecentMatch.comp_level;
+                    currentMatchNumber = mostRecentMatch.match_number;
+                    processMatchData();
+                    
+                    // Hide loading and show results
+                    document.getElementById("loading").style.display = "none";
+                    document.getElementById("results").style.display = "block";
+                })
+                .catch(error => {
+                    document.getElementById("loading").style.display = "none";
+                    showError("Error fetching match data: " + error.message);
+                });
+        }
+        
+        // Function to find the most recent match based on scheduled time
+        function findMostRecentMatch() {
+            if (allMatches.length === 0) return null;
+            
+            // Get current time in local timezone
+            const now = new Date();
+            
+            // Filter for matches that are scheduled in the future or very recent
+            const upcomingMatches = allMatches.filter(match => {
+                if (!match.time || match.time <= 0) return false;
+                
+                // Convert UTC time to local time
+                const matchTime = new Date(match.time * 1000);
+                
+                // Include matches that are scheduled for the future or happened in the last 2 hours
+                const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+                return matchTime >= twoHoursAgo;
+            });
+            
+            if (upcomingMatches.length === 0) return null;
+            
+            // Sort by time (closest match first)
+            upcomingMatches.sort((a, b) => a.time - b.time);
+            
+            return upcomingMatches[0];
+        }
         
         // Function to load match data
         function loadMatchData() {
@@ -692,13 +765,19 @@ document.addEventListener('touchmove', function(event) {
         // Display current match information
         function displayMatchInfo(match) {
             const matchInfoDiv = document.getElementById("matchInfo");
-            const matchTime = new Date(match.time * 1000);
-            const now = new Date();
             
+            // Convert UTC time to local time
+            let matchTime = "Time not scheduled";
             let timeStatus = "";
+            
             if (match.time && match.time > 0) {
-                if (matchTime > now) {
-                    const timeDiff = Math.floor((matchTime - now) / 60000); // Difference in minutes
+                const matchTimeUTC = new Date(match.time * 1000);
+                matchTime = matchTimeUTC.toLocaleString();
+                
+                const now = new Date();
+                
+                if (matchTimeUTC > now) {
+                    const timeDiff = Math.floor((matchTimeUTC - now) / 60000); // Difference in minutes
                     if (timeDiff > 60) {
                         timeStatus = `Starts in ${Math.floor(timeDiff / 60)} hours and ${timeDiff % 60} minutes`;
                     } else {
@@ -713,7 +792,7 @@ document.addEventListener('touchmove', function(event) {
             
             matchInfoDiv.innerHTML = `
                 <h2>${match.comp_level.toUpperCase()} Match ${match.match_number}</h2>
-                <p><strong>Time:</strong> ${matchTime.toLocaleString()}</p>
+                <p><strong>Local Time:</strong> ${matchTime}</p>
                 <p><strong>Status:</strong> ${timeStatus}</p>
             `;
             
@@ -938,7 +1017,11 @@ document.addEventListener('touchmove', function(event) {
                 .then(matchData => {
                     matchData.forEach(data => {
                         const match = data.match;
-                        const matchTime = new Date(match.time * 1000);
+                        // Convert UTC time to local time
+                        const matchTime = match.time && match.time > 0 
+                            ? new Date(match.time * 1000).toLocaleString() 
+                            : "Time not scheduled";
+                            
                         const matchCard = document.createElement("div");
                         matchCard.className = "match-card";
                         
@@ -961,7 +1044,7 @@ document.addEventListener('touchmove', function(event) {
                             <p><strong>Blue:</strong> ${match.alliances.blue.team_keys.map(t => t.substring(3)).join(", ")} 
                             | <span class="score blue-score">${match.alliances.blue.score !== null ? match.alliances.blue.score : 'TBD'}</span></p>
                             <p class="avg-total"><span class="blue-score">Predicted: ${data.blueTotal.toFixed(1)}</span></p>
-                            <p><strong>Time:</strong> ${matchTime.toLocaleString()}</p>
+                            <p><strong>Time:</strong> ${matchTime}</p>
                         `;
                         
                         container.appendChild(matchCard);
@@ -970,28 +1053,6 @@ document.addEventListener('touchmove', function(event) {
                 .catch(error => {
                     console.error("Error displaying matches:", error);
                 });
-        }
-        
-        // Generic function to fetch data from TBA API
-        function fetchTBA(endpoint) {
-            const url = `https://www.thebluealliance.com/api/v3/${endpoint}`;
-            
-            return fetch(url, {
-                headers: {
-                    "X-TBA-Auth-Key": TBA_KEY
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .catch(error => {
-                console.error("Error fetching from TBA API:", error);
-                showError("Failed to fetch data: " + error.message);
-                throw error;
-            });
         }
         
         // Show error message
@@ -1003,24 +1064,29 @@ document.addEventListener('touchmove', function(event) {
             document.getElementById("loading").style.display = "none";
         }
         
-        // Allow pressing Enter to submit
-        document.getElementById("matchNumber").addEventListener("keyup", function(event) {
-            if (event.key === "Enter") {
-                loadMatchData();
-            }
-        });
+        // Fetch data from The Blue Alliance API
+        function fetchTBA(endpoint) {
+            return fetch(`https://www.thebluealliance.com/api/v3/${endpoint}`, {
+                headers: {
+                    "X-TBA-Auth-Key": TBA_KEY
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`TBA API error: ${response.status}`);
+                }
+                return response.json();
+            });
+        }
         
-        document.getElementById("eventKey").addEventListener("keyup", function(event) {
-            if (event.key === "Enter") {
-                loadMatchData();
-            }
-        });
+        // Initialize the page
+        function init() {
+            // Load the most recent match by default
+            loadMostRecentMatch();
+        }
         
-        // Load data for a default match on page load
-        window.onload = function() {
-            // Load data for a default match
-            loadMatchData();
-        };
+        // Initialize when the page loads
+        window.onload = init;
     </script>
 </body>
 </html>
